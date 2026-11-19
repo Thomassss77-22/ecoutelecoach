@@ -552,6 +552,7 @@ html.locked body{overflow:hidden}
           <label>Séances de course max / semaine<input id="st_runMax" type="number" min="0" max="4"></label>
           <label>Glucides visés en course (g/h, 90 conseillé ; pros 100-120 avec intestin entraîné)<input id="st_cho" type="number" min="30" max="120" step="5"></label>
           <label class="full">Niveau de volume<select id="st_level"><option value="amateur">Amateur : sorties longues jusqu’à 5 h</option><option value="elite">Élite : sorties longues jusqu’à 5 h 30</option><option value="pro">Pro : sorties longues jusqu’à 6 h (règle aussi le volume max sur 22 h)</option></select></label>
+          <label>Heures d’entraînement par semaine (dernier mois, tous sports)<input id="st_acHours" type="number" min="0" max="40" step="0.5" placeholder="auto"><span class="small muted">Sert au Training Effect estimé (classe d’activité Firstbeat). Vide : calculé sur tes séances enregistrées.</span></label>
           <label class="full">Cibles des séances Garmin<select id="st_wkTarget"><option value="power">Puissance (watts calculés sur ta FTP)</option><option value="hr">Fréquence cardiaque (sans capteur de puissance ; efforts au-dessus du seuil au ressenti)</option></select></label>
           <label class="full">Début des efforts sur le compteur<select id="st_lapStart"><option value="1">Quand j’appuie sur Tour (Lap) : l’échauffement part tout seul, j’appuie pour lancer chaque bloc</option><option value="0">Automatique, à la fin de la durée prévue</option></select></label>
         </form>
@@ -1078,30 +1079,82 @@ const BEN_FR={recovery:"récupération",base:"base aérobie",tempo:"tempo",thres
 function benefitRank(s){ if(s.benefit&&BEN.indexOf(String(s.benefit).toLowerCase())>0) return BEN.indexOf(String(s.benefit).toLowerCase());
   return 0; }
 /* Training Effect estimé quand Garmin ne le fournit pas (fichiers .tcx/.gpx, licence gratuite, autres compteurs).
-   Aérobie : charge type EPOC cumulée minute par minute à partir de la FC en % de réserve cardiaque (Karvonen),
-   qui monte d'autant plus vite que l'intensité est haute et redescend quand on roule très facile ; le pic est ramené
-   sur l'échelle 0-5 de Garmin. Anaérobie : efforts au-dessus de la PMA (puissance > 120 % FTP) ou, sans capteur,
-   accélérations franches et temps à FC très haute. Ce n'est pas l'algorithme Firstbeat de Garmin : un ordre de grandeur. */
+   Méthode : celle publiée par Firstbeat (le moteur du Training Effect de Garmin), avec des constantes calées sur ses données publiées.
+   1) Intensité = % de VO2max, estimé par le % de réserve cardiaque (Swain et Leutholtz 1997 ; ACSM) ; sans cardio,
+      par la puissance : VO2 = (12 × W + 300) / kg (brevet Firstbeat US 11 771 355), VO2max = même formule à la PMA ≈ FTP / 0,75.
+   2) EPOC (ml/kg) : EPOC(t) = f(EPOC(t-1), intensité, Δt) (Firstbeat, Rusko et al. 2003) : une part rapide qui suit l'intensité
+      et une part lente qui s'accumule au-dessus de ~50 % VO2max et se résorbe en dessous de 40 %. Constantes ajustées pour retrouver
+      les EPOC types du livre blanc Firstbeat (10 km, marathon, 1 h facile, échauffement…) et les TE de ses séances d'exemple.
+   3) TE aérobie = pic d'EPOC ramené à la classe d'activité (Firstbeat, tableau 2 : heures d'entraînement par semaine) ;
+      seuils de la classe 8 : TE 2 = 22, TE 3 = 67, TE 4 = 155 ml/kg, × 1,13 par classe (valeurs Suunto/Firstbeat).
+   4) TE anaérobie (brevet Firstbeat US 2017/0143262) : intervalles repérés sur la FC (montée > 15 s, pic > 80 % FC max et > 73 % VO2max,
+      récup préalable > 30 s ou départ < 70 % FC max) ; travail = durée (plafonnée à 300 s) × bonus si court × intensité du pic
+      × récupération au départ × amplitude de la montée ; + sprints courts vus au capteur (puissance ou vitesse) que la FC ne voit pas ;
+      mise à l'échelle linéaire selon la classe d'activité. Constantes ajustées sur les 11 séances d'exemple du livre blanc
+      « Anaerobic Training Effect » (écart moyen ~0,2 point sur ces exemples).
+   Ce n'est pas le calcul exact de Garmin (secret, et qui utilise aussi la variabilité cardiaque) : compter ±0,5 point. */
+const TEK={A1:.2797,B1:12.5769,A2:28.5888,B2:4.5306,tf:9.0318,cap:2.5269, ad:.7951,bd:27.5424,p:.5399,as:4.292,z:20,s:20.3554,ks:3.2282, v:2};
 function restHR(){ const v=Object.keys(S.checkins||{}).filter(d=>d>=addDays(TODAY,-60)).map(d=>+S.checkins[d].rhr).filter(x=>x>=30&&x<=90).sort((a,b)=>a-b);
   return v.length?v[Math.floor(v.length/2)]:50; }
+// classe d'activité Firstbeat (0-10) d'après le volume moyen des 4 semaines précédentes
+function activityClass(date){
+  const d0=addDays(date||TODAY,-28), ss=(S.sessions||[]).filter(x=>x.date>=d0&&x.date<(date||TODAY)), first=(S.sessions||[]).map(x=>x.date).sort()[0];
+  const man=S.settings.acHours, dense=ss.length>=8&&first&&diff(first,date||TODAY)>=21;
+  if(man===""||man==null){ if(!dense) return {amateur:7,elite:8.5,pro:9.5}[S.settings.level||"amateur"]||7; }
+  const h=man!==""&&man!=null?+man:ss.reduce((a,x)=>a+(+x.dur||0),0)/60/4, P=[[0,3],[.75,5],[2,6],[4,7],[6,7.5],[8,8],[10,8.5],[12,9],[14,9.5],[16,10]];
+  for(let i=1;i<P.length;i++) if(h<=P[i][0]) return P[i-1][1]+(P[i][1]-P[i-1][1])*(h-P[i-1][0])/(P[i][0]-P[i-1][0]);
+  return 10; }
+function epocPeak(x,dt){ const K=TEK, ef=Math.exp(-dt/(K.tf*60)); let F=0,L=0,pk=0;
+  for(const v0 of x){ const v=v0==null?0:v0;
+    const c1=v>.3?Math.min(K.cap,K.A1*Math.exp(K.B1*(v-.6))):0, c2=v>.3?K.A2*Math.exp(K.B2*(Math.min(v,1)-.6)):0;
+    F+=(c2-F)*(1-ef); const d=v<.4?1/1200:v>=.55?0:(.55-v)/.15/1200; L=Math.max(0,L+c1*dt/60-L*d*dt); if(F+L>pk) pk=F+L; }
+  return pk; }
+function teAerFromEpoc(E,ac){ E=E/Math.pow(1.13,ac-8); if(!(E>0)) return 0; if(E<22) return 2*Math.log(1+E)/Math.log(23);
+  const l=Math.log(E); return Math.min(5,.15075282*l*l-.2019046*l+1.1837213); }
+function teAnFromSum(S0,ac){ return Math.max(0,Math.min(5,(S0/Math.pow(1.13,ac-8)-TEK.z)/TEK.s)); }
+// somme anaérobie à partir de la FC seconde par seconde
+function anaerSum(hr0,hrmax,rest){
+  const K=TEK, n=hr0.length; if(n<60) return 0; const hr=new Array(n); let lastv=0; for(let i=0;i<n;i++){ const v=hr0[i]; if(v>0) lastv=v; hr[i]=lastv; }
+  const pre=[0]; for(let i=0;i<n;i++) pre.push(pre[i]+hr[i]); const h=hr.map((v,j)=>j<5||j>=n-5?v:(pre[j+5]-pre[j-5])/10);  // moyenne glissante 10 s
+  let tot=0,i=0,lastEnd=-999;
+  while(i<n-1){ while(i<n-1&&h[i+1]<=h[i]) i++; const lo=i; while(i<n-1&&h[i+1]>=h[i]-.05) i++; const pk=i, l=pk-lo, dH=h[pk]-h[lo];
+    const low=h[lo]/hrmax, peak=h[pk]/hrmax, pV=(h[pk]-rest)/(hrmax-rest), need=6+.3*Math.max(0,.85*hrmax-h[lo]);
+    if(l>15&&peak>.8&&pV>.73&&dH>=need&&(lo-lastEnd>30||low<.7)){
+      tot+=Math.min(l,300)*(1+K.ad*Math.exp(-l/K.bd))*Math.pow((peak-.8)/.2,K.p)*Math.max(.5,1+K.as*(.8-low))*(dH/(.1*hrmax))/100; lastEnd=pk; }
+    i=Math.max(i,lo+1); }
+  return tot; }
+// sprints courts (≤ 12 s) vus au capteur : puissance ≥ 150 % FTP, ou sans capteur une accélération franche sur le plat ou en montée suivie d'une montée de FC
+function shortSprints(ser,p,hasP,hr){
+  const n=p.length; let c=0,last=-999;
+  if(hasP){ const ftp=S.settings.ftp; for(let i=0;i<n;i++){ if(p[i]>=1.5*ftp&&i-last>45){ let j=i; while(j<n&&p[j]>=1.2*ftp) j++; if(j-i<=12&&j-i>=3){c++;} last=j; i=j; } } return c; }
+  const spd=ser.spd||[], A=smoothArr(ser.alt||[],10);
+  for(let i=8;i<n-30;i++){ const a=spd[i],b=spd[i-8]; if(a==null||b==null||a-b<2.2||a*3.6<35||i-last<60) continue;
+    const down=A[i]!=null&&A[i-8]!=null&&A[i]-A[i-8]<-3; let up=0; for(let j=i;j<Math.min(n,i+30);j++) up=Math.max(up,(hr[j]||0)-(hr[i-8]||0));
+    if(!down&&up>=8){c++;last=i;} }
+  return c; }
+function teFromSeries(ser,p,hr,hasP,hasH){
+  const st=S.settings, mx=+st.fcmax||190, rest=restHR(), ftp=+st.ftp||250, n=p.length; let x=null;
+  if(hasH){ let lv=0; x=hr.map(v=>{ if(v>0) lv=v; return lv?Math.max(0,Math.min(1,(lv-rest)/Math.max(40,mx-rest))):0; }); }
+  else if(hasP){ const vmax=12*ftp/.75+300; x=p.map(w=>(12*(w||0)+300)/vmax); }
+  if(!x) return null;
+  const spr=shortSprints(ser,p,hasP,hr), sum=(hasH?anaerSum(hr,mx,rest):0)+TEK.ks*spr;
+  return {epoc:Math.round(epocPeak(x,1)), anSum:+sum.toFixed(1), spr, ref:[mx,rest], v:TEK.v}; }
 function estTE(s){
-  const an=s.an; if(!an) return null; const st=S.settings, mx=+st.fcmax||190, rest=restHR(), E0=(st.level||"amateur")==="amateur"?130:165;
-  let a=null, b=null;
-  const h=(an.curve||[]).map(r=>r&&r[1]>0?r[1]:null);
-  if(an.hasH!==false&&h.length>=10&&h.filter(x=>x).length>=h.length*.5){
-    let E=0,pk=0; h.forEach(v=>{ const x=v?Math.max(0,Math.min(1,(v-rest)/Math.max(40,mx-rest))):0;
-      if(x>=.45) E=E*Math.exp(-1/200)+Math.exp(7*(x-.6)); else E*=Math.exp(-1/25); if(E>pk) pk=E; });
-    a=5*(1-Math.exp(-Math.pow(pk/E0,.6))); }
-  if(an.zp){ const L=an.zp[5]/60*.4+an.zp[6]/60*3; b=5*(1-Math.exp(-L/6)); }
-  else if(a!=null){ const spr=an.blocks&&an.blocks.list?an.blocks.list.filter(x=>x.d<=30&&/effort/.test(x.int||"")).length:0;
-    const L=.08*(an.accel||0)+.25*spr+(an.zh?an.zh[4]/60*.5:0); b=5*(1-Math.exp(-L/6)); }
+  const an=s.an; if(!an) return null; const st=S.settings, mx=+st.fcmax||190, rest=restHR(), ac=activityClass(s.date);
+  let E=null;
+  const t=an.te, same=t&&t.v===TEK.v&&t.ref&&t.ref[0]===mx&&Math.abs(t.ref[1]-rest)<=3;
+  if(same) E=t.epoc;
+  else { const h=(an.curve||[]).map(r=>r&&r[1]>0?r[1]:null);   // repli : FC minute par minute (sorties anciennes ou réglages changés)
+    if(h.length>=10&&h.filter(v=>v).length>=h.length*.5) E=epocPeak(h.map(v=>v?Math.max(0,Math.min(1,(v-rest)/Math.max(40,mx-rest))):0),60);
+    else if(t&&t.v===TEK.v) E=t.epoc; }
+  const a=E==null?null:teAerFromEpoc(E,ac), b=t&&t.v===TEK.v?teAnFromSum(t.anSum,ac):null;
   if(a==null&&b==null) return null;
-  return {a:a==null?null:Math.round(a*10)/10, an:b==null?null:Math.round(b*10)/10};
+  return {a:a==null?null:Math.round(a*10)/10, an:b==null?null:Math.round(b*10)/10, epoc:E==null?null:Math.round(E), ac:Math.round(ac*2)/2};
 }
 function applyTE(s){ if(!s||!s.an) return; if(s.teA!=null&&!s.teEst||s.teAn!=null&&!s.teEst) return;
-  const t=estTE(s); if(!t){ if(s.teEst){delete s.teA;delete s.teAn;delete s.teEst;} return; }
-  s.teA=t.a; s.teAn=t.an; s.teEst=true; }
-const teTxt=s=>"Aéro "+(s.teA!=null?fx(+s.teA,1):"—")+" · Anaéro "+(s.teAn!=null?fx(+s.teAn,1):"—")+(s.teEst?" (estimé)":"");
+  const t=estTE(s); if(!t){ if(s.teEst){delete s.teA;delete s.teAn;delete s.teEst;delete s.teInfo;} return; }
+  s.teA=t.a; s.teAn=t.an; s.teEst=true; s.teInfo={epoc:t.epoc,ac:t.ac}; }
+const teTxt=s=>"Aéro "+(s.teA!=null?fx(+s.teA,1):"—")+" · Anaéro "+(s.teAn!=null?fx(+s.teAn,1):s.teEst?"— (redépose le fichier)":"—")+(s.teEst?" (estimé"+(s.teInfo&&s.teInfo.epoc!=null?", EPOC "+s.teInfo.epoc+" ml/kg, classe "+fx(s.teInfo.ac,1):"")+")":"");
 // estimation : seuils un peu plus hauts pour ne pas classer « dure » une sortie à cause d'une approximation
 function teHard(s){ const e=!!s.teEst; return benefitRank(s)>=4||(+s.teAn||0)>=(e?3:2.5)||(+s.teA||0)>=(e?4.2:4); }
 function isKeyLog(s){return s.id==="RACE"||(LIB[s.id]&&LIB[s.id].key)||teHard(s)}
@@ -1576,9 +1629,9 @@ function renderSuivi(){
 }
 
 /* ---------- rendu : réglages ---------- */
-const setMap={ftp:"st_ftp",fcmax:"st_fcmax",kg:"st_kg",maxH:"st_maxh",meso:"st_meso",mesoStart:"st_mesoStart",phase:"st_phase",runOn:"st_runOn",runMax:"st_runMax",cho:"st_cho",wkTarget:"st_wkTarget",lapStart:"st_lapStart",level:"st_level",hasPower:"st_hasPower",lthr:"st_lthr"};
+const setMap={ftp:"st_ftp",fcmax:"st_fcmax",kg:"st_kg",maxH:"st_maxh",meso:"st_meso",mesoStart:"st_mesoStart",phase:"st_phase",runOn:"st_runOn",runMax:"st_runMax",cho:"st_cho",wkTarget:"st_wkTarget",lapStart:"st_lapStart",acHours:"st_acHours",level:"st_level",hasPower:"st_hasPower",lthr:"st_lthr"};
 function renderSettings(){
-  Object.entries(setMap).forEach(([k,id])=>{const el=document.getElementById(id);el.value=S.settings[k];el.onchange=()=>{let v=el.value;if(el.type==="number")v=+v;if(k==="runOn"||k==="lapStart")v=+v;if(k==="mesoStart")v=mondayOf(v);if(k==="hasPower"){v=+v;if(v===0)S.settings.wkTarget="hr";}S.settings[k]=v;if(k==="level")S.settings.maxH={amateur:Math.min(S.settings.maxH,14),elite:18,pro:22}[v]||S.settings.maxH;save();buildLib();renderAll();};});
+  Object.entries(setMap).forEach(([k,id])=>{const el=document.getElementById(id);el.value=S.settings[k];el.onchange=()=>{let v=el.value;if(el.type==="number")v=+v;if(k==="runOn"||k==="lapStart")v=+v; if(k==="acHours")v=el.value===""?"":+el.value;if(k==="mesoStart")v=mondayOf(v);if(k==="hasPower"){v=+v;if(v===0)S.settings.wkTarget="hr";}S.settings[k]=v;if(k==="level")S.settings.maxH={amateur:Math.min(S.settings.maxH,14),elite:18,pro:22}[v]||S.settings.maxH;save();buildLib();renderAll();};});
   const rs=S.settings.races;
   document.getElementById("raceTable").innerHTML=`<table><thead><tr><th>Date</th><th>Nom</th><th>Priorité</th><th>Profil</th><th>Km</th><th>Départ</th><th>Chaleur</th><th></th></tr></thead><tbody>${rs.map((r,i)=>`<tr>
     <td><input type="date" data-r="date" data-i="${i}" value="${r.date}" aria-label="Date"></td>
@@ -1608,7 +1661,7 @@ function renderEvidence(){
     ["Interférence","Pas d’effet sur force maximale et hypertrophie ; explosivité réduite si même séance que l’endurance.","Modéré à fort","Schumann 2022 ; Lundberg 2022","Muscu les jours de séance clé, au moins 3 h après le vélo."],
     ["Course à pied","Aucun essai sur la performance d’un cycliste.","Pas de preuve","—","Endurance facile, plafonnée, jamais la veille d’une séance clé."],
     ["Suivi de la charge","Ratio aigu/chronique invalidé comme prédicteur ; CTL/TSB descriptifs ; monotonie élevée associée aux maladies banales ; entraînement guidé par la VFC (ln rMSSD sur 7 jours, zone ± 0,5 écart-type) : autant de progrès avec moins de séances dures.","Faible à modéré","Impellizzeri 2020, 2021 ; Foster 1998 ; Javaloyes 2019 ; Manresa-Rocamora 2021 ; Düking 2021","Pas de ratio aigu/chronique dans l’appli ; VFC sur 7 jours, FC de repos, sommeil, monotonie et RPE comme garde-fous. Le plan s’ajuste : fatigue sur 7 jours → une séance clé de moins et −15 % de volume ; reprise après 10 jours sans séance → 1 clé, 60 % du volume habituel."],
-    ["Training Effect Garmin","Indicateurs propriétaires Firstbeat (Garmin) fondés sur l’EPOC estimé à partir de la FC. Validation indépendante limitée ; utiles pour comparer tes séances entre elles, pas comme mesure absolue.","Faible","Livre blanc Firstbeat (non évalué par des pairs)","Utilisé en complément : une séance avec TE anaérobie ≥ 2,5, TE aérobie ≥ 4 ou un effet principal seuil, VO2max, anaérobie ou sprint compte comme séance dure (règle des 48 h). Le bilan compare l’effet mesuré à la séance prévue. Le RPE saisi sur le compteur remplace le RPE estimé. Sans Training Effect Garmin, l’appli l’estime : aérobie par une charge de type EPOC calculée minute par minute sur la FC en % de réserve cardiaque (FC de repos médiane de tes check-ins, FC max des réglages), anaérobie par le temps au-dessus de 120 % FTP ou, sans capteur, les accélérations franches et le temps à FC très haute. Ordre de grandeur seulement, remplacé dès que Garmin fournit sa valeur."],
+    ["Training Effect Garmin","Indicateurs propriétaires Firstbeat (Garmin) fondés sur l’EPOC estimé à partir de la FC. Validation indépendante limitée ; utiles pour comparer tes séances entre elles, pas comme mesure absolue.","Faible","Livre blanc Firstbeat (non évalué par des pairs)","Utilisé en complément : une séance avec TE anaérobie ≥ 2,5, TE aérobie ≥ 4 ou un effet principal seuil, VO2max, anaérobie ou sprint compte comme séance dure (règle des 48 h). Le bilan compare l’effet mesuré à la séance prévue. Le RPE saisi sur le compteur remplace le RPE estimé. Sans Training Effect Garmin, l’appli l’estime avec la méthode publiée par Firstbeat : intensité en % de VO2max par la réserve cardiaque (Swain et Leutholtz 1997) ou la puissance ; EPOC calculé seconde par seconde et calé sur les valeurs types du livre blanc EPOC de Firstbeat ; TE aérobie selon le pic d’EPOC et ta classe d’activité (seuils de la classe 8 : TE 2 = 22, TE 3 = 67, TE 4 = 155 ml/kg) ; TE anaérobie selon les intervalles repérés sur la FC (critères du brevet Firstbeat) et les sprints courts vus au capteur, calé sur les 11 séances d’exemple du livre blanc « Anaerobic Training Effect ». Écart sur ces exemples : environ 0,6 point en aérobie, 0,2 en anaérobie ; compter ±0,5 point. Remplacé dès que Garmin fournit sa valeur."],
     ["Progression du volume","Aucun seuil de progression n’est validé (la règle des 10 % n’a pas réduit les blessures chez des coureurs débutants, Buist 2008) ; les hausses brutales (> 30 % en 2 semaines) sont associées à plus de blessures en course à pied (Nielsen 2014). Données quasi absentes en cyclisme.","Faible","Buist 2008 ; Nielsen 2014","Choix prudent de l’appli, pas un seuil prouvé : le volume prévu ne dépasse pas ton volume réel des 4 dernières semaines + 15 % par semaine (plancher 3 h), en plus de ton volume max."],
     ["Nutrition à l’effort","Jusqu’à 90 g/h de glucides mixtes au-delà de 2 h 30 ; au-delà de 90 g/h, pas de bénéfice démontré. Risque de REDs.","Fort (principe), modéré (doses)","Jeukendrup 2014 ; Thomas 2016 ; Podlogar 2022 ; Mountjoy 2023","80-90 g/h en course, entraînés sur les sorties longues ; 10-12 g/kg/j pendant 36-48 h avant un objectif."],
     ["Sommeil","Souvent insuffisant chez les sportifs ; besoin individuel.","Consensus d’experts","Walsh 2021","Alerte sous 6 h ; priorité au sommeil sur l’intensité."],
@@ -2073,6 +2126,7 @@ function analyzeSeries(rec,ser){
   if(hasP&&n>=5400){ const t=Math.floor(n/3); an.pace=[Math.round(mean(p.slice(0,t))),Math.round(mean(p.slice(2*t)))]; }
   if(hasP) an.over=Math.round(p.filter(x=>x>ftp*.76).length/60);
   Object.assign(an,deepStats(ser,p,hr,hasP,hasH));
+  try{ const te=teFromSeries(ser,p,hr,hasP,hasH); if(te) an.te=te; }catch(e){}
   try{ const bl=lapBlocks(rec,ser,p,hr,an); if(bl){ an.blocks=bl;
       // la structure des tours identifie la séance faite, même sans capteur de puissance
       if(bl.mapped&&bl.mapped!==an.id){ const pl=rec.planned; an.id=bl.mapped; delete an.notKey; if(pl&&pl!==bl.mapped) an.other=pl; else delete an.other; } } }catch(e){}
