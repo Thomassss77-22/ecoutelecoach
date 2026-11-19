@@ -1606,7 +1606,7 @@ function renderToday(){
   if(cic&&!cic.dataset.touched){ cic.open=!ciDone&&window.innerWidth>900; cic.ontoggle=()=>{cic.dataset.touched="1";}; }
   renderFree(r,ci);
   const qs=document.getElementById("qSend"); if(qs) qs.onclick=()=>askSendGarmin(r.id,r.variant,(["E1","E2","E4","E5","C1","C2"].includes(r.id)?r.dur:null),TODAY,"qGarminMsg");
-  const qg=document.getElementById("qGarmin"); if(qg) qg.onclick=()=>offerZip([workoutFile(r.id,r.variant,(["E1","E2","E4","E5","C1","C2"].includes(r.id)?r.dur:null),TODAY.replace(/-/g,""))],"seance_"+TODAY+".zip","qGarminMsg");
+  const qg=document.getElementById("qGarmin"); if(qg) qg.onclick=()=>offerZip([workoutFile(r.id,r.variant,(["E1","E2","E4","E5","C1","C2"].includes(r.id)?r.dur:null),TODAY.replace(/-/g,""),r.dur)],"seance_"+TODAY+".zip","qGarminMsg");
   const ql=document.getElementById("qLog"); if(ql) ql.onclick=()=>{
     const dur=+document.getElementById("qDur").value||0, rpe=document.getElementById("qRpe").value;
     if(!dur&&r.id!=="R0"){alertMsg("Indique la durée.");return;}
@@ -1720,7 +1720,7 @@ function renderWeek(){
   sb.onclick=()=>{S.shock=S.shock||{}; if(S.shock[mon]) delete S.shock[mon]; else S.shock[mon]=true; save(); renderAll();};
   document.getElementById("wkSend").onclick=()=>openSend(W.days.filter(d=>d.date>=TODAY&&d.main.id!=="RACE"&&d.main.id!=="R0").map(d=>({id:d.main.id,variant:d.v,dur:(["E1","E2","E4","E5","C1","C2"].includes(d.main.id)?d.dur:null),date:d.date})),"wkSendMsg");
   document.getElementById("wkIcs").onclick=()=>icsExport("wkGarminMsg");
-  document.getElementById("wkGarmin").onclick=()=>offerZip(W.days.flatMap(d=>{const lab=d.date.replace(/-/g,"").slice(4)+"_"+DAYS[d.i].slice(0,3);const arr=[];if(d.main.id!=="RACE"&&d.main.id!=="R0")arr.push(workoutFile(d.main.id,d.v,(["E1","E2","E4","E5","C1","C2"].includes(d.main.id)?d.dur:null),lab));d.extra.forEach(x=>arr.push(workoutFile(x,"courte",null,lab)));return arr;}),"semaine_"+mon+".zip","wkGarminMsg");
+  document.getElementById("wkGarmin").onclick=()=>offerZip(W.days.flatMap(d=>{const lab=d.date.replace(/-/g,"").slice(4)+"_"+DAYS[d.i].slice(0,3);const arr=[];if(d.main.id!=="RACE"&&d.main.id!=="R0")arr.push(workoutFile(d.main.id,d.v,(["E1","E2","E4","E5","C1","C2"].includes(d.main.id)?d.dur:null),lab,d.dur));d.extra.forEach(x=>arr.push(workoutFile(x,"courte",null,lab)));return arr;}),"semaine_"+mon+".zip","wkGarminMsg");
   const rs=document.getElementById("wkReset"); if(rs) rs.onclick=()=>{delete S.weekEdits[mon];save();renderAll();};
   document.querySelectorAll("[data-unadd]").forEach(el=>el.onclick=()=>{ const [date,id]=el.dataset.unadd.split("|"); editWeek(mon,DAYS[diff(mon,date)]+" : "+((LIB[id]||{}).nom||id)+" retiré",()=>{ const q=Object.assign({},S.pins[date]||{}), a=[...(q.add||[])], k=a.indexOf(id); if(k>=0) a.splice(k,1); q.add=a; S.pins[date]=q; }); renderAll(); });
   document.querySelectorAll("[data-edit]").forEach(el=>el.onclick=()=>openSheet(mon,+el.dataset.edit));
@@ -2230,7 +2230,7 @@ async function dataImport(f){ const m=document.getElementById("dataMsg");
   }catch(e){ m.textContent="Ce fichier n’est pas une copie de données Écoute le Coach."; } }
 setTimeout(()=>{ if(!(window.claude&&typeof window.claude.use==="function")) document.documentElement.classList.add("standalone"); },1500);
 // nouvelle version publiée : le navigateur garde la page en cache ~10 min ; on vérifie et on propose de recharger
-const BUILD="20261119162344";
+const BUILD="20261119183154";
 async function checkUpdate(){ if(window.claude&&typeof window.claude.use==="function") return; if(!/^https?:/.test(location.protocol)) return;
   try{ const t=await (await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"})).text(); const m=t.match(/const BUILD="([^"]+)"/);
     if(m&&m[1]!==BUILD&&!document.getElementById("updBar")){ const d=document.createElement("div"); d.id="updBar"; d.className="updbar";
@@ -3425,9 +3425,19 @@ function makeZip(files){
   const all=[...parts,...central,...end]; const out=new Uint8Array(all.reduce((a,p)=>a+p.length,0)); let p=0; all.forEach(x=>{out.set(x,p);p+=x.length;}); return out;
 }
 const slug=s=>s.normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^A-Za-z0-9]+/g,"_").replace(/^_|_$/g,"").slice(0,40);
-function workoutFile(id,variant,dur,dateLabel){
+// Ajuste la durée du fichier à celle du plan : on rallonge ou raccourcit seulement la Z2 de complément, l’échauffement et le retour au calme, jamais les blocs d’intensité
+function fitSteps(steps,minutes){ const target=Math.round(minutes*60); let diff=target-sumSteps(steps); if(Math.abs(diff)<150) return steps;
+  const out=steps.map(x=>Object.assign({},x)), z2=x=>!x.rep&&x.int==="active"&&x.lo===56&&x.hi===75, wu=x=>!x.rep&&x.int==="warmup", cd=x=>!x.rep&&x.int==="cooldown";
+  if(diff>0){ const f=out.filter(z2).sort((a,b)=>b.d-a.d)[0];
+    if(f) f.d+=diff;
+    else if(diff>=600) out.splice(Math.max(1,out.length-1),0,{n:"Endurance Z2",d:diff,lo:56,hi:75,int:"active"});
+    else { const c=out.filter(cd)[0]; if(c) c.d+=diff; } }
+  else { diff=-diff; [[z2,600],[wu,600],[cd,300]].forEach(([f,mn])=>out.filter(f).forEach(x=>{ if(diff<=0) return; const cut=Math.min(diff,Math.max(0,x.d-mn)); x.d-=cut; diff-=cut; })); }
+  return out; }
+function workoutFile(id,variant,dur,dateLabel,fitMin){
   const s=LIB[id]; if(!s||s.sport==="repos") return null;
-  const steps=wkSteps(id,variant,dur); if(!steps) return null;
+  let steps=wkSteps(id,variant,dur); if(!steps) return null;
+  if(fitMin&&s.sport==="velo") steps=fitSteps(steps,fitMin);
   const mode=S.settings.wkTarget||"power";
   const name=(s.nom.replace("Musculation : ","Muscu ").replace(" (protocole Rønnestad)","").replace("Endurance fondamentale","Endurance"))+(variant==="longue"?" L":"");
   const data=encodeWorkout(name.slice(0,31),s.sport,lapOpen(steps),mode);
