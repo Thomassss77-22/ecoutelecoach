@@ -480,8 +480,9 @@ label.btn.filebtn{display:inline-flex!important;flex-direction:row!important;ali
       <div class="card" style="padding-top:8px"><div class="tablewrap" id="weekTable"></div>
         <p class="small muted">Pour déplacer une séance : « Modifier » sous le jour, ou glisse la ligne sur un autre jour (ordinateur). L’appli vérifie aussitôt les règles d’espacement et de charge.</p></div>
       <details class="card" id="wkOpts">
-        <summary><h2 style="display:inline">Créneaux et options de la semaine</h2></summary>
-        <p class="small muted">Coche les jours possibles et la durée maximale de chacun : le plan se recalcule aussitôt.</p>
+        <summary><h2 style="display:inline" id="wkOptsTitle">Créneaux et options de la semaine</h2></summary>
+        <p class="small muted">Coche les jours possibles et la durée maximale de chacun : le plan de cette semaine se recalcule aussitôt.</p>
+        <p class="small" id="availNote"></p>
         <div class="daygrid" id="availGrid"></div>
         <div class="row small"><span>Type de semaine :</span><span id="wkTagWrap"></span><span class="muted">Examens, voyage ou maladie : l’appli réduit le volume et relance le cycle de charge ensuite.</span></div>
         <div class="row"><button class="btn ghost small" id="wkShock" type="button">Bloc de choc</button><span class="small muted">5 séances d’intervalles en 7 jours, pour un stage ou une semaine de vacances (voir Preuves et règles).</span></div>
@@ -1034,9 +1035,11 @@ function weekVol(m){
 }
 
 /* ---------- moteur : semaine ---------- */
+// créneaux d'une semaine : ceux propres à cette semaine s'ils existent, sinon les créneaux habituels
+function daysFor(mon){ const w=(S.weekDays||{})[mon]; return Array.isArray(w)&&w.length===7?w:S.settings.days; }
 function buildWeek(mon,availOverride,opt={}){
   const st=S.settings, phase=opt.phase||phaseFor(mon), P=PH[phase], deload=opt.phase?!!opt.deload:isDeload(mon,phase), widx=mesoIdx(mon);
-  const avail=(availOverride||st.days).map(d=>d.on?+d.max||0:0);
+  const avail=(availOverride||daysFor(mon)).map(d=>d.on?+d.max||0:0);
   const days=[0,1,2,3,4,5,6].map(i=>({i,date:addDays(mon,i),avail:avail[i],main:null,extra:[],notes:[]}));
   const races=opt.noRaces?[]:st.races.filter(r=>r.date);
   const raceOn=d=>races.find(r=>r.date===d);
@@ -1586,10 +1589,21 @@ let openDay=null;
 function renderWeek(){
   const mon=addDays(mondayOf(TODAY),wkOffset*7);
   const grid=document.getElementById("availGrid");
-  grid.innerHTML=S.settings.days.map((d,i)=>`<div class="daycol card" style="padding:8px;gap:6px"><b class="small">${DAYS[i]}</b>
+  const own=Array.isArray((S.weekDays||{})[mon]), D=daysFor(mon), wkLbl=parse(mon).toLocaleDateString("fr-FR",{day:"numeric",month:"long"});
+  document.getElementById("wkOptsTitle").textContent="Créneaux de la semaine du "+wkLbl+" et options";
+  document.getElementById("availNote").innerHTML=own
+    ?`<b>Créneaux propres à cette semaine.</b> Les autres semaines gardent tes créneaux habituels. <span class="row" style="display:inline-flex;margin-left:6px;gap:6px"><button class="btn ghost small" type="button" id="avReset">Revenir aux créneaux habituels</button><button class="btn ghost small" type="button" id="avDefault">En faire mes créneaux habituels</button></span>`
+    :`Ce sont tes <b>créneaux habituels</b>. Une modification ici ne vaut que pour la semaine du ${wkLbl} ; les autres semaines ne bougent pas.`;
+  grid.innerHTML=D.map((d,i)=>`<div class="daycol card" style="padding:8px;gap:6px"><b class="small">${DAYS[i]}</b>
     <label style="flex-direction:row;align-items:center;gap:6px"><input type="checkbox" data-av="on" data-i="${i}" ${d.on?"checked":""} style="width:auto">Dispo</label>
     <label>Max (min)<input type="number" min="0" step="15" data-av="max" data-i="${i}" value="${d.max}"></label></div>`).join("");
-  grid.querySelectorAll("input").forEach(el=>el.onchange=()=>{const i=+el.dataset.i;const k=el.dataset.av;S.settings.days[i][k]=k==="on"?(el.checked?1:0):(+el.value||0);if(k==="max"&&+el.value>0)S.settings.days[i].on=1;save();renderAll();});
+  grid.querySelectorAll("input").forEach(el=>el.onchange=()=>{ const i=+el.dataset.i, k=el.dataset.av; S.weekDays=S.weekDays||{};
+    if(!Array.isArray(S.weekDays[mon])) S.weekDays[mon]=S.settings.days.map(d=>({on:d.on,max:d.max}));
+    const W0=S.weekDays[mon]; W0[i][k]=k==="on"?(el.checked?1:0):(+el.value||0); if(k==="max"&&+el.value>0) W0[i].on=1;
+    if(W0.every((d,j)=>!!d.on===!!S.settings.days[j].on&&(+d.max||0)===(+S.settings.days[j].max||0))) delete S.weekDays[mon];
+    save(); renderAll(); });
+  const avR=document.getElementById("avReset"); if(avR) avR.onclick=()=>{ delete S.weekDays[mon]; save(); renderAll(); };
+  const avD=document.getElementById("avDefault"); if(avD) avD.onclick=()=>{ if(!confirm("Ces créneaux deviendront tes créneaux habituels pour toutes les semaines qui n’ont pas les leurs. Continuer ?")) return; S.settings.days=S.weekDays[mon].map(d=>({on:d.on,max:d.max})); delete S.weekDays[mon]; save(); renderAll(); };
   const W=buildWeek(mon);
   document.getElementById("weekTitle").textContent="Semaine du "+parse(mon).toLocaleDateString("fr-FR",{day:"numeric",month:"long"});
   document.getElementById("weekSummary").innerHTML=
@@ -1974,7 +1988,7 @@ async function flush(){
 function trim(){const lim=addDays(TODAY,-400);S.sessions=S.sessions.filter(s=>s.date>=lim);Object.keys(S.checkins).forEach(k=>{if(k<lim)delete S.checkins[k];});}
 function setSaveState(t){document.getElementById("saveState").textContent=t;}
 function merge(o){const d=defaultState();if(!o||typeof o!=="object")return d;try{o=JSON.parse(JSON.stringify(o));}catch(e){return d;}
-  if(o.checkins) Object.values(o.checkins).forEach(c=>{ if(c&&c.src==="garmin"&&+c.rhr>90) c.rhr=""; });return {v:1,settings:Object.assign(d.settings,o.settings||{}),checkins:o.checkins||{},sessions:Array.isArray(o.sessions)?o.sessions:[],sync:o.sync||{},weekEdits:o.weekEdits||{},deloadOv:o.deloadOv||{},shock:o.shock||{},weekTag:o.weekTag||{},capOff:o.capOff||{},pins:o.pins||{},tests:Array.isArray(o.tests)?o.tests:[]};}
+  if(o.checkins) Object.values(o.checkins).forEach(c=>{ if(c&&c.src==="garmin"&&+c.rhr>90) c.rhr=""; });return {v:1,settings:Object.assign(d.settings,o.settings||{}),checkins:o.checkins||{},sessions:Array.isArray(o.sessions)?o.sessions:[],sync:o.sync||{},weekEdits:o.weekEdits||{},deloadOv:o.deloadOv||{},shock:o.shock||{},weekTag:o.weekTag||{},capOff:o.capOff||{},pins:o.pins||{},weekDays:o.weekDays||{},tests:Array.isArray(o.tests)?o.tests:[]};}
 function snapData(snap){if(!snap)return null;if(snap.exists===false)return null;if(typeof snap.data==="function")return snap.data();if(snap.data&&typeof snap.data==="object")return snap.data;return snap;}
 
 /* ---------- compte en ligne (version web hors de Claude) : connexion et sauvegarde automatique via Supabase ---------- */
