@@ -571,6 +571,15 @@ html.locked body{overflow:hidden}
         </div>
       </div>
     </div>
+    <div class="card" style="margin-top:16px">
+      <h2>Mes données</h2>
+      <p class="small muted">Télécharge une copie complète (profil, courses, séances, analyses, check-ins) ou reprends une copie faite ailleurs. L’import remplace les données actuelles ; si tu es connecté, elles partent aussitôt dans ton compte.</p>
+      <div class="row" style="gap:10px;flex-wrap:wrap;align-items:center">
+        <button type="button" class="btn ghost" id="dataExp">Télécharger mes données</button>
+        <label class="btn ghost" style="cursor:pointer">Importer un fichier de données<input type="file" id="dataImp" accept=".json,application/json" hidden></label>
+        <span class="small muted" id="dataMsg" role="status"></span>
+      </div>
+    </div>
   </section>
 
   <!-- PREUVES -->
@@ -1760,6 +1769,15 @@ function renderAccount(){
   document.querySelectorAll("[data-logout]").forEach(b=>b.onclick=logout);
   document.querySelectorAll("[data-login]").forEach(b=>b.onclick=()=>showLogin("login"));
 }
+function dataExport(){ const d=JSON.parse(JSON.stringify(S)); const blob=new Blob([JSON.stringify({app:"coach-route",exported:new Date().toISOString(),data:d})],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="coach-route-donnees-"+new Date().toISOString().slice(0,10)+".json"; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},2000);
+  const m=document.getElementById("dataMsg"); if(m) m.textContent="Fichier téléchargé."; }
+async function dataImport(f){ const m=document.getElementById("dataMsg");
+  try{ const j=JSON.parse(await f.text()); const d=j&&j.data&&j.data.settings?j.data:j;
+    if(!d||!d.settings||!Array.isArray(d.sessions)) throw new Error("format");
+    if(!confirm("Remplacer les données actuelles par celles du fichier ("+d.sessions.length+" séance(s)) ?")) { m.textContent="Import annulé."; return; }
+    S=merge(d); save(); buildLib(); renderAll(); m.textContent="Données importées : "+S.sessions.length+" séance(s)"+(cloudUser?", enregistrées dans ton compte.":".");
+  }catch(e){ m.textContent="Ce fichier n’est pas une copie de données Coach Route."; } }
 setTimeout(()=>{ if(!(window.claude&&typeof window.claude.use==="function")) document.documentElement.classList.add("standalone"); },1500);
 async function initStore(){
   try{const raw=localStorage.getItem(LSK);if(raw)S=merge(JSON.parse(raw));}catch(e){}
@@ -3097,6 +3115,8 @@ dz.addEventListener("drop",e=>{e.preventDefault();dz.style.borderColor="var(--li
 document.getElementById("lgForm").onsubmit=loginSubmit;
 document.getElementById("lgForgot").onclick=forgot;
 document.getElementById("lgOffline").onclick=()=>{ lsSet(LS_OFF,"1"); hideLogin(); renderAccount(); };
+document.getElementById("dataExp").onclick=dataExport;
+document.getElementById("dataImp").onchange=e=>{ const f=e.target.files[0]; if(f) dataImport(f); e.target.value=""; };
 initStore().then(()=>{fillCI();renderToday();
   srcSel.value=S.settings.source||"garmin";
   if((S.settings.source||"garmin")==="garmin"&&S.sync&&S.sync.garmin&&S.sync.garmin.on){ if(!S.sync.garmin.at||Date.now()-S.sync.garmin.at>15*60000) syncGarmin(false);
