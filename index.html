@@ -1722,6 +1722,9 @@ function authMsg(e){ const m=(e&&(e.message||e.error_description))||String(e||""
   if(/not confirmed/i.test(m)) return "Confirme d’abord ton adresse : clique sur le lien reçu par e-mail.";
   if(/at least 6|Password should/i.test(m)) return "Le mot de passe doit faire au moins 6 caractères.";
   if(/valid email|invalid format/i.test(m)) return "Cette adresse e-mail n’est pas valide.";
+  if(/email rate limit|over_email_send/i.test(m)) return "Le site ne peut pas envoyer d’e-mail pour le moment (limite du service gratuit atteinte). Préviens la personne qui gère le site, ou réessaie dans une heure.";
+  if(/not authorized|email_address_not_authorized/i.test(m)) return "Le site n’a pas pu t’envoyer l’e-mail de confirmation. Préviens la personne qui gère le site.";
+  if(/only request this after|once every 60 seconds/i.test(m)) return "Attends une minute avant de réessayer.";
   if(/rate limit|too many/i.test(m)) return "Trop d’essais d’affilée : réessaie dans quelques minutes.";
   if(/fetch|network/i.test(m)) return "Pas de connexion internet : réessaie quand tu seras en ligne.";
   return "Erreur : "+m; }
