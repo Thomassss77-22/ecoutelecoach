@@ -1156,15 +1156,19 @@ function applyTE(s){ if(!s||!s.an) return; if(s.teA!=null&&!s.teEst||s.teAn!=nul
   s.teA=t.a; s.teAn=t.an; s.teEst=true; s.teInfo={epoc:t.epoc,ac:t.ac}; }
 const teTxt=s=>"Aéro "+(s.teA!=null?fx(+s.teA,1):"—")+" · Anaéro "+(s.teAn!=null?fx(+s.teAn,1):s.teEst?"— (redépose le fichier)":"—")+(s.teEst?" (estimé"+(s.teInfo&&s.teInfo.epoc!=null?", EPOC "+s.teInfo.epoc+" ml/kg, classe "+fx(s.teInfo.ac,1):"")+")":"");
 // estimation : seuils un peu plus hauts pour ne pas classer « dure » une sortie à cause d'une approximation
-function teHard(s){ const e=!!s.teEst; return benefitRank(s)>=4||(+s.teAn||0)>=(e?3:2.5)||(+s.teA||0)>=(e?4.2:4); }
+function teHard(s){ const e=!!s.teEst, anOk=!(e&&!(s.an&&s.an.hasP)); return benefitRank(s)>=4||(anOk&&(+s.teAn||0)>=(e?3:2.5))||(+s.teA||0)>=(e?4.2:4); }
 function isKeyLog(s){return s.id==="RACE"||(LIB[s.id]&&LIB[s.id].key)||teHard(s)}
 // ce que la séance prévue devait produire, comparé à ce que Garmin a mesuré
 const EXP_BEN={E1:1,E2:2,E3:2,E4:2,E5:3,D1:3,T1:3,S1:4,S2:4,V1:5,V2:5,V3:5,A1:6,A2:6,SP2:7,P2:5,P3:5};
 function teCheck(planned,s){
   const ex=EXP_BEN[planned]; if(!ex||(s.teA==null&&s.teAn==null&&!s.benefit)) return null;
-  const b=benefitRank(s), ta=+s.teA||0, tn=+s.teAn||0, lab=b?BEN_FR[BEN[b]]:null;
-  const te="TE aérobie "+(s.teA==null?"—":fx(ta,1))+", anaérobie "+(s.teAn==null?"—":fx(tn,1))+(s.teEst?" estimés":"")+(lab?", effet principal : "+lab:"");
-  if(ex<=2){ if(b>=4||tn>=2) return ["warn","Plus intense que prévu pour une séance facile ("+te+"). Elle comptera comme une séance dure."];
+  const b=benefitRank(s), ta=+s.teA||0, lab=b?BEN_FR[BEN[b]]:null;
+  // anaérobie estimé sans capteur de puissance : trop imprécis pour juger la séance, on ne s'en sert pas
+  const anOk=!(s.teEst&&!(s.an&&s.an.hasP)), tn=anOk?+s.teAn||0:0;
+  // les séances avec sprints produisent normalement un effet anaérobie (Firstbeat : 9 × 50 m → 2,1)
+  const sprOk=["E3","P1","D1","SP2"].includes(planned), anLim=sprOk?3.5:2;
+  const te="TE aérobie "+(s.teA==null?"—":fx(ta,1))+", anaérobie "+(s.teAn==null?"—":fx(+s.teAn,1)+(anOk?"":" non pris en compte sans capteur de puissance"))+(s.teEst?", estimés":"")+(lab?", effet principal : "+lab:"");
+  if(ex<=2){ if((b>=4&&!sprOk)||tn>=anLim) return ["warn","Plus intense que prévu pour une séance facile ("+te+"). Elle comptera comme une séance dure."];
     if(ex===1&&ta>=3) return ["warn","Récupération trop appuyée ("+te+")."]; return ["good","Intensité conforme ("+te+")."]; }
   if(ex>=5&&(b?b<=3:tn<1&&ta<3.5)) return ["warn","Moins intense que prévu ("+te+") : répétitions probablement en dessous de la cible, ou récupérations trop longues."];
   if(ex===4&&(b?b<=2:ta<2.8)) return ["warn","Moins intense que prévu pour du seuil ("+te+")."];
@@ -2299,7 +2303,8 @@ function sessionReview(sx){
   if(climbB.length) good.push(`${climbB.length} bloc(s) d’effort fait(s) en montée : ${climbB.map(b=>"bloc "+b.i+" ("+b.gain+" m, "+(b.grade!=null?fx(b.grade,1)+" %":"")+")").join(", ")}. C’est l’idéal pour tenir une intensité stable.`);
   if(an.other&&LIB[an.other]) warn.push(`Séance reconnue : ${L.nom}, alors que ${LIB[an.other].nom} était prévue ce jour-là.`);
   if(an.notKey&&LIB[an.notKey]) warn.push(`${LIB[an.notKey].nom} était prévue, mais aucun bloc d’intervalles correspondant n’a été trouvé : la sortie est comptée comme de l’endurance.`);
-  const tc=teCheck(id,sx); if(tc) (tc[0]==="good"?good:warn).push(tc[1]);
+  // Training Effect estimé : affiché, mais il ne fait pas baisser la note de réussite (estimation ±0,5 point)
+  const tc=teCheck(id,sx); let estW=0; if(tc){ if(tc[0]==="good") good.push(tc[1]); else { warn.push(tc[1]+(sx.teEst?" (Training Effect estimé : à prendre avec prudence)":"")); if(sx.teEst) estW=1; } }
   if(sx.rpe!==""&&sx.rpe!=null&&!sx.rpeEst){ const r=+sx.rpe;
     if(L.key&&r<=5) warn.push(`RPE ${r} pour une séance clé : soit les cibles sont trop basses, soit l’effort n’y était pas.`);
     if(!L.key&&r>=7&&id!=="RACE") warn.push(`RPE ${r} pour une séance facile : signe de fatigue, à surveiller dans le check-in de demain.`); }
@@ -2309,7 +2314,7 @@ function sessionReview(sx){
   if(!sx.an&&sx.hz&&id==="E3"){ const over=sx.hz.slice(3).reduce((a,b)=>a+b,0); (over>10?warn:good).push(`${fmtMin(over)} au-dessus de 88 % de ta FC max${over>10?" : les sprints doivent rester courts, le reste en Z2":""}.`); }
   if(!sx.an&&sx.hr20&&sx.hrPk) good.push(`FC moyenne ${sx.hr||"—"} bpm, max ${sx.hrMax||sx.hrPk} bpm, meilleure moyenne sur 20 min ${sx.hr20} bpm.`);
   if(!sx.an) warn.push(sx.src==="fichier"||(sx.srcs||[]).includes("fichier")?"Analyse partielle : ce fichier a été importé avant l’arrivée de l’analyse détaillée. Redépose-le dans Suivi et alertes : la sortie sera complétée (pas de doublon) et analysée en entier.":"Analyse limitée : séance sans données seconde par seconde. Importe son fichier .fit (ou .tcx) pour l’analyse complète.");
-  if(score==null&&sx.an) score=warn.length?(warn.length>=2?55:75):95;
+  if(score==null&&sx.an){ const nw=warn.length-estW; score=nw?(nw>=2?55:75):95; }
   return {good,warn,next,score};
 }
 function reviewHTML(sx){
