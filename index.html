@@ -527,7 +527,7 @@ body.dsheet-open{overflow:hidden}
         </div>
       </div>
       <div id="weekSummary" class="row small"></div>
-      <details class="card" id="wkOpts">
+      <details class="card" id="wkOpts" open>
         <summary><h2 style="display:inline" id="wkOptsTitle">Créneaux et options de la semaine</h2></summary>
         <p class="small muted">Coche les jours possibles et la durée maximale de chacun : le plan de cette semaine se recalcule aussitôt.</p>
         <p class="small" id="availNote"></p>
@@ -2230,7 +2230,7 @@ async function dataImport(f){ const m=document.getElementById("dataMsg");
   }catch(e){ m.textContent="Ce fichier n’est pas une copie de données Écoute le Coach."; } }
 setTimeout(()=>{ if(!(window.claude&&typeof window.claude.use==="function")) document.documentElement.classList.add("standalone"); },1500);
 // nouvelle version publiée : le navigateur garde la page en cache ~10 min ; on vérifie et on propose de recharger
-const BUILD="20261119183154";
+const BUILD="20261119184623";
 async function checkUpdate(){ if(window.claude&&typeof window.claude.use==="function") return; if(!/^https?:/.test(location.protocol)) return;
   try{ const t=await (await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"})).text(); const m=t.match(/const BUILD="([^"]+)"/);
     if(m&&m[1]!==BUILD&&!document.getElementById("updBar")){ const d=document.createElement("div"); d.id="updBar"; d.className="updbar";
@@ -3722,6 +3722,7 @@ let renderTimer=null;
 function renderAll(){ if(renderTimer) return; renderTimer=setTimeout(()=>{renderTimer=null; renderAllNow();},0); }
 
 /* ---------- événements ---------- */
+(function(){ const d=document.getElementById("wkOpts"); try{ if(localStorage.getItem("coach-wkopts")==="0") d.open=false; }catch(e){} d.addEventListener("toggle",()=>{ try{ localStorage.setItem("coach-wkopts",d.open?"1":"0"); }catch(e){} }); })();
 ciFields.forEach(k=>document.getElementById("ci_"+k).addEventListener("change",renderToday));
 document.getElementById("ciSave").onclick=()=>{S.checkins[TODAY]=readCI();save();renderAll();alertMsg("Check-in enregistré.");};
 document.getElementById("lgSave").onclick=()=>{
