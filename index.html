@@ -553,6 +553,7 @@ html.locked body{overflow:hidden}
           <label>Glucides visés en course (g/h, 90 conseillé ; pros 100-120 avec intestin entraîné)<input id="st_cho" type="number" min="30" max="120" step="5"></label>
           <label class="full">Niveau de volume<select id="st_level"><option value="amateur">Amateur : sorties longues jusqu’à 5 h</option><option value="elite">Élite : sorties longues jusqu’à 5 h 30</option><option value="pro">Pro : sorties longues jusqu’à 6 h (règle aussi le volume max sur 22 h)</option></select></label>
           <label class="full">Cibles des séances Garmin<select id="st_wkTarget"><option value="power">Puissance (watts calculés sur ta FTP)</option><option value="hr">Fréquence cardiaque (sans capteur de puissance ; efforts au-dessus du seuil au ressenti)</option></select></label>
+          <label class="full">Début des efforts sur le compteur<select id="st_lapStart"><option value="1">Quand j’appuie sur Tour (Lap) : l’échauffement dure tant que je veux</option><option value="0">Automatique, à la fin de la durée d’échauffement</option></select></label>
         </form>
       </div>
       <div class="stack">
@@ -635,7 +636,7 @@ function defaultState(){
   const mon=mondayOf(TODAY);
   return {
     v:1,
-    settings:{ftp:300,fcmax:195,kg:68,wkTarget:"power",level:"amateur",source:"garmin",hasPower:1,lthr:"",maxH:12,meso:"3:1",mesoStart:mon,phase:"auto",runOn:1,runMax:2,cho:90,
+    settings:{ftp:300,fcmax:195,kg:68,wkTarget:"power",lapStart:1,level:"amateur",source:"garmin",hasPower:1,lthr:"",maxH:12,meso:"3:1",mesoStart:mon,phase:"auto",runOn:1,runMax:2,cho:90,
       days:[{on:1,max:60},{on:1,max:90},{on:1,max:60},{on:1,max:90},{on:0,max:0},{on:1,max:240},{on:1,max:180}],
       races:[
         {date:"2027-03-14",name:"Exemple : course de reprise",prio:"C",profile:"plat"},
@@ -1575,9 +1576,9 @@ function renderSuivi(){
 }
 
 /* ---------- rendu : réglages ---------- */
-const setMap={ftp:"st_ftp",fcmax:"st_fcmax",kg:"st_kg",maxH:"st_maxh",meso:"st_meso",mesoStart:"st_mesoStart",phase:"st_phase",runOn:"st_runOn",runMax:"st_runMax",cho:"st_cho",wkTarget:"st_wkTarget",level:"st_level",hasPower:"st_hasPower",lthr:"st_lthr"};
+const setMap={ftp:"st_ftp",fcmax:"st_fcmax",kg:"st_kg",maxH:"st_maxh",meso:"st_meso",mesoStart:"st_mesoStart",phase:"st_phase",runOn:"st_runOn",runMax:"st_runMax",cho:"st_cho",wkTarget:"st_wkTarget",lapStart:"st_lapStart",level:"st_level",hasPower:"st_hasPower",lthr:"st_lthr"};
 function renderSettings(){
-  Object.entries(setMap).forEach(([k,id])=>{const el=document.getElementById(id);el.value=S.settings[k];el.onchange=()=>{let v=el.value;if(el.type==="number")v=+v;if(k==="runOn")v=+v;if(k==="mesoStart")v=mondayOf(v);if(k==="hasPower"){v=+v;if(v===0)S.settings.wkTarget="hr";}S.settings[k]=v;if(k==="level")S.settings.maxH={amateur:Math.min(S.settings.maxH,14),elite:18,pro:22}[v]||S.settings.maxH;save();buildLib();renderAll();};});
+  Object.entries(setMap).forEach(([k,id])=>{const el=document.getElementById(id);el.value=S.settings[k];el.onchange=()=>{let v=el.value;if(el.type==="number")v=+v;if(k==="runOn"||k==="lapStart")v=+v;if(k==="mesoStart")v=mondayOf(v);if(k==="hasPower"){v=+v;if(v===0)S.settings.wkTarget="hr";}S.settings[k]=v;if(k==="level")S.settings.maxH={amateur:Math.min(S.settings.maxH,14),elite:18,pro:22}[v]||S.settings.maxH;save();buildLib();renderAll();};});
   const rs=S.settings.races;
   document.getElementById("raceTable").innerHTML=`<table><thead><tr><th>Date</th><th>Nom</th><th>Priorité</th><th>Profil</th><th>Km</th><th>Départ</th><th>Chaleur</th><th></th></tr></thead><tbody>${rs.map((r,i)=>`<tr>
     <td><input type="date" data-r="date" data-i="${i}" value="${r.date}" aria-label="Date"></td>
@@ -2099,7 +2100,7 @@ function lapBlocks(rec,ser,p,hr,an){
   else { const flatten=(id,v)=>{let st;try{st=wkSteps(id,v);}catch(e){return null;} const f=[],w=a=>a.forEach(x=>{if(x.rep){for(let i=0;i<x.rep;i++)w(x.steps);}else f.push(x);}); w(st); return f;};
     const ids=[...new Set([rec.planned,an.id,rec.id,...Object.keys(LIB)].filter(x=>x&&LIB[x]&&LIB[x].sport==="velo"&&!["E1","E2","E4"].includes(x)))];
     for(const id of ids){ for(const v of ["courte","longue"]){ const f=flatten(id,v); if(!f) continue;
-      if(f.length===laps.length||f.length===laps.length-1){ const ok=f.every((x,i)=>{const d=laps[i].timer||laps[i].elapsed; return !d||Math.abs(d-x.d)<=Math.max(20,x.d*.25);}).valueOf();
+      if(f.length===laps.length||f.length===laps.length-1){ const ok=f.every((x,i)=>{const d=laps[i].timer||laps[i].elapsed; return (i===0&&S.settings.lapStart!==0&&x.d>=300)||!d||Math.abs(d-x.d)<=Math.max(20,x.d*.25);}).valueOf();
         if(ok){ const hrMode=S.settings.wkTarget==="hr"||!an.hasP; mapped=id; plan=laps.map((l,i)=>{const x=f[i]; if(!x) return null; let tg=null;
             if(x.lo!=null){ if(hrMode){const h=pctToHr(x.lo,x.hi); if(h) tg={type:"hr",lo:h[0],hi:h[1]};} else tg={type:"p",lo:Math.round(x.lo*S.settings.ftp/100),hi:Math.round(x.hi*S.settings.ftp/100)}; }
             return {n:x.n,int:x.int==="active"?"effort":x.int==="rest"?"récup":x.int==="warmup"?"échauffement":x.int==="cooldown"?"retour au calme":null,tg,spr:x.lo==null&&x.int==="active"};}); src="séance "+LIB[id].nom; break; } } }
@@ -2741,6 +2742,11 @@ function strength(list){
   list.forEach(([n,sets,rest])=>out.push({rep:sets,steps:[{n,d:null,lo:null,hi:null,int:"active"},{n:"Repos",d:rest,lo:null,hi:null,int:"rest"}]}));
   return out;
 }
+// début manuel : l'échauffement (ou le Z2 d'approche avant les efforts) dure jusqu'à l'appui sur le bouton Tour (Lap) du compteur
+function lapOpen(steps){ if(!steps||S.settings.lapStart===0) return steps; const out=steps.map(x=>Object.assign({},x));
+  const i=out.findIndex(x=>!x.rep); if(i!==0) return out; const first=out[0], hasRep=out.some(x=>x.rep);
+  if(first.int==="warmup"||(hasRep&&first.int==="active"&&first.lo!=null&&first.lo<=60)) { const full=first.n+" · appui Tour", nb=x=>new TextEncoder().encode(x).length; Object.assign(first,{open:true,n:nb(full)<=31?full:first.n.split(" · ")[0]+" · appui Tour"}); }
+  return out; }
 function sumSteps(st){return st.reduce((a,s)=>a+(s.rep?s.rep*sumSteps(s.steps):(s.d||0)),0)}
 
 /* Encodeur FIT (profil Garmin : file_id, workout, workout_step) */
@@ -2768,7 +2774,7 @@ function encodeWorkout(name,sport,steps,mode){
     u8(0x02);u16(i);
     if(s.repeat){str("",32);u8(6);u32(s.from);u8(0xFF);u32(s.n);u32(INV32);u32(INV32);u8(0xFF);return;}
     str(s.n,32);
-    if(s.d){u8(0);u32(s.d*1000);}else{u8(5);u32(INV32);}
+    if(s.d&&!s.open){u8(0);u32(s.d*1000);}else{u8(5);u32(INV32);}
     let tt=2,lo=INV32,hi=INV32;
     if(sport==="velo"&&s.lo!=null){
       if(mode==="hr"){ const hr=pctToHr(s.lo,s.hi); if(hr){tt=1;lo=hr[0]+100;hi=hr[1]+100;} }
@@ -2811,7 +2817,7 @@ function workoutFile(id,variant,dur,dateLabel){
   const steps=wkSteps(id,variant,dur); if(!steps) return null;
   const mode=S.settings.wkTarget||"power";
   const name=(s.nom.replace("Musculation : ","Muscu ").replace(" (protocole Rønnestad)","").replace("Endurance fondamentale","Endurance"))+(variant==="longue"?" L":"");
-  const data=encodeWorkout(name.slice(0,31),s.sport,steps,mode);
+  const data=encodeWorkout(name.slice(0,31),s.sport,lapOpen(steps),mode);
   return {name:(dateLabel?dateLabel+"_":"")+slug(name)+".fit",data};
 }
 let dlNS;
@@ -2819,7 +2825,7 @@ async function offerZip(files,zipName,msgEl){
   const el=msgEl?document.getElementById(msgEl):null; const say=t=>{if(el)el.textContent=t;};
   files=files.filter(Boolean); if(!files.length){say("Rien à exporter (repos ou course).");return;}
   try{ if(dlNS===undefined) dlNS=window.claude&&claude.use?await claude.use("downloads"):null; }catch(e){dlNS=null;}
-  const howTo=" Décompresse le .zip, branche ta montre ou ton compteur en USB et copie les .fit dans Garmin/NewFiles (ou dépose-les sur intervals.icu : Library → Import workout). N’utilise pas « Importer des données » de Garmin Connect : il n’accepte que les activités enregistrées et refuse les séances.";
+  const howTo=" Décompresse le .zip, branche ta montre ou ton compteur en USB et copie les .fit dans Garmin/NewFiles (ou dépose-les sur intervals.icu : Library → Import workout). N’utilise pas « Importer des données » de Garmin Connect : il n’accepte que les activités enregistrées et refuse les séances."+(S.settings.lapStart!==0?" Sur le compteur, l’échauffement dure jusqu’à ce que tu appuies sur le bouton Tour (Lap) : c’est toi qui lances les efforts.":"");
   if(!dlNS){ // hors de Claude (site web classique) : téléchargement direct par le navigateur
     try{ const blob=new Blob([makeZip(files)],{type:"application/zip"}), a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=zipName; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},2000); say(files.length+" séance(s) exportée(s)."+howTo); }
     catch(e){ say("Téléchargement impossible dans ce navigateur."); }
@@ -2939,9 +2945,9 @@ async function syncGarmin(manual,fromOverride){
 }
 /* Envoi d'une séance au calendrier Garmin Connect (offre Basic du connecteur) */
 function garminSteps(id,variant,dur){
-  const steps=wkSteps(id,variant,dur); if(!steps) return null; const st=S.settings, mode=st.wkTarget||"power", sport=LIB[id].sport;
+  const steps=lapOpen(wkSteps(id,variant,dur)); if(!steps) return null; const st=S.settings, mode=st.wkTarget||"power", sport=LIB[id].sport;
   const im={warmup:"warmup",active:"active",rest:"recovery",cooldown:"cooldown"};
-  const one=s=>{const o={intensity:im[s.int]||"active",notes:s.n.slice(0,500)}; if(s.d) o.seconds=s.d;
+  const one=s=>{const o={intensity:im[s.int]||"active",notes:s.n.slice(0,500)}; if(s.d&&!s.open) o.seconds=s.d;
     if(sport==="velo"&&s.lo!=null){ if(mode==="hr"){const h=pctToHr(s.lo,s.hi); if(h) o.target={type:"heart_rate",low:h[0],high:h[1]};} else o.target={type:"power",low:Math.round(st.ftp*s.lo/100),high:Math.round(st.ftp*s.hi/100)}; }
     else if(s.hr) o.target={type:"heart_rate",low:Math.round(fcRef()*s.hr[0]/100),high:Math.round(fcRef()*s.hr[1]/100)};
     return o;};
