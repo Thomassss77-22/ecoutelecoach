@@ -2230,7 +2230,7 @@ async function dataImport(f){ const m=document.getElementById("dataMsg");
   }catch(e){ m.textContent="Ce fichier n’est pas une copie de données Écoute le Coach."; } }
 setTimeout(()=>{ if(!(window.claude&&typeof window.claude.use==="function")) document.documentElement.classList.add("standalone"); },1500);
 // nouvelle version publiée : le navigateur garde la page en cache ~10 min ; on vérifie et on propose de recharger
-const BUILD="20261119155742";
+const BUILD="20261119162344";
 async function checkUpdate(){ if(window.claude&&typeof window.claude.use==="function") return; if(!/^https?:/.test(location.protocol)) return;
   try{ const t=await (await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"})).text(); const m=t.match(/const BUILD="([^"]+)"/);
     if(m&&m[1]!==BUILD&&!document.getElementById("updBar")){ const d=document.createElement("div"); d.id="updBar"; d.className="updbar";
@@ -3326,7 +3326,7 @@ function wkSteps(id,variant,dur){
     case "SP2": return L?[Z2(60),{rep:2,steps:[ON(m(12),90,95,"Tempo haut 12 min"),RC(m(5))]},Z2(15),{rep:6,steps:[SPR(15),RC(300)]},{rep:2,steps:[{n:"30 s max",d:30,lo:null,hi:null,int:"active"},RC(300)]},CD(10)]
                         :[Z2(12),{rep:2,steps:[ON(m(8),90,95,"Tempo haut 8 min"),RC(m(3))]},Z2(5),{rep:4,steps:[SPR(15),RC(240)]},CD(5)];
     case "P1": return [Z2(L?40:22),{rep:3,steps:[ON(60,100,105,"1 min seuil+"),RC(120)]},{rep:3,steps:[SPR(10),RC(110)]},CD(5)];
-    case "P3": return [WU(12),{rep:3,steps:[{n:"Accélération 30 s",d:30,lo:null,hi:null,int:"active"},RC(90)]},{n:"10 min À FOND régulier",d:600,lo:null,hi:null,int:"active"},{n:"20 min À FOND · FC moyenne = FC seuil",d:1200,lo:null,hi:null,int:"active"},CD(15)];
+    case "P3": return [WU(12),{rep:3,steps:[{n:"Accélération 30 s",d:30,lo:null,hi:null,int:"active"},RC(90)]},{n:"30 min à fond : 10 premières",d:600,lo:null,hi:null,int:"active"},{n:"20 min : FC moy = FC seuil",d:1200,lo:null,hi:null,int:"active"},CD(15)];
     case "P2": return L?[Z2(150,"Z2 · ~2000 kJ"),{n:"5 min À FOND",d:300,lo:null,hi:null,int:"active"},CD(15)]
                        :[WU(20),{rep:3,steps:[SPR(10),RC(110)]},{n:"5 min À FOND",d:300,lo:null,hi:null,int:"active"},RC(600,"Récup 10 min"),{n:"20 min À FOND",d:1200,lo:null,hi:null,int:"active"},CD(10)];
     case "C1": return [{n:"Footing facile",d:m(D),lo:null,hi:null,hr:[60,75],int:"active"}];
@@ -3388,6 +3388,10 @@ function encodeWorkout(name,sport,steps,mode){
     if(sport==="velo"&&s.lo!=null){
       if(mode==="hr"){ const hr=pctToHr(s.lo,s.hi); if(hr){tt=1;lo=hr[0]+100;hi=hr[1]+100;} }
       else {tt=4;lo=Math.round(ftp*s.lo/100)+1000;hi=Math.round(ftp*s.hi/100)+1000;}
+    } else if(sport==="velo"&&s.lo==null&&s.int==="active"&&s.d){ // effort maximal : cible haute pour que le compteur et les graphiques montrent un effort, pas une zone 1
+      const short=s.d<=60;
+      if(mode==="hr"){ const r=short?[85,100]:[90,100]; tt=1;lo=Math.round(fc*r[0]/100)+100;hi=Math.round(fc*r[1]/100)+100; }
+      else { const r=short?[150,300]:[100,120]; tt=4;lo=Math.round(ftp*r[0]/100)+1000;hi=Math.round(ftp*r[1]/100)+1000; }
     } else if(s.hr){tt=1;lo=Math.round(fc*s.hr[0]/100)+100;hi=Math.round(fc*s.hr[1]/100)+100;}
     u8(tt);u32(tt===2?INV32:0);u32(lo);u32(hi);u8(intens[s.int]??0);
   });
