@@ -1146,7 +1146,7 @@ function buildWeek(mon,availOverride,opt={}){
   if(postShock) keys=Math.min(keys,1);
   const tag=opt.phase?"":tagOf(mon);
   if(tag==="examens"){keys=Math.min(keys,1);gym=Math.min(gym,1);run=Math.min(run,1);warns.push("Semaine chargée (examens/travail) : volume divisé par 2, 1 séance clé courte au maximum. Le cycle de charge reprend à zéro la semaine suivante.");}
-  if(tag==="voyage"){keys=Math.min(keys,1);gym=0;run=st.runOn?2:0;warns.push("Voyage : volume réduit, footing et home trainer si dispo. Le cycle de charge reprend à zéro au retour.");}
+  if(tag==="voyage"){keys=0;gym=Math.min(gym,1);run=st.runOn?3:0;warns.push("Voyage, sans vélo de route : aucune séance vélo cette semaine. "+(st.runOn?"Footings (3 au maximum) ":"Marche, mobilité et repos ")+(gym?"et une séance de musculation d’entretien si tu as accès à une salle ":"")+"pour garder le rythme sans casser la récupération. Le cycle de charge reprend à zéro au retour ; si tu as finalement un home trainer, choisis ta séance dans « Modifier ».");}
   if(tag==="maladie"){keys=0;gym=0;run=0;warns.push("Maladie / reprise : uniquement de la récupération. Reprends l’intensité seulement après 24-48 h sans fièvre, et un jour facile par jour de maladie.");}
   const capOff=!opt.phase&&S.capOff&&S.capOff[mon];
   const LC=opt.phase||capOff?null:loadCtx(mon);
@@ -1171,7 +1171,7 @@ function buildWeek(mon,availOverride,opt={}){
   const nextKey=i=>i<6&&isKey(days[i+1]);
   const usedCats=[];
   // sortie longue
-  if(P.long&&!nRace&&!longDone){
+  if(P.long&&!nRace&&!longDone&&tag!=="voyage"){
     const minL=deload?120:150;
     const c=days.filter(d=>free(d)&&d.avail>=minL).sort((a,b)=>((b.i>=5)-(a.i>=5))||(b.avail-a.avail));
     if(c.length&&!["voyage","maladie"].includes(tag)){const d=c[0]; const dur=P.durab&&!deload&&!shock&&!tag&&keys>(due?1:0)&&nbOk(d.i)&&d.avail>=150;
@@ -1213,6 +1213,7 @@ function buildWeek(mon,availOverride,opt={}){
   days.forEach(d=>{
     if(d.main) return;
     if(tag==="maladie"){d.main={id:d.avail>=30?"E1":"R0",cap:45};return;}
+    if(tag==="voyage"){d.main={id:"R0"};return;}
     if(d.avail>=45) d.main={id:(P.sprints&&!deload&&!tag&&!nextKey(d.i)&&!days.some(x=>(x.main&&["SP2","A1","A2"].includes(x.main.id))||(x.main&&x.main.id==="E3")||(x.past&&(x.done||[]).some(s=>["E3","SP2"].includes(s.id)||(s.an&&s.an.id==="E3")))))?"E3":"E2"};
     else if(d.avail>=30) d.main={id:"E1"}; else d.main={id:"R0"};
   });
@@ -2230,7 +2231,7 @@ async function dataImport(f){ const m=document.getElementById("dataMsg");
   }catch(e){ m.textContent="Ce fichier n’est pas une copie de données Écoute le Coach."; } }
 setTimeout(()=>{ if(!(window.claude&&typeof window.claude.use==="function")) document.documentElement.classList.add("standalone"); },1500);
 // nouvelle version publiée : le navigateur garde la page en cache ~10 min ; on vérifie et on propose de recharger
-const BUILD="20261119184623";
+const BUILD="20261119202105";
 async function checkUpdate(){ if(window.claude&&typeof window.claude.use==="function") return; if(!/^https?:/.test(location.protocol)) return;
   try{ const t=await (await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"})).text(); const m=t.match(/const BUILD="([^"]+)"/);
     if(m&&m[1]!==BUILD&&!document.getElementById("updBar")){ const d=document.createElement("div"); d.id="updBar"; d.className="updbar";
