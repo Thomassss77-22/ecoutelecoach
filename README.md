@@ -2,7 +2,7 @@
 
 Application d'entraînement pour le cyclisme sur route (courses de 90 à 130 km), avec course à pied et musculation en complément.
 
-**Ouvrir l'application :** https://thomassss77-22.github.io/coach-route/
+**Ouvrir l'application :** https://thomassss77-22.github.io/ecoutelecoach/
 
 ## Ce qu'elle fait
 

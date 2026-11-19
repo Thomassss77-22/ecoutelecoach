@@ -249,12 +249,43 @@ footer{color:var(--muted);font-size:13px;padding:28px 0 10px;max-width:72ch}
   #weekTable tbody tr:hover td{background:none}
 }
 @media (min-width:901px){ .sheet{display:contents} }
+.login{position:fixed;inset:0;z-index:100;display:grid;place-items:center;padding:20px;background:radial-gradient(1200px 600px at 20% -10%,var(--accent-soft),transparent 60%),var(--bg);overflow:auto}
+.login[hidden]{display:none}
+html.locked body{overflow:hidden}
+.lgcard{width:min(420px,100%);background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:28px 26px;display:flex;flex-direction:column;gap:14px;box-shadow:0 20px 60px rgba(20,25,35,.12)}
+.lgbrand{display:flex;align-items:center;gap:12px}
+.lgbrand b{font-family:var(--font-display);font-stretch:75%;font-size:28px;font-weight:900}
+.lgprofile{width:100%;height:46px;display:block}
+.lgcard h1{font-size:32px}
+.lgcard .btn{width:100%;padding:12px}
+.lgmsg{font-size:14px;min-height:1px}
+.lgmsg.bad{color:var(--bad)} .lgmsg.good{color:var(--good)}
+.linkbtn{background:none;border:0;padding:0;color:var(--accent);font:600 14px var(--font-body);cursor:pointer;text-align:left}
+.linkbtn.muted{color:var(--muted);font-weight:500;font-size:13px}
+.linkbtn:hover{text-decoration:underline}
+.acct{display:flex;flex-direction:column;gap:8px;align-items:flex-start;margin-bottom:10px}
+#acctSettings .acct{flex-direction:row;flex-wrap:wrap;align-items:center;gap:10px 14px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-l);padding:14px 18px}
 /* version web hors de Claude : pas de connecteurs, donc pas d'envoi direct à la montre */
 .standalone #qSend,.standalone #histGarmin,.standalone #wkSend{display:none}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
 <body>
+<div class="login" id="login" hidden role="dialog" aria-modal="true" aria-labelledby="lgTitle">
+  <form class="lgcard" id="lgForm" novalidate>
+    <div class="lgbrand"><svg width="44" height="44" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="9" fill="var(--accent)"/><path d="M4 25h5l3-6 3 3 4-11 4 7 3-3 4 10" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><b>Coach Route</b></div>
+    <svg class="lgprofile" viewBox="0 0 320 60" preserveAspectRatio="none" aria-hidden="true"><rect x="0" y="40" width="60" height="20" rx="3" fill="var(--z2)"/><rect x="62" y="34" width="14" height="26" rx="3" fill="var(--z3)"/><rect x="78" y="40" width="10" height="20" rx="3" fill="var(--z1)"/><rect x="90" y="14" width="22" height="46" rx="3" fill="var(--z5)"/><rect x="114" y="40" width="16" height="20" rx="3" fill="var(--z1)"/><rect x="132" y="14" width="22" height="46" rx="3" fill="var(--z5)"/><rect x="156" y="40" width="16" height="20" rx="3" fill="var(--z1)"/><rect x="174" y="14" width="22" height="46" rx="3" fill="var(--z5)"/><rect x="198" y="40" width="16" height="20" rx="3" fill="var(--z1)"/><rect x="216" y="24" width="40" height="36" rx="3" fill="var(--z4)"/><rect x="258" y="40" width="62" height="20" rx="3" fill="var(--z2)"/></svg>
+    <h1 id="lgTitle">Connexion</h1>
+    <p class="muted" id="lgSub"></p>
+    <label id="lgEmailRow">Adresse e-mail<input id="lgEmail" type="email" autocomplete="email" inputmode="email" required></label>
+    <label>Mot de passe<input id="lgPass" type="password" autocomplete="current-password" minlength="6" required></label>
+    <p class="lgmsg" id="lgMsg" role="status" aria-live="polite"></p>
+    <button class="btn" id="lgGo" type="submit">Se connecter</button>
+    <button type="button" class="linkbtn" id="lgForgot">Mot de passe oublié ?</button>
+    <p class="small muted" id="lgSwitch"></p>
+    <button type="button" class="linkbtn muted" id="lgOffline">Continuer sans compte (données gardées sur cet appareil uniquement)</button>
+  </form>
+</div>
 <div class="app">
   <aside class="side">
     <a class="brand" href="#aujourdhui"><svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="9" fill="var(--accent)"/><path d="M4 25h5l3-6 3 3 4-11 4 7 3-3 4 10" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Coach Route</b><small>Route · 90 à 130 km</small></span></a>
@@ -273,7 +304,7 @@ footer{color:var(--muted);font-size:13px;padding:28px 0 10px;max-width:72ch}
       </div>
       <button type="button" class="more" id="moreBtn" aria-expanded="false" aria-controls="moreSheet"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg><span>Plus</span></button>
     </nav>
-    <div class="foot"><span class="savestate" id="saveState">chargement…</span></div>
+    <div class="foot"><div id="acctSide"></div><span class="savestate" id="saveState">chargement…</span></div>
   </aside>
   <main class="main">
   <div class="wrap">
@@ -495,6 +526,7 @@ footer{color:var(--muted);font-size:13px;padding:28px 0 10px;max-width:72ch}
 
   <!-- REGLAGES -->
   <section class="view" id="v-reglages">
+    <div id="acctSettings" style="margin-bottom:16px"></div>
     <div class="pagehead"><h1>Réglages</h1><p class="muted">Ton profil, tes courses et la façon dont l’appli construit ton plan.</p></div>
     <div class="grid2">
       <div class="card">
@@ -1601,6 +1633,7 @@ function save(){
   // stockage léger : la courbe minute par minute n'est gardée que pour les 40 séances les plus récentes
   const withC=S.sessions.filter(x=>x.an&&x.an.curve).sort((a,b)=>a.date<b.date?1:-1); withC.slice(40).forEach(x=>{delete x.an.curve;});
   try{localStorage.setItem(LSK,JSON.stringify(S));}catch(e){}
+  if(typeof lastLocalSave!=="undefined") lastLocalSave=Date.now();
   clearTimeout(saveTimer); saveTimer=setTimeout(flush,700);
   setSaveState("modifié");
 }
@@ -1617,12 +1650,108 @@ function setSaveState(t){document.getElementById("saveState").textContent=t;}
 function merge(o){const d=defaultState();if(!o||typeof o!=="object")return d;try{o=JSON.parse(JSON.stringify(o));}catch(e){return d;}
   if(o.checkins) Object.values(o.checkins).forEach(c=>{ if(c&&c.src==="garmin"&&+c.rhr>90) c.rhr=""; });return {v:1,settings:Object.assign(d.settings,o.settings||{}),checkins:o.checkins||{},sessions:Array.isArray(o.sessions)?o.sessions:[],sync:o.sync||{},weekEdits:o.weekEdits||{},deloadOv:o.deloadOv||{},shock:o.shock||{},weekTag:o.weekTag||{},capOff:o.capOff||{},pins:o.pins||{},tests:Array.isArray(o.tests)?o.tests:[]};}
 function snapData(snap){if(!snap)return null;if(snap.exists===false)return null;if(typeof snap.data==="function")return snap.data();if(snap.data&&typeof snap.data==="object")return snap.data;return snap;}
+
+/* ---------- compte en ligne (version web hors de Claude) : connexion et sauvegarde automatique via Supabase ---------- */
+// URL du projet et clé publique « anon » : publiques par conception, les données sont protégées par les règles d'accès de la table (chacun ne lit et n'écrit que sa ligne).
+const CLOUD={url:"",key:""};
+const LS_OWNER="coach-route-owner", LS_TS="coach-route-ts", LS_OFF="coach-route-offline";
+let sb=null, cloudUser=null;
+const cloudOn=()=>!!(CLOUD.url&&CLOUD.key);
+function loadScript(src){return new Promise((ok,ko)=>{const x=document.createElement("script");x.src=src;x.onload=ok;x.onerror=()=>ko(new Error("script"));document.head.appendChild(x);});}
+async function cloudClient(){ if(sb) return sb; if(!window.supabase) await loadScript("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js");
+  sb=window.supabase.createClient(CLOUD.url,CLOUD.key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}); return sb; }
+function lsGet(k){try{return localStorage.getItem(k);}catch(e){return null;}}
+function lsSet(k,v){try{ if(v==null) localStorage.removeItem(k); else localStorage.setItem(k,v);}catch(e){}}
+async function cloudStart(){
+  renderAccount();
+  if(!cloudOn()) return;
+  try{ await cloudClient(); }catch(e){ setSaveState("hors ligne : enregistré dans ce navigateur"); return; }
+  sb.auth.onAuthStateChange((ev,session)=>{ if(ev==="PASSWORD_RECOVERY") showLogin("reset"); if(ev==="SIGNED_OUT"){cloudUser=null;renderAccount();} });
+  const {data}=await sb.auth.getSession();
+  if(data&&data.session) await cloudAttach(data.session.user);
+  else if(lsGet(LS_OFF)!=="1") showLogin("login");
+  renderAccount();
+}
+async function cloudPull(){
+  const r=await sb.from("coach").select("data,updated_at").eq("user_id",cloudUser.id).maybeSingle();
+  if(r.error) throw r.error; return r.data;
+}
+async function cloudAttach(user){
+  cloudUser=user; lsSet(LS_OFF,null); setSaveState("synchronisation…");
+  try{
+    const row=await cloudPull(), owner=lsGet(LS_OWNER), lts=+lsGet(LS_TS)||0, rts=row?Date.parse(row.updated_at):0;
+    // données de ce navigateur : gardées si elles sont à toi et plus récentes, ou si c'est ta première connexion (elles deviennent ton compte)
+    const localMine=owner===user.id&&lts>rts, firstUse=!row&&(!owner||owner===user.id);
+    if(row&&!localMine){ S=merge(row.data); lsSet(LSK,JSON.stringify(S)); lsSet(LS_TS,String(rts)); }
+    else if(row===null&&owner&&owner!==user.id){ S=defaultState(); }
+    lsSet(LS_OWNER,user.id);
+    store.mode="db"; store.ref={ set:async d=>{ const now=new Date().toISOString(); const r=await sb.from("coach").upsert({user_id:user.id,data:d,updated_at:now}); if(r.error) throw r.error; lsSet(LS_TS,String(Date.parse(now))); } };
+    if(!row||localMine||firstUse) await store.ref.set(JSON.parse(JSON.stringify(S)));
+    setSaveState("synchronisé avec ton compte"); hideLogin(); buildLib(); renderAll(); renderAccount();
+  }catch(e){ setSaveState("synchronisation impossible : copie conservée dans ce navigateur"); renderAccount(); }
+}
+// retour sur l'onglet : on récupère ce qui a été fait sur un autre appareil
+let lastLocalSave=0;
+document.addEventListener("visibilitychange",async()=>{ if(document.visibilityState!=="visible"||!cloudUser||store.busy||Date.now()-lastLocalSave<3000) return;
+  try{ const row=await cloudPull(); if(row&&Date.parse(row.updated_at)>(+lsGet(LS_TS)||0)){ S=merge(row.data); lsSet(LSK,JSON.stringify(S)); lsSet(LS_TS,String(Date.parse(row.updated_at))); buildLib(); renderAll(); setSaveState("mis à jour depuis un autre appareil"); } }catch(e){} });
+function authMsg(e){ const m=(e&&(e.message||e.error_description))||String(e||"");
+  if(/Invalid login/i.test(m)) return "E-mail ou mot de passe incorrect.";
+  if(/already registered|already exists/i.test(m)) return "Un compte existe déjà avec cet e-mail : connecte-toi.";
+  if(/not confirmed/i.test(m)) return "Confirme d’abord ton adresse : clique sur le lien reçu par e-mail.";
+  if(/at least 6|Password should/i.test(m)) return "Le mot de passe doit faire au moins 6 caractères.";
+  if(/valid email|invalid format/i.test(m)) return "Cette adresse e-mail n’est pas valide.";
+  if(/rate limit|too many/i.test(m)) return "Trop d’essais d’affilée : réessaie dans quelques minutes.";
+  if(/fetch|network/i.test(m)) return "Pas de connexion internet : réessaie quand tu seras en ligne.";
+  return "Erreur : "+m; }
+function showLogin(mode){
+  const o=document.getElementById("login"); if(!o) return; o.hidden=false; document.documentElement.classList.add("locked");
+  const reset=mode==="reset", up=mode==="signup";
+  document.getElementById("lgTitle").textContent=reset?"Nouveau mot de passe":up?"Créer ton compte":"Connexion";
+  document.getElementById("lgSub").textContent=reset?"Choisis un nouveau mot de passe pour ton compte.":"Ton plan, tes séances et tes analyses, sauvegardés automatiquement et retrouvés sur tous tes appareils.";
+  document.getElementById("lgEmailRow").hidden=reset; document.getElementById("lgSwitch").hidden=reset; document.getElementById("lgForgot").hidden=reset||up;
+  document.getElementById("lgGo").textContent=reset?"Enregistrer le mot de passe":up?"Créer mon compte":"Se connecter";
+  document.getElementById("lgSwitch").innerHTML=up?`Déjà un compte ? <button type="button" class="linkbtn" data-lg="login">Se connecter</button>`:`Pas encore de compte ? <button type="button" class="linkbtn" data-lg="signup">Créer un compte</button>`;
+  document.getElementById("lgPass").autocomplete=up||reset?"new-password":"current-password";
+  document.getElementById("login").dataset.mode=mode; document.getElementById("lgMsg").textContent=""; document.getElementById("lgMsg").className="lgmsg";
+  document.querySelectorAll("[data-lg]").forEach(b=>b.onclick=()=>showLogin(b.dataset.lg));
+  setTimeout(()=>{const f=document.getElementById(reset?"lgPass":"lgEmail"); if(f) f.focus();},50);
+}
+function hideLogin(){ const o=document.getElementById("login"); if(o) o.hidden=true; document.documentElement.classList.remove("locked"); }
+async function loginSubmit(e){
+  e.preventDefault(); const mode=document.getElementById("login").dataset.mode, msg=document.getElementById("lgMsg"), go=document.getElementById("lgGo");
+  const email=document.getElementById("lgEmail").value.trim(), pass=document.getElementById("lgPass").value;
+  const say=(t,ok)=>{msg.textContent=t; msg.className="lgmsg "+(ok?"good":"bad");};
+  if(mode!=="reset"&&!email){say("Indique ton adresse e-mail.");return;} if(!pass){say("Indique ton mot de passe.");return;}
+  go.disabled=true; const old=go.textContent; go.textContent="Un instant…";
+  try{ await cloudClient(); const here=location.origin+location.pathname;
+    if(mode==="signup"){ const r=await sb.auth.signUp({email,password:pass,options:{emailRedirectTo:here}}); if(r.error) throw r.error;
+      if(r.data&&r.data.session) await cloudAttach(r.data.user); else say("Compte créé. Clique sur le lien reçu par e-mail pour l’activer, puis connecte-toi ici.",true); }
+    else if(mode==="reset"){ const r=await sb.auth.updateUser({password:pass}); if(r.error) throw r.error; const s2=await sb.auth.getSession(); say("Mot de passe changé.",true); if(s2.data.session) await cloudAttach(s2.data.session.user); }
+    else { const r=await sb.auth.signInWithPassword({email,password:pass}); if(r.error) throw r.error; await cloudAttach(r.data.user); }
+  }catch(err){ say(authMsg(err)); }
+  go.disabled=false; go.textContent=old;
+}
+async function forgot(){ const msg=document.getElementById("lgMsg"), email=document.getElementById("lgEmail").value.trim();
+  if(!email){msg.textContent="Écris d’abord ton adresse e-mail, puis clique à nouveau sur « Mot de passe oublié ».";msg.className="lgmsg bad";return;}
+  try{ await cloudClient(); const r=await sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname}); if(r.error) throw r.error;
+    msg.textContent="Si un compte existe pour cette adresse, un e-mail de réinitialisation vient de partir. Ouvre le lien depuis cet appareil."; msg.className="lgmsg good"; }
+  catch(err){ msg.textContent=authMsg(err); msg.className="lgmsg bad"; } }
+async function logout(){ try{ if(sb) await sb.auth.signOut(); }catch(e){}
+  // sur un appareil partagé, rien ne doit rester : la copie locale est effacée (tout est dans ton compte)
+  [LSK,LS_OWNER,LS_TS].forEach(k=>lsSet(k,null)); location.reload(); }
+function renderAccount(){
+  const html=!cloudOn()?"":cloudUser?`<div class="acct"><span class="small">Connecté : <b>${esc(cloudUser.email||"")}</b></span><button type="button" class="btn ghost small" data-logout>Se déconnecter</button></div>`
+    :`<div class="acct"><span class="small muted">Sans compte : tes données ne restent que dans ce navigateur.</span><button type="button" class="btn small" data-login>Se connecter ou créer un compte</button></div>`;
+  ["acctSide","acctSettings"].forEach(id=>{const el=document.getElementById(id); if(el) el.innerHTML=html;});
+  document.querySelectorAll("[data-logout]").forEach(b=>b.onclick=logout);
+  document.querySelectorAll("[data-login]").forEach(b=>b.onclick=()=>showLogin("login"));
+}
 setTimeout(()=>{ if(!(window.claude&&typeof window.claude.use==="function")) document.documentElement.classList.add("standalone"); },1500);
 async function initStore(){
   try{const raw=localStorage.getItem(LSK);if(raw)S=merge(JSON.parse(raw));}catch(e){}
   buildLib(); renderAll(); setSaveState("enregistré dans ce navigateur");
   try{
-    if(!window.claude||typeof window.claude.use!=="function") return;
+    if(!window.claude||typeof window.claude.use!=="function"){ await cloudStart(); return; }
     const timer=new Promise(r=>setTimeout(()=>r("timeout"),10000));
     const go=(async()=>{
       const [db,user]=await Promise.all([claude.use("db"),claude.use("user")]);
@@ -2951,6 +3080,9 @@ const dz=document.getElementById("dropZone");
 dz.addEventListener("dragover",e=>{e.preventDefault();dz.style.borderColor="var(--accent)";});
 dz.addEventListener("dragleave",()=>dz.style.borderColor="var(--line)");
 dz.addEventListener("drop",e=>{e.preventDefault();dz.style.borderColor="var(--line)";importFiles([...e.dataTransfer.files]);});
+document.getElementById("lgForm").onsubmit=loginSubmit;
+document.getElementById("lgForgot").onclick=forgot;
+document.getElementById("lgOffline").onclick=()=>{ lsSet(LS_OFF,"1"); hideLogin(); renderAccount(); };
 initStore().then(()=>{fillCI();renderToday();
   srcSel.value=S.settings.source||"garmin";
   if((S.settings.source||"garmin")==="garmin"&&S.sync&&S.sync.garmin&&S.sync.garmin.on){ if(!S.sync.garmin.at||Date.now()-S.sync.garmin.at>15*60000) syncGarmin(false);
