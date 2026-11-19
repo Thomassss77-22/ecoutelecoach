@@ -259,6 +259,8 @@ html.locked body{overflow:hidden}
 .lgcard h1{font-size:32px}
 .lgcard .btn{width:100%;padding:12px}
 .lgmsg{font-size:14px;min-height:1px}
+.lgrem{display:flex!important;flex-direction:row!important;align-items:center;gap:10px;font-weight:500;cursor:pointer;min-height:40px}
+.lgrem input{width:20px;height:20px;margin:0;accent-color:var(--accent);flex:none}
 .lgmsg.bad{color:var(--bad)} .lgmsg.good{color:var(--good)}
 .linkbtn{background:none;border:0;padding:0;color:var(--accent);font:600 14px var(--font-body);cursor:pointer;text-align:left}
 .linkbtn.muted{color:var(--muted);font-weight:500;font-size:13px}
@@ -279,6 +281,7 @@ html.locked body{overflow:hidden}
     <p class="muted" id="lgSub"></p>
     <label id="lgEmailRow">Adresse e-mail<input id="lgEmail" type="email" autocomplete="email" inputmode="email" required></label>
     <label>Mot de passe<input id="lgPass" type="password" autocomplete="current-password" minlength="6" required></label>
+    <label class="lgrem" id="lgRemRow"><input type="checkbox" id="lgRem" checked> Rester connecté sur cet appareil</label>
     <p class="lgmsg" id="lgMsg" role="status" aria-live="polite"></p>
     <button class="btn" id="lgGo" type="submit">Se connecter</button>
     <button type="button" class="linkbtn" id="lgForgot">Mot de passe oublié ?</button>
@@ -1654,12 +1657,18 @@ function snapData(snap){if(!snap)return null;if(snap.exists===false)return null;
 /* ---------- compte en ligne (version web hors de Claude) : connexion et sauvegarde automatique via Supabase ---------- */
 // URL du projet et clé publique « anon » : publiques par conception, les données sont protégées par les règles d'accès de la table (chacun ne lit et n'écrit que sa ligne).
 const CLOUD={url:"https://vqltuxmafwadbcpfoyod.supabase.co",key:"sb_publishable_xrG6JYT_ozkDwYfnTZWaew_5MxzPaAG"};
-const LS_OWNER="coach-route-owner", LS_TS="coach-route-ts", LS_OFF="coach-route-offline";
+const LS_OWNER="coach-route-owner", LS_TS="coach-route-ts", LS_OFF="coach-route-offline", LS_REM="coach-route-remember";
+// « Rester connecté » coché : session gardée dans le navigateur ; décoché : session effacée à la fermeture du navigateur
+const remember=()=>lsGet(LS_REM)!=="0";
+const authStore={
+  getItem:k=>{try{const v=localStorage.getItem(k); return v!=null?v:sessionStorage.getItem(k);}catch(e){return null;}},
+  setItem:(k,v)=>{try{ if(remember()){localStorage.setItem(k,v);sessionStorage.removeItem(k);} else {sessionStorage.setItem(k,v);localStorage.removeItem(k);} }catch(e){}},
+  removeItem:k=>{try{localStorage.removeItem(k);sessionStorage.removeItem(k);}catch(e){}} };
 let sb=null, cloudUser=null;
 const cloudOn=()=>!!(CLOUD.url&&CLOUD.key);
 function loadScript(src){return new Promise((ok,ko)=>{const x=document.createElement("script");x.src=src;x.onload=ok;x.onerror=()=>ko(new Error("script"));document.head.appendChild(x);});}
 async function cloudClient(){ if(sb) return sb; if(!window.supabase) await loadScript("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js");
-  sb=window.supabase.createClient(CLOUD.url,CLOUD.key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}); return sb; }
+  sb=window.supabase.createClient(CLOUD.url,CLOUD.key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:authStore}}); return sb; }
 function lsGet(k){try{return localStorage.getItem(k);}catch(e){return null;}}
 function lsSet(k,v){try{ if(v==null) localStorage.removeItem(k); else localStorage.setItem(k,v);}catch(e){}}
 async function cloudStart(){
@@ -1669,7 +1678,11 @@ async function cloudStart(){
   sb.auth.onAuthStateChange((ev,session)=>{ if(ev==="PASSWORD_RECOVERY") showLogin("reset"); if(ev==="SIGNED_OUT"){cloudUser=null;renderAccount();} });
   const {data}=await sb.auth.getSession();
   if(data&&data.session) await cloudAttach(data.session.user);
-  else if(lsGet(LS_OFF)!=="1") showLogin("login");
+  else {
+    // session non mémorisée et navigateur refermé : la copie locale du compte précédent ne doit pas rester
+    if(!remember()&&lsGet(LS_OWNER)){ [LSK,LS_OWNER,LS_TS].forEach(k=>lsSet(k,null)); S=defaultState(); buildLib(); renderAll(); }
+    if(lsGet(LS_OFF)!=="1") showLogin("login");
+  }
   renderAccount();
 }
 async function cloudPull(){
@@ -1708,7 +1721,7 @@ function showLogin(mode){
   const reset=mode==="reset", up=mode==="signup";
   document.getElementById("lgTitle").textContent=reset?"Nouveau mot de passe":up?"Créer ton compte":"Connexion";
   document.getElementById("lgSub").textContent=reset?"Choisis un nouveau mot de passe pour ton compte.":"Ton plan, tes séances et tes analyses, sauvegardés automatiquement et retrouvés sur tous tes appareils.";
-  document.getElementById("lgEmailRow").hidden=reset; document.getElementById("lgSwitch").hidden=reset; document.getElementById("lgForgot").hidden=reset||up;
+  document.getElementById("lgEmailRow").hidden=reset; document.getElementById("lgRemRow").hidden=reset; document.getElementById("lgRem").checked=remember(); document.getElementById("lgSwitch").hidden=reset; document.getElementById("lgForgot").hidden=reset||up;
   document.getElementById("lgGo").textContent=reset?"Enregistrer le mot de passe":up?"Créer mon compte":"Se connecter";
   document.getElementById("lgSwitch").innerHTML=up?`Déjà un compte ? <button type="button" class="linkbtn" data-lg="login">Se connecter</button>`:`Pas encore de compte ? <button type="button" class="linkbtn" data-lg="signup">Créer un compte</button>`;
   document.getElementById("lgPass").autocomplete=up||reset?"new-password":"current-password";
@@ -1722,6 +1735,7 @@ async function loginSubmit(e){
   const email=document.getElementById("lgEmail").value.trim(), pass=document.getElementById("lgPass").value;
   const say=(t,ok)=>{msg.textContent=t; msg.className="lgmsg "+(ok?"good":"bad");};
   if(mode!=="reset"&&!email){say("Indique ton adresse e-mail.");return;} if(!pass){say("Indique ton mot de passe.");return;}
+  lsSet(LS_REM,document.getElementById("lgRem").checked?"1":"0");
   go.disabled=true; const old=go.textContent; go.textContent="Un instant…";
   try{ await cloudClient(); const here=location.origin+location.pathname;
     if(mode==="signup"){ const r=await sb.auth.signUp({email,password:pass,options:{emailRedirectTo:here}}); if(r.error) throw r.error;
