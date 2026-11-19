@@ -1152,7 +1152,7 @@ function buildWeek(mon,availOverride,opt={}){
   days.forEach(d=>{
     if(d.main) return;
     if(tag==="maladie"){d.main={id:d.avail>=30?"E1":"R0",cap:45};return;}
-    if(d.avail>=45) d.main={id:(P.sprints&&!deload&&!tag&&!nextKey(d.i)&&!days.some(x=>x.main&&x.main.id==="E3"))?"E3":"E2"};
+    if(d.avail>=45) d.main={id:(P.sprints&&!deload&&!tag&&!nextKey(d.i)&&!days.some(x=>(x.main&&x.main.id==="E3")||(x.past&&(x.done||[]).some(s=>["E3","SP2"].includes(s.id)||(s.an&&s.an.id==="E3")))))?"E3":"E2"};
     else if(d.avail>=30) d.main={id:"E1"}; else d.main={id:"R0"};
   });
   if(!days.some(d=>d.main.id==="R0"&&!(d.past&&d.done.length))){
@@ -2874,10 +2874,23 @@ function validateWeek(W){
   if(W.total>W.cap+5) v.push(["warn","Volume prévu "+fmtMin(W.total)+" au-dessus du maximum de "+fmtMin(W.cap)+"."]);
   return v;
 }
+// échanger deux jours : chaque séance est fixée sur son nouveau jour (comme « Séance de ce jour »).
+// Contrairement à un simple échange de positions, ça ne bouge plus quand le plan se recalcule (séance faite, créneaux, fatigue).
+function pinFromDay(d){ const pin={id:d.main.id}; if(d.dur) pin.dur=d.dur; const add=[...(d.extra||[])].filter(x=>x!==d.main.id); if(d.gym&&d.gym!==d.main.id&&!add.includes(d.gym)) add.push(d.gym); if(add.length) pin.add=add; return pin; }
 function swapDays(mon,i,j){
-  if(i===j||addDays(mon,i)<TODAY||addDays(mon,j)<TODAY) return; S.weekEdits=S.weekEdits||{}; const p=(S.weekEdits[mon]||[0,1,2,3,4,5,6]).slice(); [p[i],p[j]]=[p[j],p[i]];
-  if(p.every((x,k)=>x===k)) delete S.weekEdits[mon]; else S.weekEdits[mon]=p; save(); renderAll();
+  if(i===j||addDays(mon,i)<TODAY||addDays(mon,j)<TODAY) return;
+  const W=buildWeek(mon), a=W.days[i], b=W.days[j]; if(a.main.id==="RACE"||b.main.id==="RACE") return;
+  S.pins=S.pins||{}; const pa=pinFromDay(b), pb=pinFromDay(a);
+  S.pins[a.date]=pa; S.pins[b.date]=pb; save(); renderAll();
 }
+// anciens échanges enregistrés par position : convertis une fois en séances fixées, sur les jours à venir
+function migrateWeekEdits(){
+  if(!S.weekEdits) return; let ch=false;
+  Object.keys(S.weekEdits).forEach(mon=>{ if(addDays(mon,6)<TODAY){ return; }
+    const W=buildWeek(mon); // plan tel qu'affiché, échanges compris
+    W.days.forEach((d,i)=>{ const perm=S.weekEdits[mon]; if(!perm||perm[i]===i||d.date<TODAY||d.past||d.pinned||d.main.id==="RACE") return; S.pins=S.pins||{}; S.pins[d.date]=pinFromDay(d); });
+    delete S.weekEdits[mon]; ch=true; });
+  if(ch) save(); }
 
 /* ---------- nutrition (Thomas, Erdman, Burke 2016 ; Jeukendrup 2014 ; Sawka 2007 ; Mountjoy 2023) ---------- */
 function dayCHO(d){
@@ -3418,7 +3431,7 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape"){document.getElement
 window.addEventListener("hashchange",()=>{const [v,sub]=location.hash.slice(1).split("/"); show(v); if(sub) setSub(v,sub);});
 
 function labelTables(){ document.querySelectorAll(".stackable table").forEach(t=>{ const h=[...t.querySelectorAll("thead th")].map(x=>x.textContent.trim()); t.querySelectorAll("tbody tr").forEach(r=>[...r.children].forEach((c,i)=>{ if(h[i]) c.setAttribute("data-label",h[i]); })); }); }
-function renderAllNow(){(S.sessions||[]).forEach(x=>{try{applyTE(x);}catch(e){}});renderToday();renderWeek();renderMonth();renderSeason();renderLib();renderSuivi();renderHistory();renderBilan();renderSettings();renderEvidence();labelTables();}
+function renderAllNow(){try{migrateWeekEdits();}catch(e){}(S.sessions||[]).forEach(x=>{try{applyTE(x);}catch(e){}});renderToday();renderWeek();renderMonth();renderSeason();renderLib();renderSuivi();renderHistory();renderBilan();renderSettings();renderEvidence();labelTables();}
 // Rendu différé et regroupé : évite de reconstruire un tableau pendant qu'un de ses champs perd le focus
 let renderTimer=null;
 function renderAll(){ if(renderTimer) return; renderTimer=setTimeout(()=>{renderTimer=null; renderAllNow();},0); }
