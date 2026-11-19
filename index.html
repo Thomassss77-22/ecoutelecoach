@@ -2231,7 +2231,7 @@ async function dataImport(f){ const m=document.getElementById("dataMsg");
   }catch(e){ m.textContent="Ce fichier n’est pas une copie de données Écoute le Coach."; } }
 setTimeout(()=>{ if(!(window.claude&&typeof window.claude.use==="function")) document.documentElement.classList.add("standalone"); },1500);
 // nouvelle version publiée : le navigateur garde la page en cache ~10 min ; on vérifie et on propose de recharger
-const BUILD="20261119202105";
+const BUILD="20261119202458";
 async function checkUpdate(){ if(window.claude&&typeof window.claude.use==="function") return; if(!/^https?:/.test(location.protocol)) return;
   try{ const t=await (await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"})).text(); const m=t.match(/const BUILD="([^"]+)"/);
     if(m&&m[1]!==BUILD&&!document.getElementById("updBar")){ const d=document.createElement("div"); d.id="updBar"; d.className="updbar";
@@ -3662,7 +3662,12 @@ function renderTests(){
     ${T.length?`<div class="tablewrap"><table><thead><tr><th>Date</th><th>Type</th><th>Résultat</th><th>Zones</th></tr></thead><tbody>${T.map(t=>`<tr><td>${fmtD(t.date)}</td><td>${t.type==="power"?"5 + 20 min":"FC seuil 30 min"}</td><td class="num">${t.type==="power"?`5 min ${t.p5||"—"} W · 20 min ${t.p20} W`:`LTHR ${t.lthr} bpm`}${t.hrmax?` · FC max vue ${t.hrmax}`:""}</td><td class="num">${t.ftp?`FTP ${t.ftp} W (${(t.ftp/kg).toFixed(2).replace(".",",")} W/kg)`:`FC seuil ${t.lthr}`}</td></tr>`).join("")}</tbody></table></div>`:""}${chart}`;
 }
 function renderWeekTagSelect(mon,id){return `<select data-wtag="${mon}" id="${id||""}" aria-label="Type de semaine" style="font-size:13px;padding:4px 6px">${Object.entries(TAGS).map(([k,v])=>`<option value="${k}" ${tagOf(mon)===k?"selected":""}>${v}</option>`).join("")}</select>`;}
-function bindWeekTags(){document.querySelectorAll("[data-wtag]").forEach(el=>el.onchange=()=>{S.weekTag=S.weekTag||{}; if(el.value) S.weekTag[el.dataset.wtag]=el.value; else delete S.weekTag[el.dataset.wtag]; save(); renderAll();});}
+function bindWeekTags(){document.querySelectorAll("[data-wtag]").forEach(el=>el.onchange=()=>{ const mon=el.dataset.wtag; S.weekTag=S.weekTag||{};
+  if(el.value) S.weekTag[mon]=el.value; else delete S.weekTag[mon];
+  // semaine sans vélo : les séances vélo que tu avais placées à la main cette semaine sont retirées (annulable dans l’historique)
+  if(el.value==="voyage"||el.value==="maladie"){ const bike=x=>(LIB[x]||{}).sport==="velo";
+    editWeek(mon,"Semaine « "+(el.value==="voyage"?"voyage":"maladie")+" » : séances vélo retirées",()=>{ for(let i=0;i<7;i++){ const d=addDays(mon,i), q=S.pins&&S.pins[d]; if(!q||d<TODAY) continue; if(bike(q.id)){ delete q.id; delete q.dur; } if(q.add) q.add=q.add.filter(x=>!bike(x)); } }); }
+  save(); renderAll();});}
 
 /* Plan de course : repères Thomas 2016 (glucides avant), Jeukendrup 2014 / Podlogar 2022 (pendant), ACSM 2007 (hydratation), Racinais 2015 (chaleur) */
 const SPEED={plat:41,"vallonné":38,montagne:32,circuit:40};
