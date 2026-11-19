@@ -268,8 +268,63 @@ html.locked body{overflow:hidden}
 .acct{display:flex;flex-direction:column;gap:8px;align-items:flex-start;margin-bottom:10px}
 #acctSettings .acct{flex-direction:row;flex-wrap:wrap;align-items:center;gap:10px 14px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-l);padding:14px 18px}
 /* version web hors de Claude : pas de connecteurs, donc pas d'envoi direct à la montre */
-.standalone #qSend,.standalone #histGarmin,.standalone #wkSend{display:none}
+.standalone #qSend,.standalone #histGarmin,.standalone #wkSend,.standalone .syncbox,.standalone .syncmsg{display:none!important}
+.standalone .addbar{grid-template-columns:1fr}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+
+/* Suivi : indicateurs, sous-onglets, liste des sorties */
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-m);padding:12px 14px;text-align:left;font:inherit;color:inherit;cursor:pointer;min-width:0}
+.kpi:hover{border-color:var(--line2)}
+.kpi .k{font-size:12.5px;color:var(--muted);font-weight:600}
+.kpi .v{font:700 24px/1.15 var(--font-display,inherit);font-stretch:75%;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi .s{font-size:12.5px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi.warn{border-color:var(--warn)} .kpi.bad{border-color:var(--bad)}
+.subtabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:16px;overflow-x:auto;scrollbar-width:none}
+.subtabs button{font:650 14.5px var(--font-body);background:none;border:0;border-bottom:3px solid transparent;color:var(--muted);padding:10px 14px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;min-height:44px}
+.subtabs button:hover{color:var(--ink)}
+.subtabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.subtabs .badge{background:var(--bad);color:#fff;border-radius:999px;font-size:11.5px;padding:1px 7px;font-weight:700}
+.subview{display:none} .subview.on{display:block}
+.addbar{display:grid;grid-template-columns:1fr auto;gap:12px 16px;align-items:center;margin-bottom:16px}
+.drop.dropline{display:flex!important;flex-direction:row!important;align-items:center;gap:14px;text-align:left;padding:14px 16px}
+.dropline svg{width:26px;height:26px;flex:none;fill:none;stroke:var(--accent);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.dropline>span{display:flex;flex-direction:column;gap:2px}
+.syncbox{display:flex;flex-direction:column;gap:6px;align-items:stretch}
+.srcsel select{width:auto;display:inline-block;font-size:13px;padding:4px 8px;min-height:32px}
+.impmsg:empty,.syncmsg:empty{display:none}
+.impmsg,.syncmsg,.addmore{grid-column:1/-1}
+.addmore{display:flex;flex-wrap:wrap;gap:8px 24px}
+.addmore details{flex:1 1 280px}
+.addmore details[open]{flex-basis:100%}
+.addmore form{margin-top:12px}
+.niveaubar{display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center}
+.wkhead{display:flex;justify-content:space-between;align-items:baseline;padding:14px 0 6px;border-bottom:1px solid var(--line);font-size:13px;color:var(--muted);font-weight:650}
+.wkhead b{color:var(--ink);font-size:14px}
+.sess{display:grid;grid-template-columns:58px minmax(0,1fr) auto;gap:4px 14px;padding:12px 0;border-bottom:1px solid var(--line);align-items:start}
+.sess .when{line-height:1.15}
+.sess .when b{display:block;font:700 15px var(--font-body)}
+.sess .when span{font-size:12.5px;color:var(--muted)}
+.sess .what{min-width:0}
+.sess .what .t{font-weight:700;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.sess .what .n{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sess .mets{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:6px;font-size:13.5px}
+.sess .mets span{white-space:nowrap} .sess .mets i{font-style:normal;color:var(--muted);font-size:12px;margin-right:3px}
+.sess .act{display:flex;gap:6px;align-items:center}
+.sess .act .rpel{display:flex!important;flex-direction:row!important;align-items:center;gap:6px;margin:0}
+.sess .act input{width:56px;text-align:center;padding:6px;min-height:36px}
+.sess .act .iconbtn{width:36px;height:36px;border-radius:999px;border:1px solid var(--line2);background:none;color:var(--muted);cursor:pointer;font-size:16px;line-height:1}
+.sess .act .iconbtn:hover{color:var(--bad);border-color:var(--bad)}
+.sess .open{grid-column:1/-1;margin-top:10px}
+.score{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:1px 8px}
+.score.good{background:var(--good-soft,rgba(46,125,50,.12));color:var(--good)} .score.warn{background:var(--warn-soft,rgba(200,120,0,.14));color:var(--warn)} .score.bad{background:var(--bad-soft,rgba(190,40,40,.12));color:var(--bad)}
+.moreBtnWrap{text-align:center;padding-top:12px}
+@media (max-width:760px){
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .addbar,.niveaubar{grid-template-columns:1fr}
+  .sess{grid-template-columns:48px minmax(0,1fr)}
+  .sess .act{grid-column:2;margin-top:6px}
+}
 </style>
 </head>
 <body>
@@ -447,38 +502,89 @@ html.locked body{overflow:hidden}
 
   <!-- SUIVI -->
   <section class="view" id="v-suivi">
-    <div class="pagehead"><h1>Suivi</h1><p class="muted">Tes sorties, leur analyse, tes tests et les alertes de charge.</p></div>
-    <div class="card stack" style="margin-bottom:16px" id="histCard">
-      <h2>Où j’en suis : analyse de mes dernières sorties</h2>
-      <p class="small muted">Donne à l’appli tes sorties des derniers mois : elle en tire ton volume réel, tes habitudes (jours, durées, heure), ta répartition d’intensité, ta FC, ta charge et ton profil de puissance, puis propose des réglages de départ que tu appliques d’un clic.</p>
-      <div class="grid2" style="grid-template-columns:minmax(260px,1fr) minmax(260px,1fr)">
+    <div class="pagehead"><h1>Suivi</h1><p class="muted">Tes sorties, ta forme et ta progression.</p></div>
+    <div class="kpis" id="suiviKpi"></div>
+    <div class="subtabs" role="tablist" aria-label="Rubriques du suivi" id="suiviTabs">
+      <button role="tab" type="button" data-sub="sorties">Mes sorties</button>
+      <button role="tab" type="button" data-sub="forme">Forme et charge<span class="badge" id="alertBadge" hidden></span></button>
+      <button role="tab" type="button" data-sub="niveau">Où j’en suis</button>
+      <button role="tab" type="button" data-sub="tests">Tests</button>
+    </div>
+
+    <div class="subview" data-sub="sorties">
+      <div class="card addbar">
+        <label for="fileIn" class="drop dropline" id="dropZone"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></svg><span><b>Ajouter des sorties</b><span class="small muted">Glisse ou choisis tes fichiers .fit, .tcx, .gpx ou le .zip Garmin</span></span><input id="fileIn" type="file" accept=".fit,.tcx,.gpx,.zip" multiple style="display:none"></label>
+        <div class="syncbox">
+          <button class="btn" id="stravaSync" type="button">Synchroniser Garmin</button>
+          <label class="small srcsel">Source <select id="st_source"><option value="garmin">Garmin (Fitness AI Connector)</option><option value="strava">Strava (abonnement requis)</option></select></label>
+        </div>
+        <span class="small muted impmsg" id="impMsg"></span>
+        <div id="stravaMsg" class="alert warn syncmsg"><b>Pas encore synchronisé</b>Lance la première synchronisation et accepte l’accès.</div>
+        <div class="addmore">
+          <details><summary>Saisir une séance à la main</summary>
+            <form class="form" onsubmit="return false">
+              <label>Date<input id="lg_date" type="date"></label>
+              <label>Séance<select id="lg_sess"></select></label>
+              <label>Durée (min)<input id="lg_dur" type="number" min="0" step="5"></label>
+              <label>RPE de séance (0-10)<input id="lg_rpe" type="number" min="0" max="10" step="1"></label>
+              <label class="full">Note (puissances, sensations)<input id="lg_note" type="text"></label>
+              <div class="full row"><button class="btn" id="lgSave" type="button">Ajouter</button><span class="small muted" id="lgMsg"></span></div>
+            </form>
+          </details>
+          <details><summary>Comment récupérer mes fichiers Garmin ?</summary>
+            <p class="small"><b>Une sortie</b> : Garmin Connect sur ordinateur → activité → roue dentée → Exporter le fichier d’origine, puis dépose-le ici. Une sortie déjà présente est complétée, jamais dupliquée.</p>
+            <p class="small"><b>Tout l’historique</b> : utilise l’onglet « Où j’en suis », qui sait lire le .zip de l’export complet Garmin.</p>
+            <p class="small"><b>Automatique</b> : « Synchroniser Garmin » passe par le connecteur Fitness AI Connector depuis claude.ai.</p>
+          </details>
+        </div>
+      </div>
+      <div class="card">
+        <div class="row" style="justify-content:space-between;align-items:baseline"><h2>Mes sorties</h2><div class="filter" id="sessFilter" role="group" aria-label="Filtrer par sport"><button type="button" data-f="all" aria-pressed="true">Tout</button><button type="button" data-f="velo" aria-pressed="false">Vélo</button><button type="button" data-f="course" aria-pressed="false">Course</button><button type="button" data-f="muscu" aria-pressed="false">Muscu</button></div></div>
+        <div id="histTable"></div>
+      </div>
+    </div>
+
+    <div class="subview" data-sub="forme">
+      <div class="grid2">
         <div class="stack">
-          <label for="histIn" class="drop" id="histDrop"><b>Importer plusieurs sorties d’un coup</b><br><span class="small">.fit, .tcx, .gpx, ou le .zip de l’export complet Garmin Connect</span><input id="histIn" type="file" accept=".fit,.tcx,.gpx,.zip" multiple style="display:none"></label>
-          <label class="small">Garder les sorties des <select id="histKeep" style="width:auto;display:inline-block"><option value="3">3 derniers mois</option><option value="6" selected>6 derniers mois</option><option value="12">12 derniers mois</option></select></label>
-          <div class="row"><button class="btn ghost small" id="histGarmin" type="button">Récupérer 90 jours depuis Garmin</button></div>
-          <span class="small muted" id="histMsg"></span>
-          <details class="small"><summary>Comment récupérer toutes mes sorties Garmin ?</summary>
+          <div class="card"><h2>Alertes</h2><div class="stack" id="alerts"></div></div>
+          <div class="card"><h2>VFC et FC de repos</h2><p class="small muted">28 derniers jours, d’après tes check-ins du matin.</p><div id="hrvChart"></div></div>
+        </div>
+        <div class="stack">
+          <div class="card"><h2>Charge par semaine</h2><div id="loadChart"></div><p class="small muted" id="loadNote"></p></div>
+          <div class="card"><h2>Profil de puissance et durabilité</h2><div class="tablewrap" id="powerCard"></div></div>
+        </div>
+      </div>
+      <details class="card" style="margin-top:16px"><summary>Comment les alertes se déclenchent</summary><div class="tablewrap" id="thrTable" style="margin-top:12px"></div></details>
+    </div>
+
+    <div class="subview" data-sub="niveau">
+      <div class="card stack" id="histCard">
+        <div><h2>Où j’en suis</h2>
+        <p class="small muted">À partir de tes sorties des derniers mois : volume réel, habitudes, intensité, FC, charge et profil de puissance, avec des réglages proposés que tu appliques d’un clic.</p></div>
+        <div class="niveaubar">
+          <label for="histIn" class="drop dropline" id="histDrop"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></svg><span><b>Importer tout un historique</b><span class="small muted">Plusieurs fichiers ou le .zip de l’export complet Garmin Connect</span></span><input id="histIn" type="file" accept=".fit,.tcx,.gpx,.zip" multiple style="display:none"></label>
+          <div class="stack" style="gap:8px">
+            <label class="small">Garder les sorties des <select id="histKeep" style="width:auto;display:inline-block"><option value="3">3 derniers mois</option><option value="6" selected>6 derniers mois</option><option value="12">12 derniers mois</option></select></label>
+            <label class="small">Période analysée <select id="histWin" style="width:auto;display:inline-block"><option value="4">4 semaines</option><option value="8">8 semaines</option><option value="12" selected>12 semaines</option><option value="26">26 semaines</option></select></label>
+            <button class="btn ghost small" id="histGarmin" type="button">Récupérer 90 jours depuis Garmin</button>
+          </div>
+        </div>
+        <span class="small muted" id="histMsg"></span>
+        <details class="small"><summary>Comment récupérer tout mon historique Garmin ?</summary>
             <p><b>Export complet (tout l’historique)</b> : sur garmin.com, Compte → Gestion des données → Exporter vos données. Garmin envoie un lien par e-mail (quelques heures à 2 jours). Dépose le .zip tel quel ici : l’appli va chercher les fichiers d’activité dedans.</p>
             <p><b>Quelques sorties</b> : Garmin Connect sur ordinateur → activité → roue dentée → Exporter le fichier d’origine (.zip ou .fit), puis dépose-les ici, plusieurs à la fois.</p>
             <p><b>Via le connecteur</b> : le bouton ci-dessus récupère 90 jours si ton abonnement Fitness AI Connector le permet (l’offre gratuite ne donne que 2 jours).</p></details>
-        </div>
-        <div class="stack"><label class="small">Période analysée <select id="histWin" style="width:auto;display:inline-block"><option value="4">4 semaines</option><option value="8">8 semaines</option><option value="12" selected>12 semaines</option><option value="26">26 semaines</option></select></label><div id="histSum"></div></div>
+        <div id="histSum"></div>
+        <div id="histOut" class="stack"></div>
       </div>
-      <div id="histOut" class="stack"></div>
     </div>
-    <div class="grid2">
-      <div class="stack">
+
+    <div class="subview" data-sub="tests">
+      <div class="grid2">
         <div class="card">
-          <h2>Import automatique des sorties</h2>
-          <p class="small muted">Montre Garmin → Garmin Connect → Coach Route, via le connecteur Fitness AI Connector. Chaque ouverture de l’appli récupère tes nouvelles sorties et remplit le check-in du matin (sommeil, VFC, FC de repos). Strava reste possible si tu as l’abonnement.</p>
-          <label>Source<select id="st_source"><option value="garmin">Garmin (Fitness AI Connector)</option><option value="strava">Strava (abonnement requis)</option></select></label>
-          <div id="stravaMsg" class="alert warn"><b>Pas encore synchronisé</b>Lance la première synchronisation et accepte l’accès.</div>
-          <div class="row"><button class="btn" id="stravaSync" type="button">Synchroniser maintenant</button></div>
-          <label for="fileIn" class="drop" id="dropZone">Ou glisse ici tes fichiers .fit, .tcx ou .gpx (export Garmin Connect : activité → roue dentée → Exporter le fichier d’origine)<input id="fileIn" type="file" accept=".fit,.tcx,.gpx" multiple style="display:none"></label>
-          <span class="small muted" id="impMsg"></span>
-        </div>
-        <div class="card">
-          <h2>Tests et retests</h2>
+          <h2>Enregistrer un test</h2>
+          <p class="small muted">Le résultat recale tes zones (FTP, FC seuil, FC max).</p>
           <form class="form" onsubmit="return false">
             <label>Type<select id="ts_type"><option value="power">Puissance : 5 min + 20 min</option><option value="hr">Sans capteur : FC seuil 30 min</option></select></label>
             <label>Date<input id="ts_date" type="date"></label>
@@ -487,30 +593,8 @@ html.locked body{overflow:hidden}
             <label class="full">FC la plus haute vue pendant le test (bpm, facultatif)<input id="ts_hrmax" type="number" min="120" max="230"></label>
             <div class="full row"><button class="btn" id="tsSave" type="button">Enregistrer et recaler les zones</button><span class="small muted" id="tsMsg"></span></div>
           </form>
-          <div id="testCard"></div>
         </div>
-        <div class="card">
-          <h2>Enregistrer une séance</h2>
-          <form class="form" onsubmit="return false">
-            <label>Date<input id="lg_date" type="date"></label>
-            <label>Séance<select id="lg_sess"></select></label>
-            <label>Durée (min)<input id="lg_dur" type="number" min="0" step="5"></label>
-            <label>RPE de séance (0-10)<input id="lg_rpe" type="number" min="0" max="10" step="1"></label>
-            <label class="full">Note (puissances, sensations)<input id="lg_note" type="text"></label>
-            <div class="full row"><button class="btn" id="lgSave" type="button">Ajouter</button><span class="small muted" id="lgMsg"></span></div>
-          </form>
-        </div>
-        <div class="card">
-          <h2>Seuils d’alerte</h2>
-          <div class="tablewrap" id="thrTable"></div>
-        </div>
-      </div>
-      <div class="stack">
-        <div class="card"><h2>Alertes actives</h2><div class="stack" id="alerts"></div></div>
-        <div class="card"><h2>Profil de puissance et durabilité</h2><div class="tablewrap" id="powerCard"></div></div>
-        <div class="card"><h2>Charge hebdomadaire (RPE × minutes)</h2><div id="loadChart" style="max-width:640px"></div><p class="small muted" id="loadNote"></p></div>
-        <div class="card"><h2>VFC et FC de repos (28 jours)</h2><div id="hrvChart"></div></div>
-        <div class="card"><h2>Historique récent</h2><div class="tablewrap" id="histTable"></div></div>
+        <div class="card"><h2>Mes tests</h2><div id="testCard"></div></div>
       </div>
     </div>
   </section>
@@ -596,7 +680,7 @@ html.locked body{overflow:hidden}
     </div>
   </section>
 
-  <section class="card" style="margin-top:16px" aria-labelledby="garminHelp"><h2 id="garminHelp">Mettre les séances sur ta Garmin</h2>
+  <section class="card" style="margin-top:16px" aria-labelledby="garminHelp" id="garminHelpCard"><h2 id="garminHelp">Mettre les séances sur ta Garmin</h2>
     <p class="small">Chaque séance s’exporte en séance structurée Garmin : étapes, durées, cibles de puissance (ou de FC) et répétitions. Ta Garmin t’annonce chaque étape et te dit si tu es dans la cible. Le fichier arrive dans un .zip : décompresse-le d’abord.</p>
     <div class="tablewrap"><table><thead><tr><th>Méthode</th><th>Comment</th></tr></thead><tbody>
       <tr><td><b>Câble USB (le plus simple, gratuit)</b></td><td>Branche le compteur ou la montre, ouvre le dossier Garmin/NewFiles et copie les .fit dedans, puis éjecte. Sur Mac, une montre peut demander l’outil gratuit OpenMTP. La séance apparaît dans Entraînement → Séances.</td></tr>
@@ -949,7 +1033,7 @@ function buildWeek(mon,availOverride,opt={}){
     const d=order.map(i=>days[i]).find(d=>free(d)&&d.avail>=minK&&nbOk(d.i));
     if(!d){warns.push("Séance clé n°"+(k+1)+" non placée : pas de jour d’au moins "+fmtMin(minK)+" avec 48 h d’écart avec les autres séances clés. Elle est abandonnée, pas doublée.");continue;}
     const id=shock?["V2","V1","V3","V2","S2"][k]:(due&&k===0?testId():pickKey(prio,usedCats,widx,phase)); if(!id) continue;
-    if(due&&k===0) d.notes.push("retest pour recaler les zones : enregistre le résultat dans Suivi et alertes");
+    if(due&&k===0) d.notes.push("retest pour recaler les zones : enregistre le résultat dans Suivi → Tests");
     usedCats.push(LIB[id].cat); d.main={id};
     if(deload) d.notes.push("semaine allégée : version courte, une série de moins");
   }
@@ -1611,13 +1695,8 @@ function renderSuivi(){
   document.getElementById("loadNote").textContent="Charge = minutes × RPE de séance (méthode de Foster). Barre foncée = semaine en cours. RPE manquant compté à 3.";
   const days=[...Array(28)].map((_,i)=>addDays(TODAY,i-27));
   document.getElementById("hrvChart").innerHTML=svgLines([{n:"VFC (ms)",c:"var(--good)",v:days.map(d=>S.checkins[d]&&S.checkins[d].hrv?+S.checkins[d].hrv:null)},{n:"FC repos (bpm)",c:"var(--bad)",v:days.map(d=>S.checkins[d]&&S.checkins[d].rhr?+S.checkins[d].rhr:null)}]);
-  const H=S.sessions.slice().sort((a,b)=>a.date<b.date?1:-1).slice(0,21);
-  document.getElementById("histTable").innerHTML=H.length?`<table><thead><tr><th>Date</th><th>Séance</th><th>Durée</th><th>NP / FC</th><th>Training Effect</th><th>RPE</th><th>Charge</th><th></th></tr></thead><tbody>${H.map(s=>{const i=S.sessions.indexOf(s);return `<tr><td>${fmtD(s.date)}${s.src?"<br><span class='tag'>"+(s.src==="strava"?"Strava":s.src==="garmin"?"Garmin":"fichier")+"</span>":""}</td><td>${esc(s.id==="RACE"?"Course":(LIB[s.id]||{nom:s.id}).nom)}${s.note?"<br><span class='small muted'>"+esc(s.note)+"</span>":""}</td><td class="num">${fmtMin(+s.dur||0)}</td><td class="num small">${s.np?s.np+" W · IF "+s.ifv+(s.tss?" · TSS "+s.tss:""):""}${s.hr?"<br>"+s.hr+" bpm":""}</td><td class="small">${s.teA!=null||s.teAn!=null?teTxt(s):"—"}${s.benefit?"<br>"+esc(BEN_FR[s.benefit]||s.benefit):""}${s.gLoad?"<br>charge Garmin "+s.gLoad:""}</td><td><input type="number" min="0" max="10" data-rpe="${i}" value="${s.rpe===""?"":s.rpe}" style="width:64px" aria-label="RPE">${s.rpeEst?"<br><span class='small muted'>estimé</span>":""}</td><td class="num">${Math.round((+s.dur||0)*(s.rpe===""?3:+s.rpe))}</td><td><button class="btn small" data-an="${i}" type="button" aria-expanded="${s===anSel}">${s===anSel?"Fermer":"Analyse"}</button> <button class="btn ghost small" data-del="${i}" type="button">Supprimer</button></td></tr>${s===anSel?`<tr><td colspan="8" style="background:var(--bg)">${reviewHTML(s)}</td></tr>`:""}`}).join("")}</tbody></table>`:`<p class="small muted">Aucune séance enregistrée.</p>`;
-  document.querySelectorAll("[data-an]").forEach(b=>b.onclick=()=>{const sx=S.sessions[+b.dataset.an]; anSel=anSel===sx?null:sx; renderSuivi(); const nb=document.querySelector(`[data-an="${b.dataset.an}"]`); if(nb&&anSel) nb.closest("tr").scrollIntoView({behavior:"smooth",block:"start"});});
-  document.querySelectorAll("[data-rpe]").forEach(el=>el.onchange=()=>{const s=S.sessions[+el.dataset.rpe];s.rpe=el.value===""?"":+el.value;s.rpeEst=false;save();renderAll();});
-  if(S.sessions.some(s=>s.src==="garmin")) document.getElementById("histTable").insertAdjacentHTML("beforeend",`<p class="small muted">📊 Data from Garmin · ${GARMIN_FOOT}</p>`);
+  renderSuiviKpi(A); renderSessList();
   renderPower(); renderTests();
-  document.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{S.sessions.splice(+b.dataset.del,1);save();renderAll();});
   const T=[["VFC (ln rMSSD, moyenne 7 j)","Hors zone normale (± 0,5 écart-type), en bas ou en haut","Hors zone 3 jours de suite, ou valeur du jour < −1,5 écart-type","Référence sur 28 jours, active après 10 mesures (méthode Javaloyes 2019)."],
     ["FC de repos","+5 bpm sur 3 jours","+8 bpm le jour même ou avec symptômes","Mesure au réveil, même position."],
     ["Sommeil","3 nuits sur 7 < 6 h 30","< 5 h la nuit précédente","Consensus 2021 : individualiser, viser son besoin."],
@@ -1631,6 +1710,61 @@ function renderSuivi(){
     ["Cardiaque","—","Douleur thoracique, palpitations, malaise, essoufflement anormal","Arrêt immédiat, 15 ou 112, pas de reprise sans avis."]];
   document.getElementById("thrTable").innerHTML=`<table><thead><tr><th>Indicateur</th><th>Orange</th><th>Rouge</th><th>Note</th></tr></thead><tbody>${T.map(t=>`<tr><td><b>${t[0]}</b></td><td>${t[1]}</td><td>${t[2]}</td><td class="small">${t[3]}</td></tr>`).join("")}</tbody></table>`;
 }
+
+/* ---------- Suivi : indicateurs, sous-onglets, liste des sorties ---------- */
+let suiviSub=(()=>{try{return localStorage.getItem("coach-route-suivi")||"sorties";}catch(e){return "sorties";}})(), sessF="all", sessN=20;
+function setSuiviSub(k){ if(!["sorties","forme","niveau","tests"].includes(k)) k="sorties"; suiviSub=k; try{localStorage.setItem("coach-route-suivi",k);}catch(e){}
+  document.querySelectorAll("#suiviTabs [data-sub]").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.sub===k)));
+  document.querySelectorAll("#v-suivi .subview").forEach(v=>v.classList.toggle("on",v.dataset.sub===k)); }
+function renderSuiviKpi(A){
+  const el=document.getElementById("suiviKpi"); if(!el) return;
+  const mon=mondayOf(TODAY), wk=S.sessions.filter(x=>x.date>=mon&&x.date<=TODAY), wMin=wk.reduce((a,x)=>a+(+x.dur||0),0);
+  const prev=[1,2,3,4].map(k=>addDays(mon,-7*k)), avg=mean(prev.map(m=>S.sessions.filter(x=>x.date>=m&&x.date<=addDays(m,6)).reduce((a,x)=>a+(+x.dur||0),0)));
+  const L=weekLoad(mon), Lp=mean(prev.map(weekLoad)), last=S.sessions.filter(x=>x.date<=TODAY).sort((a,b)=>(a.date+(a.start||0))<(b.date+(b.start||0))?1:-1)[0];
+  const red=A.filter(a=>a[0]==="bad").length, org=A.filter(a=>a[0]==="warn").length;
+  const k=(cls,sub,key,val,sm)=>`<button type="button" class="kpi ${cls}" data-go="${sub}"><div class="k">${key}</div><div class="v">${val}</div><div class="s">${sm}</div></button>`;
+  el.innerHTML=k("","sorties","Cette semaine",fmtMin(wMin)||"0 min",wk.length+" séance"+(wk.length>1?"s":"")+(avg?" · moyenne "+fmtMin(Math.round(avg)):""))
+    +k("","forme","Charge de la semaine",Math.round(L),Lp?(L>Lp?"au-dessus":"en dessous")+" de la moyenne ("+Math.round(Lp)+")":"RPE × minutes")
+    +k(red?"bad":org?"warn":"","forme","Alertes",red+org?red+org:"Aucune",red?red+" rouge"+(red>1?"s":"")+(org?", "+org+" orange":""):org?org+" orange":"tout est normal")
+    +k("","sorties","Dernière sortie",last?fmtD(last.date):"—",last?esc((last.id==="RACE"?"Course":(LIB[last.id]||{nom:last.id}).nom)):"importe tes fichiers");
+  el.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>setSuiviSub(b.dataset.go));
+  const bd=document.getElementById("alertBadge"); if(bd){ bd.hidden=!(red+org); bd.textContent=red+org; bd.style.background=red?"var(--bad)":"var(--warn)"; }
+}
+function sessSport(x){ return x.id==="RACE"?"velo":(LIB[x.id]||{}).sport||"velo"; }
+function renderSessList(){
+  const box=document.getElementById("histTable"); if(!box) return;
+  document.querySelectorAll("#sessFilter [data-f]").forEach(b=>{ b.setAttribute("aria-pressed",String(b.dataset.f===sessF)); b.onclick=()=>{sessF=b.dataset.f; sessN=20; renderSessList();}; });
+  const all=S.sessions.slice().sort((a,b)=>(a.date+String(a.start||0).padStart(12,"0"))<(b.date+String(b.start||0).padStart(12,"0"))?1:-1).filter(x=>sessF==="all"||sessSport(x)===sessF);
+  if(!all.length){ box.innerHTML=`<p class="small muted">${S.sessions.length?"Aucune sortie de ce type.":"Aucune sortie enregistrée. Ajoute tes fichiers ci-dessus ou synchronise Garmin."}</p>`; return; }
+  const H=all.slice(0,sessN); let html="", curW=null;
+  H.forEach(x=>{ const w=mondayOf(x.date);
+    if(w!==curW){ curW=w; const tot=S.sessions.filter(y=>mondayOf(y.date)===w&&(sessF==="all"||sessSport(y)===sessF)).reduce((a,y)=>a+(+y.dur||0),0);
+      html+=`<div class="wkhead"><b>${w===mondayOf(TODAY)?"Cette semaine":"Semaine du "+parse(w).toLocaleDateString("fr-FR",{day:"numeric",month:"long"})}</b><span>${fmtMin(tot)}</span></div>`; }
+    const i=S.sessions.indexOf(x), d=parse(x.date), nom=x.id==="RACE"?"Course":(LIB[x.id]||{nom:x.id}).nom, src=x.src==="strava"?"Strava":x.src==="garmin"?"Garmin":x.src==="fichier"||(x.srcs||[]).includes("fichier")?"fichier":"";
+    const an=x.an||{}, sm=an.sum||{}; let sc=null; try{ if(x.an) sc=sessionReview(x).score; }catch(e){}
+    const met=[]; met.push(`<span><i>durée</i>${fmtMin(+x.dur||0)}</span>`);
+    if(sm.km||x.km) met.push(`<span><i>dist.</i>${fx(sm.km||x.km,1)} km</span>`);
+    if(x.np) met.push(`<span><i>NP</i>${x.np} W</span>`);
+    if(x.hr) met.push(`<span><i>FC</i>${x.hr} bpm</span>`);
+    if(x.teA!=null||x.teAn!=null) met.push(`<span><i>TE</i>${x.teA!=null?fx(+x.teA,1):"—"} / ${x.teAn!=null?fx(+x.teAn,1):"—"}${x.teEst?' <span class="tag" title="Estimé par l’appli">est.</span>':""}</span>`);
+    if(sc!=null) met.push(`<span class="score ${sc>=80?"good":sc>=55?"warn":"bad"}">Réussite ${sc} %</span>`);
+    const note=x.note&&!/^activity_\d+\.(tcx|fit|gpx)$/i.test(x.note)?x.note:"";
+    html+=`<div class="sess"><div class="when"><b>${d.toLocaleDateString("fr-FR",{weekday:"short"}).replace(".","")}</b><span>${d.toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}</span></div>
+      <div class="what"><div class="t">${esc(nom)}${src?` <span class="tag">${src}</span>`:""}</div>${note?`<div class="n">${esc(note)}</div>`:""}<div class="mets">${met.join("")}</div></div>
+      <div class="act"><label class="small muted rpel">RPE<input type="number" min="0" max="10" data-rpe="${i}" value="${x.rpe===""||x.rpe==null?"":x.rpe}" aria-label="RPE de la séance" title="${x.rpeEst?"RPE estimé : corrige-le si besoin":"RPE de séance (0-10)"}"${x.rpeEst?' style="font-style:italic;color:var(--muted)"':""}></label>
+        <button class="btn small ${x===anSel?"":"ghost"}" data-an="${i}" type="button" aria-expanded="${x===anSel}">${x===anSel?"Fermer":"Analyse"}</button>
+        <button class="iconbtn" data-del="${i}" type="button" aria-label="Supprimer cette séance" title="Supprimer">×</button></div>
+      ${x===anSel?`<div class="open">${reviewHTML(x)}</div>`:""}</div>`; });
+  if(all.length>sessN) html+=`<div class="moreBtnWrap"><button class="btn ghost small" type="button" id="sessMore">Afficher ${Math.min(20,all.length-sessN)} sorties de plus</button></div>`;
+  if(S.sessions.some(x=>x.src==="garmin")) html+=`<p class="small muted" style="margin-top:12px">📊 Data from Garmin · ${GARMIN_FOOT}</p>`;
+  box.innerHTML=html;
+  const m=document.getElementById("sessMore"); if(m) m.onclick=()=>{sessN+=20; renderSessList();};
+  box.querySelectorAll("[data-an]").forEach(b=>b.onclick=()=>{const sx=S.sessions[+b.dataset.an]; anSel=anSel===sx?null:sx; renderSessList(); const nb=box.querySelector(`[data-an="${b.dataset.an}"]`); if(nb&&anSel) nb.closest(".sess").scrollIntoView({behavior:"smooth",block:"start"});});
+  box.querySelectorAll("[data-rpe]").forEach(el=>el.onchange=()=>{const x=S.sessions[+el.dataset.rpe];x.rpe=el.value===""?"":+el.value;x.rpeEst=false;save();renderAll();});
+  box.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{const x=S.sessions[+b.dataset.del]; if(!confirm("Supprimer la séance du "+fmtD(x.date)+" ?")) return; S.sessions.splice(+b.dataset.del,1); if(anSel===x) anSel=null; save(); renderAll();});
+}
+document.querySelectorAll("#suiviTabs [data-sub]").forEach(b=>b.onclick=()=>setSuiviSub(b.dataset.sub));
+setSuiviSub(suiviSub);
 
 /* ---------- rendu : réglages ---------- */
 const setMap={ftp:"st_ftp",fcmax:"st_fcmax",kg:"st_kg",maxH:"st_maxh",meso:"st_meso",mesoStart:"st_mesoStart",phase:"st_phase",runOn:"st_runOn",runMax:"st_runMax",cho:"st_cho",wkTarget:"st_wkTarget",lapStart:"st_lapStart",acHours:"st_acHours",level:"st_level",hasPower:"st_hasPower",lthr:"st_lthr"};
@@ -2313,7 +2447,7 @@ function sessionReview(sx){
     else good.push(`Intensité maîtrisée : ${fmtMin(over)} au-dessus de 80 % de ta FC max.`); }
   if(!sx.an&&sx.hz&&id==="E3"){ const over=sx.hz.slice(3).reduce((a,b)=>a+b,0); (over>10?warn:good).push(`${fmtMin(over)} au-dessus de 88 % de ta FC max${over>10?" : les sprints doivent rester courts, le reste en Z2":""}.`); }
   if(!sx.an&&sx.hr20&&sx.hrPk) good.push(`FC moyenne ${sx.hr||"—"} bpm, max ${sx.hrMax||sx.hrPk} bpm, meilleure moyenne sur 20 min ${sx.hr20} bpm.`);
-  if(!sx.an) warn.push(sx.src==="fichier"||(sx.srcs||[]).includes("fichier")?"Analyse partielle : ce fichier a été importé avant l’arrivée de l’analyse détaillée. Redépose-le dans Suivi et alertes : la sortie sera complétée (pas de doublon) et analysée en entier.":"Analyse limitée : séance sans données seconde par seconde. Importe son fichier .fit (ou .tcx) pour l’analyse complète.");
+  if(!sx.an) warn.push(sx.src==="fichier"||(sx.srcs||[]).includes("fichier")?"Analyse partielle : ce fichier a été importé avant l’arrivée de l’analyse détaillée. Redépose-le dans Suivi : la sortie sera complétée (pas de doublon) et analysée en entier.":"Analyse limitée : séance sans données seconde par seconde. Importe son fichier .fit (ou .tcx) pour l’analyse complète.");
   if(score==null&&sx.an){ const nw=warn.length-estW; score=nw?(nw>=2?55:75):95; }
   return {good,warn,next,score};
 }
@@ -2325,7 +2459,7 @@ function reviewHTML(sx){
   const tiles=[tile("Durée",fmtMin(+sx.dur||0)+(sm.stopMin>=5?` <span class="small muted">(${fmtMin(sm.moveMin)} en mouvement)</span>`:"")),tile("Distance",sm.km!=null?fx(sm.km,1)+" km":sx.km?fx(sx.km,1)+" km":null),tile("Vitesse moy.",sm.kmh?fx(sm.kmh,1)+" km/h":null),
     tile("Dénivelé +",sx.gainSum!=null?sx.gainSum+" m":sm.gain!=null?sm.gain+" m":null),tile("FC moy. / max",sx.hr?sx.hr+" / "+(sx.hrMax||"—")+" bpm":null),tile("Puissance moy. / NP",sx.avgW?sx.avgW+" / "+(sx.np||"—")+" W":null),
     tile("IF · TSS",sx.np?fx(sx.ifv,2)+" · "+sx.tss:null),tile("Travail",sx.kj?sx.kj+" kJ":null),tile("Cadence moy.",sm.cad?sm.cad+" rpm":null),tile("Température",sm.temp?sm.temp[1]+" °C ("+sm.temp[0]+"-"+sm.temp[2]+")":null),
-    tile("Charge (TRIMP)",an.trimp??null),tile("Training Effect",sx.teA!=null||sx.teAn!=null?teTxt(sx):null),tile("RPE",sx.rpe!==""&&sx.rpe!=null?sx.rpe+(sx.rpeEst?" (estimé)":""):null)].join("");
+    tile("Charge (TRIMP)",an.trimp??null),tile("Training Effect",sx.teA!=null||sx.teAn!=null?"Aéro "+(sx.teA!=null?fx(+sx.teA,1):"—")+" · Anaéro "+(sx.teAn!=null?fx(+sx.teAn,1):"—")+(sx.teEst?`<div class="small muted" style="font-weight:400;margin-top:2px">estimé${sx.teInfo&&sx.teInfo.epoc!=null?" · EPOC "+sx.teInfo.epoc+" ml/kg · classe "+fx(sx.teInfo.ac,1):""}${sx.teAn==null?" · anaérobie : redépose le fichier":""}</div>`:""):null),tile("RPE",sx.rpe!==""&&sx.rpe!=null?sx.rpe+(sx.rpeEst?" (estimé)":""):null)].join("");
   // 2. séance prévue / réalisée
   const repsT=an.set&&an.set.reps.length&&!an.set.spr?`<div class="tablewrap"><table><thead><tr><th>Rép.</th><th>Départ</th><th>Puissance</th><th>% FTP</th><th>FC moy. / max</th></tr></thead><tbody>${an.set.reps.map((r,i)=>`<tr><td>${i+1}</td><td>${r.t} min</td><td class="num">${r.w} W</td><td class="num">${Math.round(r.w/ftp*100)} %</td><td class="num">${r.hr?r.hr+" / "+r.hrMax+" bpm":"—"}</td></tr>`).join("")}</tbody></table></div>`:"";
   const hrEf=an.hrEfforts&&an.hrEfforts.length?`<div class="tablewrap"><table><thead><tr><th>Bloc à FC élevée</th><th>Départ</th><th>Durée</th><th>FC moy. / max</th></tr></thead><tbody>${an.hrEfforts.map((e,i)=>`<tr><td>${i+1}</td><td>${e.t} min</td><td>${fmtMin(e.d)}</td><td class="num">${e.hr} / ${e.hrMax} bpm</td></tr>`).join("")}</tbody></table></div><p class="small muted">Blocs d’au moins 2 min au-dessus de 85 % de ta FC max (${Math.round(fcRef()*.85)} bpm). Sans capteur, c’est le meilleur repère des efforts réellement faits.</p>`:"";
@@ -2519,7 +2653,7 @@ function normStreams(p){ if(typeof p==="string"){try{p=JSON.parse(p);}catch(e){r
   else if(p&&typeof p==="object"){ const src=p.streams&&typeof p.streams==="object"?p.streams:p; for(const [k,v] of Object.entries(src)){ o[k]=Array.isArray(v)?v:(v&&Array.isArray(v.data)?v.data:undefined);} }
   return o; }
 const sportOf=a=>{const t=String(a.sport_type||a.type||"").toLowerCase(); if(/run|trail/.test(t)) return "course"; if(/weight|workout|crossfit|strength/.test(t)) return "muscu"; if(/ride|cycl|bike|velo/.test(t)) return "velo"; return null;};
-function stravaMsg(t,cls){const el=document.getElementById("stravaMsg"); if(el){el.className="alert "+(cls||"good");el.innerHTML=t;}}
+function stravaMsg(t,cls){const el=document.getElementById("stravaMsg"); if(el){el.className="alert syncmsg "+(cls||"good");el.innerHTML=t;}}
 async function syncStrava(manual){
   const ns=await getMcp();
   if(!ns){ stravaMsg("<b>Connecteurs indisponibles ici</b>Ouvre l’appli depuis claude.ai pour synchroniser Strava, ou importe tes fichiers ci-dessous.","warn"); return; }
@@ -3151,6 +3285,7 @@ const VIEWS=["aujourdhui","semaine","mois","saison","seances","suivi","bilan","r
 function show(v){if(!VIEWS.includes(v))v="aujourdhui";
   document.querySelectorAll("section.view").forEach(s=>s.classList.toggle("on",s.id==="v-"+v));
   document.querySelectorAll("#tabs button[data-v]").forEach(b=>b.setAttribute("aria-selected",b.dataset.v===v));
+  const gh=document.getElementById("garminHelpCard"); if(gh) gh.style.display=["aujourdhui","semaine","seances"].includes(v)?"":"none";
   const mb=document.getElementById("moreBtn"), sec=["saison","seances","bilan","reglages","preuves"].includes(v);
   document.getElementById("tabs").classList.remove("open"); mb.setAttribute("aria-expanded","false"); mb.setAttribute("aria-selected",sec);
   window.scrollTo({top:0});}
@@ -3158,7 +3293,7 @@ document.querySelectorAll("#tabs button[data-v]").forEach(b=>b.onclick=()=>{loca
 document.getElementById("moreBtn").onclick=e=>{e.stopPropagation(); const t=document.getElementById("tabs"), o=t.classList.toggle("open"); e.currentTarget.setAttribute("aria-expanded",o);};
 document.addEventListener("click",e=>{const t=document.getElementById("tabs"); if(t.classList.contains("open")&&!t.contains(e.target)){t.classList.remove("open");document.getElementById("moreBtn").setAttribute("aria-expanded","false");}});
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){document.getElementById("tabs").classList.remove("open");document.getElementById("moreBtn").setAttribute("aria-expanded","false");}});
-window.addEventListener("hashchange",()=>show(location.hash.slice(1)));
+window.addEventListener("hashchange",()=>{const [v,sub]=location.hash.slice(1).split("/"); show(v); if(v==="suivi"&&sub) setSuiviSub(sub);});
 
 function renderAllNow(){(S.sessions||[]).forEach(x=>{try{applyTE(x);}catch(e){}});renderToday();renderWeek();renderMonth();renderSeason();renderLib();renderSuivi();renderHistory();renderBilan();renderSettings();renderEvidence();}
 // Rendu différé et regroupé : évite de reconstruire un tableau pendant qu'un de ses champs perd le focus
@@ -3187,7 +3322,7 @@ document.getElementById("expBtn").onclick=async()=>{const m=document.getElementB
   catch(e){document.getElementById("impTxt").value=t;m.textContent="Copie automatique refusée : le texte est dans le cadre ci-dessus, sélectionne-le et copie-le.";}};
 document.getElementById("impBtn").onclick=()=>{const m=document.getElementById("expMsg");try{const o=JSON.parse(document.getElementById("impTxt").value);if(!o.settings)throw 0;S=merge(o);save();buildLib();renderAll();m.textContent="Données importées.";}catch(e){m.textContent="Texte non reconnu : colle un export complet.";}};
 
-show(location.hash.slice(1));
+(()=>{const [v,sub]=location.hash.slice(1).split("/"); show(v); if(v==="suivi"&&sub) setSuiviSub(sub);})();
 buildLib(); fillCI(); renderAll();
 document.getElementById("stravaSync").onclick=()=>(S.settings.source||"garmin")==="garmin"?syncGarmin(true):syncStrava(true);
 const srcSel=document.getElementById("st_source"); srcSel.value=S.settings.source||"garmin"; srcSel.onchange=()=>{S.settings.source=srcSel.value;save();};
