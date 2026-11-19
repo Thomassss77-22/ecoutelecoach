@@ -833,7 +833,7 @@ const PHL={base:"Base",construction:"Construction",specifique:"Spécifique",affu
 const phColor=p=>getComputedStyle(document.documentElement).getPropertyValue("--ph-"+p).trim()||"#888";
 const PH={
   base:{keys:1,long:true,durab:false,gym:2,gymType:"M2",run:2,vol:1,sprints:true,prio:["tempo","seuil","vo2"],
-    tid:"≈ 75-80 % basse intensité · 15-20 % tempo (Z3) · ≤ 5 % au-dessus du seuil (pros : 70 / 25 / 4 %)",focus:"Volume aérobie, force maximale, sprints courts intégrés aux sorties d’endurance, une séance tempo ou seuil."},
+    tid:"≈ 75-80 % basse intensité · 15-20 % tempo (Z3) · ≤ 5 % au-dessus du seuil (pros : 70 / 25 / 4 %)",focus:"Volume aérobie, force maximale, sprints courts intégrés à une sortie d’endurance par semaine, une séance clé qui tourne entre tempo, seuil et PMA, et des blocs tempo dans 2 sorties longues sur 3."},
   construction:{keys:2,long:true,durab:false,gym:2,gymType:"M2",run:1,vol:1,sprints:true,prio:["vo2","seuil","court"],
     tid:"≈ 75 % basse intensité · 15-20 % tempo-seuil · 5-10 % au-dessus du seuil",focus:"PMA (VO2max), seuil, intervalles courts ; force lourde maintenue à 2 séances."},
   specifique:{keys:2,long:true,durab:true,gym:1,gymType:"M3",run:1,vol:1,sprints:false,prio:["anaerobie","court","sprint","vo2"],
@@ -888,9 +888,9 @@ function buildLib(){
       obj:"Seuil et tolérance aux variations de rythme (relances au-dessus du seuil).",int:"Alternance "+W(105)+"-"+W(110)+" W / "+W(90)+"-"+W(95)+" W · FC "+hr(88,94)+" · RPE 7-8",
       court:"Échauffement 15 min, 2 blocs de 9 min = 3 × (1 min à "+W(108)+" W / 2 min à "+W(92)+" W), 5 min entre blocs.",
       long:"Échauffement 20 min, 3 blocs de 12 min = 4 × (1 min / 2 min), 5 min entre blocs, Z2 en fin."},
-    {id:"V1",nom:"PMA longue (VO2max)",cat:"vo2",sport:"velo",key:true,phases:["construction","specifique","competition","affutage"],dS:60,dL:100,
+    {id:"V1",nom:"PMA longue (VO2max)",cat:"vo2",sport:"velo",key:true,phases:["base","construction","specifique","competition","affutage"],dS:60,dL:100,
       obj:"Puissance au VO2max, efforts de 3 à 6 min (côtes, échappées).",int:z(108,115)+" · RPE 9 · FC > "+Math.round(fc*.92)+" bpm en fin de répétition",
-      court:"Échauffement 15 min progressif, 4 × 3 min à "+W(110)+"-"+W(115)+" W récup 3 min, retour 10 min.",
+      court:"Échauffement 15 min progressif, 4 × 4 min à "+W(108)+"-"+W(115)+" W récup 3 min, retour 10 min. 16 min au total à PMA : en dessous de 12-15 min, le stimulus est trop faible.",
       long:"Échauffement 20 min, 5-6 × 4 min à "+W(108)+"-"+W(115)+" W récup 3-4 min, retour + Z2."},
     {id:"V2",nom:"30/15 (protocole Rønnestad)",cat:"court",sport:"velo",key:true,phases:["construction","specifique","competition","affutage"],dS:50,dL:90,
       obj:"Temps maximal au-dessus de 90 % du VO2max ; tout le profil de puissance.",int:"30 s ≈ "+W(115)+"-"+W(125)+" W (≈ ta PMA de test rampe) / 15 s ≈ "+W(50)+" W · effort réglé au ressenti comme dans l’étude : la plus haute puissance que tu peux tenir de façon régulière sur toute la série, RPE 9 sur les dernières répétitions. Si la 1re série se termine en perdition, baisse de 5 %.",
@@ -993,9 +993,9 @@ function prioFor(phase,mon){
 }
 function pickKey(prio,excludeCats,widx,phase){
   // Rotation hebdomadaire : en construction, spécifique et compétition, la priorité tourne pour ne laisser aucune qualité sans stimulus plusieurs semaines.
-  // En base : alternance tempo / seuil, la PMA restant ponctuelle.
+  // En base : tempo, seuil et PMA tournent (une PMA toutes les 3 semaines, pour ne pas perdre le haut de gamme pendant 3 mois).
   let order=prio;
-  if(prio.length>1){const n=phase==="base"?2:prio.length;const k=((widx%n)+n)%n;const head=prio.slice(0,n);order=head.slice(k).concat(head.slice(0,k),prio.slice(n));}
+  if(prio.length>1){const n=prio.length;const k=((widx%n)+n)%n;const head=prio.slice(0,n);order=head.slice(k).concat(head.slice(0,k),prio.slice(n));}
   const cats=order.filter(c=>!excludeCats.includes(c));
   const cat=(cats[0]||prio[0]); if(!cat) return null;
   const arr=CAT[cat].filter(id=>!phase||!LIB[id]||LIB[id].phases.includes(phase)); const list=arr.length?arr:CAT[cat]; return list[((widx%list.length)+list.length)%list.length];
@@ -1116,7 +1116,7 @@ function buildWeek(mon,availOverride,opt={}){
     const minL=deload?120:150;
     const c=days.filter(d=>free(d)&&d.avail>=minL).sort((a,b)=>((b.i>=5)-(a.i>=5))||(b.avail-a.avail));
     if(c.length&&!["voyage","maladie"].includes(tag)){const d=c[0]; const dur=P.durab&&!deload&&!shock&&!tag&&keys>(due?1:0)&&nbOk(d.i)&&d.avail>=150;
-      const tempo=!dur&&!deload&&!shock&&["base","construction"].includes(phase)&&widx%2===1;
+      const tempo=!dur&&!deload&&!shock&&(phase==="base"?((widx%3)+3)%3!==0:phase==="construction"&&widx%2===1);
       d.main={id:dur?"D1":tempo?"E5":"E4"}; if(dur){keys--;usedCats.push("durabilite");}}
     else if(!["voyage","maladie"].includes(tag)) warns.push("Aucun créneau d’au moins "+fmtMin(minL)+" : pas de sortie longue cette semaine. La durabilité en pâtit ; ne compense pas par plus d’intensité.");
   }
@@ -1147,14 +1147,14 @@ function buildWeek(mon,availOverride,opt={}){
   }
   // course à pied
   for(let r=0;r<run;r++){
-    const d=days.slice().sort((a,b)=>a.avail-b.avail).find(d=>free(d)&&d.avail>=25&&d.avail<120&&!nextKey(d.i)&&!(d.i>0&&(days[d.i-1].gym||days[d.i-1].pastGym))&&!(d.i>0&&days[d.i-1].main&&LIB[days[d.i-1].main.id]&&LIB[days[d.i-1].main.id].sport==="course"));
+    const d=days.slice().sort((a,b)=>a.avail-b.avail).find(d=>free(d)&&d.avail>=25&&!nextKey(d.i)&&!(d.i>0&&(days[d.i-1].gym||days[d.i-1].pastGym))&&!(d.i>0&&days[d.i-1].main&&LIB[days[d.i-1].main.id]&&LIB[days[d.i-1].main.id].sport==="course"));
     if(d){d.main={id:phase==="base"&&r===1?"C2":"C1"}; if(!["base","transition"].includes(phase)){d.main.cap=40;d.notes.push("footing limité à 40 min : en période de qualité, l’impact de la course ne doit pas entamer les séances vélo");}}
   }
   // reste
   days.forEach(d=>{
     if(d.main) return;
     if(tag==="maladie"){d.main={id:d.avail>=30?"E1":"R0",cap:45};return;}
-    if(d.avail>=45) d.main={id:(P.sprints&&!deload&&!tag&&!nextKey(d.i)&&!days.some(x=>(x.main&&x.main.id==="E3")||(x.past&&(x.done||[]).some(s=>["E3","SP2"].includes(s.id)||(s.an&&s.an.id==="E3")))))?"E3":"E2"};
+    if(d.avail>=45) d.main={id:(P.sprints&&!deload&&!tag&&!nextKey(d.i)&&!days.some(x=>(x.main&&["SP2","A1","A2"].includes(x.main.id))||(x.main&&x.main.id==="E3")||(x.past&&(x.done||[]).some(s=>["E3","SP2"].includes(s.id)||(s.an&&s.an.id==="E3")))))?"E3":"E2"};
     else if(d.avail>=30) d.main={id:"E1"}; else d.main={id:"R0"};
   });
   if(!days.some(d=>d.main.id==="R0"&&!(d.past&&d.done.length))){
@@ -1185,6 +1185,9 @@ function buildWeek(mon,availOverride,opt={}){
   if(LC&&LC.ramp&&!shock){
     if(deload){ const ref=LC.prevW||LC.chronic||0, r=ref*.6*tagFactor(mon); if(ref&&r<cap){cap=Math.max(120,r);capWhy="semaine allégée : 60 % de la semaine de charge précédente ("+fmtMin(Math.round(ref))+")";} }
     else { const r=LC.ramp*tagFactor(mon); if(r<cap){cap=r;capWhy="progression : +15 % au plus sur "+(LC.k>0?"le volume prévu des semaines précédentes":"ton volume récent")+" ("+fmtMin(Math.round(Math.max(LC.chronic,LC.prevW||0)))+")";} } }
+  if(phase==="affutage"&&!opt.phase){ let ref=0; for(let j=1;j<=8;j++){ const m=addDays(mon,-7*j), ph=phaseFor(m); if(ph==="affutage"||isDeload(m,ph)) continue; ref=m<mondayOf(TODAY)?S.sessions.filter(x=>x.date>=m&&x.date<=addDays(m,6)).reduce((a,x)=>a+(+x.dur||0),0):weekVol(m); if(ref) break; }
+    const raceWk=races.some(r=>r.prio!=="C"&&r.date>=mon&&r.date<=addDays(mon,6)), f=raceWk?.45:.65;
+    if(ref&&ref*f<cap){ cap=Math.max(120,ref*f); capWhy="affûtage : "+(raceWk?"−55 %":"−35 %")+" par rapport à ta dernière semaine de charge ("+fmtMin(Math.round(ref))+"), intensité conservée (Bosquet 2007 : −41 à −60 % sur 2 semaines)"; } }
   if(LC&&LC.reprise&&tag!=="maladie"){const r=Math.max(120,(LC.chronic||cap)*.6); if(r<cap){cap=r;capWhy="reprise : 60 % du volume habituel";}}
   if(LC&&LC.fatigue&&!shock){cap*=.85;capWhy=(capWhy?capWhy+", ":"")+"fatigue : −15 %";}
   if(LC&&LC.k<=1&&!S.sessions.some(s=>s.date<TODAY)) warns.push("Aucune séance enregistrée : le volume est fondé sur ton volume max, pas sur ton entraînement réel. Importe tes dernières sorties (Suivi et alertes) pour que la progression parte de ton niveau actuel.");
@@ -1192,7 +1195,8 @@ function buildWeek(mon,availOverride,opt={}){
   let total=days.reduce((s,d)=>s+d.dur+(d.gymDur||0)+(d.addDur||0),0);
   if(total>cap){
     const flex=days.filter(d=>["E2","E3","E4","E5","C1","C2","E1"].includes(d.main.id)&&!d.pinned);
-    for(const d of flex.sort((a,b)=>b.dur-a.dur)){ if(total<=cap) break; const min=LIB[d.main.id].dS; const cut=Math.min(d.dur-min,total-cap); if(cut>0){d.dur-=cut;total-=cut;d.notes.push("raccourcie pour respecter le volume max");} }
+    // affûtage : on raccourcit les sorties (jusqu'à 40 min) avant d'en supprimer, pour garder la fréquence (Bosquet 2007)
+    for(const d of flex.sort((a,b)=>b.dur-a.dur)){ if(total<=cap) break; const min=phase==="affutage"?Math.min(40,LIB[d.main.id].dS):LIB[d.main.id].dS; const cut=Math.min(d.dur-min,total-cap); if(cut>0){d.dur-=cut;total-=cut;d.notes.push("raccourcie pour respecter le volume max");} }
     for(const d of days.filter(d=>["E1","E2","E3","C1","C2"].includes(d.main.id)&&!d.gym&&!d.pinned).sort((a,b)=>a.dur-b.dur)){
       if(total<=cap) break; total-=d.dur; d.notes.push("transformée en repos pour respecter le volume max"); d.main={id:"R0"}; d.dur=0;
     }
@@ -2125,7 +2129,7 @@ async function dataImport(f){ const m=document.getElementById("dataMsg");
   }catch(e){ m.textContent="Ce fichier n’est pas une copie de données Écoute le Coach."; } }
 setTimeout(()=>{ if(!(window.claude&&typeof window.claude.use==="function")) document.documentElement.classList.add("standalone"); },1500);
 // nouvelle version publiée : le navigateur garde la page en cache ~10 min ; on vérifie et on propose de recharger
-const BUILD="20261119115759";
+const BUILD="20261119141643";
 async function checkUpdate(){ if(window.claude&&typeof window.claude.use==="function") return; if(!/^https?:/.test(location.protocol)) return;
   try{ const t=await (await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"})).text(); const m=t.match(/const BUILD="([^"]+)"/);
     if(m&&m[1]!==BUILD&&!document.getElementById("updBar")){ const d=document.createElement("div"); d.id="updBar"; d.className="updbar";
@@ -3054,7 +3058,7 @@ function wkSteps(id,variant,dur){
     case "S1": return L?[WU(20),{rep:4,steps:[ON(m(10),95,100,"Seuil 10 min"),RC(m(5))]},CD(15)]
                        :[WU(9),{rep:3,steps:[ON(60,105,110,"Ouverture 1 min"),RC(60)]},{rep:3,steps:[ON(m(8),95,100,"Seuil 8 min"),RC(m(4))]},CD(10)];
     case "S2": { const nb=L?3:2, k=L?4:3, out=[WU(L?20:15)]; for(let b=0;b<nb;b++){out.push({rep:k,steps:[ON(60,105,110,"Over 1 min"),ON(120,90,95,"Under 2 min")]}); if(b<nb-1) out.push(RC(m(5)));} out.push(CD(10)); return L?fill(out,D):out; }
-    case "V1": return L?fill([WU(20),{rep:6,steps:[ON(m(4),108,115,"PMA 4 min"),RC(m(3.5))]},CD(10)],D):[WU(15),{rep:4,steps:[ON(m(3),110,115,"PMA 3 min"),RC(m(3))]},CD(10)];
+    case "V1": return L?fill([WU(20),{rep:6,steps:[ON(m(4),108,115,"PMA 4 min"),RC(m(3.5))]},CD(10)],D):[WU(15),{rep:4,steps:[ON(m(4),108,115,"PMA 4 min"),RC(m(3))]},CD(10)];
     case "V2": { const nb=L?3:2,out=[WU(L?20:15)]; for(let b=0;b<nb;b++){out.push({rep:13,steps:[ON(30,115,125,"30 s régulier"),ON(15,45,55,"15 s")]}); if(b<nb-1) out.push(RC(180,"Récup 3 min"));} out.push(CD(10)); return L?fill(out,D):out; }
     case "V3": { const nb=L?3:2,k=L?10:8,out=[WU(L?20:15)]; for(let b=0;b<nb;b++){out.push({rep:k,steps:[ON(40,115,125,"40 s"),ON(20,45,55,"20 s")]}); if(b<nb-1) out.push(RC(300,"Récup 5 min"));} out.push(CD(10)); return L?fill(out,D):out; }
     case "A1": { const wu=[WU(14),{rep:2,steps:[SPR(10),RC(170)]}];
