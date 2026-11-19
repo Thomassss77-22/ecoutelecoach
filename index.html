@@ -1076,14 +1076,40 @@ const BEN=["","recovery","base","tempo","threshold","vo2max","anaerobic_capacity
 const BEN_FR={recovery:"récupération",base:"base aérobie",tempo:"tempo",threshold:"seuil",vo2max:"VO2max",anaerobic_capacity:"capacité anaérobie",sprint:"sprint"};
 function benefitRank(s){ if(s.benefit&&BEN.indexOf(String(s.benefit).toLowerCase())>0) return BEN.indexOf(String(s.benefit).toLowerCase());
   return 0; }
-function teHard(s){ return benefitRank(s)>=4||(+s.teAn||0)>=2.5||(+s.teA||0)>=4; }
+/* Training Effect estimé quand Garmin ne le fournit pas (fichiers .tcx/.gpx, licence gratuite, autres compteurs).
+   Aérobie : charge type EPOC cumulée minute par minute à partir de la FC en % de réserve cardiaque (Karvonen),
+   qui monte d'autant plus vite que l'intensité est haute et redescend quand on roule très facile ; le pic est ramené
+   sur l'échelle 0-5 de Garmin. Anaérobie : efforts au-dessus de la PMA (puissance > 120 % FTP) ou, sans capteur,
+   accélérations franches et temps à FC très haute. Ce n'est pas l'algorithme Firstbeat de Garmin : un ordre de grandeur. */
+function restHR(){ const v=Object.keys(S.checkins||{}).filter(d=>d>=addDays(TODAY,-60)).map(d=>+S.checkins[d].rhr).filter(x=>x>=30&&x<=90).sort((a,b)=>a-b);
+  return v.length?v[Math.floor(v.length/2)]:50; }
+function estTE(s){
+  const an=s.an; if(!an) return null; const st=S.settings, mx=+st.fcmax||190, rest=restHR(), E0=(st.level||"amateur")==="amateur"?130:165;
+  let a=null, b=null;
+  const h=(an.curve||[]).map(r=>r&&r[1]>0?r[1]:null);
+  if(an.hasH!==false&&h.length>=10&&h.filter(x=>x).length>=h.length*.5){
+    let E=0,pk=0; h.forEach(v=>{ const x=v?Math.max(0,Math.min(1,(v-rest)/Math.max(40,mx-rest))):0;
+      if(x>=.45) E=E*Math.exp(-1/200)+Math.exp(7*(x-.6)); else E*=Math.exp(-1/25); if(E>pk) pk=E; });
+    a=5*(1-Math.exp(-Math.pow(pk/E0,.6))); }
+  if(an.zp){ const L=an.zp[5]/60*.4+an.zp[6]/60*3; b=5*(1-Math.exp(-L/6)); }
+  else if(a!=null){ const spr=an.blocks&&an.blocks.list?an.blocks.list.filter(x=>x.d<=30&&/effort/.test(x.int||"")).length:0;
+    const L=.08*(an.accel||0)+.25*spr+(an.zh?an.zh[4]/60*.5:0); b=5*(1-Math.exp(-L/6)); }
+  if(a==null&&b==null) return null;
+  return {a:a==null?null:Math.round(a*10)/10, an:b==null?null:Math.round(b*10)/10};
+}
+function applyTE(s){ if(!s||!s.an) return; if(s.teA!=null&&!s.teEst||s.teAn!=null&&!s.teEst) return;
+  const t=estTE(s); if(!t){ if(s.teEst){delete s.teA;delete s.teAn;delete s.teEst;} return; }
+  s.teA=t.a; s.teAn=t.an; s.teEst=true; }
+const teTxt=s=>"Aéro "+(s.teA!=null?fx(+s.teA,1):"—")+" · Anaéro "+(s.teAn!=null?fx(+s.teAn,1):"—")+(s.teEst?" (estimé)":"");
+// estimation : seuils un peu plus hauts pour ne pas classer « dure » une sortie à cause d'une approximation
+function teHard(s){ const e=!!s.teEst; return benefitRank(s)>=4||(+s.teAn||0)>=(e?3:2.5)||(+s.teA||0)>=(e?4.2:4); }
 function isKeyLog(s){return s.id==="RACE"||(LIB[s.id]&&LIB[s.id].key)||teHard(s)}
 // ce que la séance prévue devait produire, comparé à ce que Garmin a mesuré
 const EXP_BEN={E1:1,E2:2,E3:2,E4:2,E5:3,D1:3,T1:3,S1:4,S2:4,V1:5,V2:5,V3:5,A1:6,A2:6,SP2:7,P2:5,P3:5};
 function teCheck(planned,s){
   const ex=EXP_BEN[planned]; if(!ex||(s.teA==null&&s.teAn==null&&!s.benefit)) return null;
   const b=benefitRank(s), ta=+s.teA||0, tn=+s.teAn||0, lab=b?BEN_FR[BEN[b]]:null;
-  const te="TE aérobie "+fx(ta,1)+", anaérobie "+fx(tn,1)+(lab?", effet principal : "+lab:"");
+  const te="TE aérobie "+fx(ta,1)+", anaérobie "+fx(tn,1)+(s.teEst?" estimés":"")+(lab?", effet principal : "+lab:"");
   if(ex<=2){ if(b>=4||tn>=2) return ["warn","Plus intense que prévu pour une séance facile ("+te+"). Elle comptera comme une séance dure."];
     if(ex===1&&ta>=3) return ["warn","Récupération trop appuyée ("+te+")."]; return ["good","Intensité conforme ("+te+")."]; }
   if(ex>=5&&(b?b<=3:tn<1&&ta<3.5)) return ["warn","Moins intense que prévu ("+te+") : répétitions probablement en dessous de la cible, ou récupérations trop longues."];
@@ -1528,7 +1554,7 @@ function renderSuivi(){
   const days=[...Array(28)].map((_,i)=>addDays(TODAY,i-27));
   document.getElementById("hrvChart").innerHTML=svgLines([{n:"VFC (ms)",c:"var(--good)",v:days.map(d=>S.checkins[d]&&S.checkins[d].hrv?+S.checkins[d].hrv:null)},{n:"FC repos (bpm)",c:"var(--bad)",v:days.map(d=>S.checkins[d]&&S.checkins[d].rhr?+S.checkins[d].rhr:null)}]);
   const H=S.sessions.slice().sort((a,b)=>a.date<b.date?1:-1).slice(0,21);
-  document.getElementById("histTable").innerHTML=H.length?`<table><thead><tr><th>Date</th><th>Séance</th><th>Durée</th><th>NP / FC</th><th>Training Effect</th><th>RPE</th><th>Charge</th><th></th></tr></thead><tbody>${H.map(s=>{const i=S.sessions.indexOf(s);return `<tr><td>${fmtD(s.date)}${s.src?"<br><span class='tag'>"+(s.src==="strava"?"Strava":s.src==="garmin"?"Garmin":"fichier")+"</span>":""}</td><td>${esc(s.id==="RACE"?"Course":(LIB[s.id]||{nom:s.id}).nom)}${s.note?"<br><span class='small muted'>"+esc(s.note)+"</span>":""}</td><td class="num">${fmtMin(+s.dur||0)}</td><td class="num small">${s.np?s.np+" W · IF "+s.ifv+(s.tss?" · TSS "+s.tss:""):""}${s.hr?"<br>"+s.hr+" bpm":""}</td><td class="small">${s.teA!=null||s.teAn!=null?"Aéro "+fx(+s.teA||0,1)+" · Anaéro "+fx(+s.teAn||0,1):"—"}${s.benefit?"<br>"+esc(BEN_FR[s.benefit]||s.benefit):""}${s.gLoad?"<br>charge Garmin "+s.gLoad:""}</td><td><input type="number" min="0" max="10" data-rpe="${i}" value="${s.rpe===""?"":s.rpe}" style="width:64px" aria-label="RPE">${s.rpeEst?"<br><span class='small muted'>estimé</span>":""}</td><td class="num">${Math.round((+s.dur||0)*(s.rpe===""?3:+s.rpe))}</td><td><button class="btn small" data-an="${i}" type="button" aria-expanded="${s===anSel}">${s===anSel?"Fermer":"Analyse"}</button> <button class="btn ghost small" data-del="${i}" type="button">Supprimer</button></td></tr>${s===anSel?`<tr><td colspan="8" style="background:var(--bg)">${reviewHTML(s)}</td></tr>`:""}`}).join("")}</tbody></table>`:`<p class="small muted">Aucune séance enregistrée.</p>`;
+  document.getElementById("histTable").innerHTML=H.length?`<table><thead><tr><th>Date</th><th>Séance</th><th>Durée</th><th>NP / FC</th><th>Training Effect</th><th>RPE</th><th>Charge</th><th></th></tr></thead><tbody>${H.map(s=>{const i=S.sessions.indexOf(s);return `<tr><td>${fmtD(s.date)}${s.src?"<br><span class='tag'>"+(s.src==="strava"?"Strava":s.src==="garmin"?"Garmin":"fichier")+"</span>":""}</td><td>${esc(s.id==="RACE"?"Course":(LIB[s.id]||{nom:s.id}).nom)}${s.note?"<br><span class='small muted'>"+esc(s.note)+"</span>":""}</td><td class="num">${fmtMin(+s.dur||0)}</td><td class="num small">${s.np?s.np+" W · IF "+s.ifv+(s.tss?" · TSS "+s.tss:""):""}${s.hr?"<br>"+s.hr+" bpm":""}</td><td class="small">${s.teA!=null||s.teAn!=null?teTxt(s):"—"}${s.benefit?"<br>"+esc(BEN_FR[s.benefit]||s.benefit):""}${s.gLoad?"<br>charge Garmin "+s.gLoad:""}</td><td><input type="number" min="0" max="10" data-rpe="${i}" value="${s.rpe===""?"":s.rpe}" style="width:64px" aria-label="RPE">${s.rpeEst?"<br><span class='small muted'>estimé</span>":""}</td><td class="num">${Math.round((+s.dur||0)*(s.rpe===""?3:+s.rpe))}</td><td><button class="btn small" data-an="${i}" type="button" aria-expanded="${s===anSel}">${s===anSel?"Fermer":"Analyse"}</button> <button class="btn ghost small" data-del="${i}" type="button">Supprimer</button></td></tr>${s===anSel?`<tr><td colspan="8" style="background:var(--bg)">${reviewHTML(s)}</td></tr>`:""}`}).join("")}</tbody></table>`:`<p class="small muted">Aucune séance enregistrée.</p>`;
   document.querySelectorAll("[data-an]").forEach(b=>b.onclick=()=>{const sx=S.sessions[+b.dataset.an]; anSel=anSel===sx?null:sx; renderSuivi(); const nb=document.querySelector(`[data-an="${b.dataset.an}"]`); if(nb&&anSel) nb.closest("tr").scrollIntoView({behavior:"smooth",block:"start"});});
   document.querySelectorAll("[data-rpe]").forEach(el=>el.onchange=()=>{const s=S.sessions[+el.dataset.rpe];s.rpe=el.value===""?"":+el.value;s.rpeEst=false;save();renderAll();});
   if(S.sessions.some(s=>s.src==="garmin")) document.getElementById("histTable").insertAdjacentHTML("beforeend",`<p class="small muted">📊 Data from Garmin · ${GARMIN_FOOT}</p>`);
@@ -1581,7 +1607,7 @@ function renderEvidence(){
     ["Interférence","Pas d’effet sur force maximale et hypertrophie ; explosivité réduite si même séance que l’endurance.","Modéré à fort","Schumann 2022 ; Lundberg 2022","Muscu les jours de séance clé, au moins 3 h après le vélo."],
     ["Course à pied","Aucun essai sur la performance d’un cycliste.","Pas de preuve","—","Endurance facile, plafonnée, jamais la veille d’une séance clé."],
     ["Suivi de la charge","Ratio aigu/chronique invalidé comme prédicteur ; CTL/TSB descriptifs ; monotonie élevée associée aux maladies banales ; entraînement guidé par la VFC (ln rMSSD sur 7 jours, zone ± 0,5 écart-type) : autant de progrès avec moins de séances dures.","Faible à modéré","Impellizzeri 2020, 2021 ; Foster 1998 ; Javaloyes 2019 ; Manresa-Rocamora 2021 ; Düking 2021","Pas de ratio aigu/chronique dans l’appli ; VFC sur 7 jours, FC de repos, sommeil, monotonie et RPE comme garde-fous. Le plan s’ajuste : fatigue sur 7 jours → une séance clé de moins et −15 % de volume ; reprise après 10 jours sans séance → 1 clé, 60 % du volume habituel."],
-    ["Training Effect Garmin","Indicateurs propriétaires Firstbeat (Garmin) fondés sur l’EPOC estimé à partir de la FC. Validation indépendante limitée ; utiles pour comparer tes séances entre elles, pas comme mesure absolue.","Faible","Livre blanc Firstbeat (non évalué par des pairs)","Utilisé en complément : une séance avec TE anaérobie ≥ 2,5, TE aérobie ≥ 4 ou un effet principal seuil, VO2max, anaérobie ou sprint compte comme séance dure (règle des 48 h). Le bilan compare l’effet mesuré à la séance prévue. Le RPE saisi sur le compteur remplace le RPE estimé."],
+    ["Training Effect Garmin","Indicateurs propriétaires Firstbeat (Garmin) fondés sur l’EPOC estimé à partir de la FC. Validation indépendante limitée ; utiles pour comparer tes séances entre elles, pas comme mesure absolue.","Faible","Livre blanc Firstbeat (non évalué par des pairs)","Utilisé en complément : une séance avec TE anaérobie ≥ 2,5, TE aérobie ≥ 4 ou un effet principal seuil, VO2max, anaérobie ou sprint compte comme séance dure (règle des 48 h). Le bilan compare l’effet mesuré à la séance prévue. Le RPE saisi sur le compteur remplace le RPE estimé. Sans Training Effect Garmin, l’appli l’estime : aérobie par une charge de type EPOC calculée minute par minute sur la FC en % de réserve cardiaque (FC de repos médiane de tes check-ins, FC max des réglages), anaérobie par le temps au-dessus de 120 % FTP ou, sans capteur, les accélérations franches et le temps à FC très haute. Ordre de grandeur seulement, remplacé dès que Garmin fournit sa valeur."],
     ["Progression du volume","Aucun seuil de progression n’est validé (la règle des 10 % n’a pas réduit les blessures chez des coureurs débutants, Buist 2008) ; les hausses brutales (> 30 % en 2 semaines) sont associées à plus de blessures en course à pied (Nielsen 2014). Données quasi absentes en cyclisme.","Faible","Buist 2008 ; Nielsen 2014","Choix prudent de l’appli, pas un seuil prouvé : le volume prévu ne dépasse pas ton volume réel des 4 dernières semaines + 15 % par semaine (plancher 3 h), en plus de ton volume max."],
     ["Nutrition à l’effort","Jusqu’à 90 g/h de glucides mixtes au-delà de 2 h 30 ; au-delà de 90 g/h, pas de bénéfice démontré. Risque de REDs.","Fort (principe), modéré (doses)","Jeukendrup 2014 ; Thomas 2016 ; Podlogar 2022 ; Mountjoy 2023","80-90 g/h en course, entraînés sur les sorties longues ; 10-12 g/kg/j pendant 36-48 h avant un objectif."],
     ["Sommeil","Souvent insuffisant chez les sportifs ; besoin individuel.","Consensus d’experts","Walsh 2021","Alerte sous 6 h ; priorité au sommeil sur l’intensité."],
@@ -1915,18 +1941,19 @@ function addImported(rec){
   let dup=(rec.ext&&S.sessions.find(s=>s.ext===rec.ext))||S.sessions.find(s=>s.date===rec.date&&s.start&&rec.start&&Math.abs(s.start-rec.start)<300);
   // séance saisie à la main le même jour (sans heure) : même sport et durée proche → c'est la même sortie
   if(!dup) dup=S.sessions.find(s=>s.date===rec.date&&!s.start&&sp(s)===sp(rec)&&Math.abs((+s.dur||0)-rec.dur)<=Math.max(15,rec.dur*.25));
-  if(dup){ const ser=rec._ser; delete rec._ser; const r=mergeInto(dup,rec); if(ser){dup.an=analyzeSeries(dup,ser); if(dup.src&&dup.src!=="manuel"&&dup.an.id) dup.id=dup.an.id; return "merged";} return r?"merged":false; }
+  if(dup){ const ser=rec._ser; delete rec._ser; const r=mergeInto(dup,rec); if(ser){dup.an=analyzeSeries(dup,ser); if(dup.src&&dup.src!=="manuel"&&dup.an.id) dup.id=dup.an.id; applyTE(dup); return "merged";} return r?"merged":false; }
   // la séance prévue ce jour-là prime si elle est cohérente avec ce qui a été fait
   const plan=buildWeek(mondayOf(rec.date),null,{asPlanned:true}); const pd=plan.days[diff(mondayOf(rec.date),rec.date)]; const pl=LIB[pd.main.id];
   const inf=LIB[rec.id];
   if(pl&&inf&&pl.sport===inf.sport&&!!pl.key===!!inf.key&&pd.main.id!=="R0") {rec.planned=pd.main.id; if(pl.key||["E2","E3","E4","E1"].includes(rec.id)) rec.id=pd.main.id;}
-  if(rec._ser){ try{rec.an=analyzeSeries(rec,rec._ser); if(rec.an.id&&rec.an.id!==rec.id) rec.id=rec.an.id;}catch(e){} delete rec._ser; }
+  if(rec._ser){ try{rec.an=analyzeSeries(rec,rec._ser); if(rec.an.id&&rec.an.id!==rec.id) rec.id=rec.an.id; applyTE(rec);}catch(e){} delete rec._ser; }
   S.sessions.push(rec); return true;
 }
 // même sortie reçue deux fois (synchro Garmin puis fichier .fit, par exemple) : on complète sans dupliquer
 const RICH=["kcal","km","gainSum","np","ifv","tss","avgW","kj","mmp","zmin","hz","hrPk","hr20","late300","hr","hrMax","teA","teAn","gLoad","feel","benefit"];
 function mergeInto(old,rec){
   let ch=false; const hadPower=!!(old.mmp||old.np);
+  if(old.teEst&&!rec.teEst&&(rec.teA!=null||rec.teAn!=null)){ delete old.teA; delete old.teAn; delete old.teEst; ch=true; }
   for(const k of RICH) if(rec[k]!=null&&(old[k]==null||(k==="mmp"&&!hadPower))){old[k]=rec[k];ch=true;}
   if(rec.rpeDevice&&(old.rpeEst||old.rpe===""||old.rpe==null)){old.rpe=rec.rpeDevice;old.rpeEst=false;ch=true;}
   if(!old.start&&rec.start){old.start=rec.start;ch=true;}
@@ -2238,7 +2265,7 @@ function reviewHTML(sx){
   const tiles=[tile("Durée",fmtMin(+sx.dur||0)+(sm.stopMin>=5?` <span class="small muted">(${fmtMin(sm.moveMin)} en mouvement)</span>`:"")),tile("Distance",sm.km!=null?fx(sm.km,1)+" km":sx.km?fx(sx.km,1)+" km":null),tile("Vitesse moy.",sm.kmh?fx(sm.kmh,1)+" km/h":null),
     tile("Dénivelé +",sx.gainSum!=null?sx.gainSum+" m":sm.gain!=null?sm.gain+" m":null),tile("FC moy. / max",sx.hr?sx.hr+" / "+(sx.hrMax||"—")+" bpm":null),tile("Puissance moy. / NP",sx.avgW?sx.avgW+" / "+(sx.np||"—")+" W":null),
     tile("IF · TSS",sx.np?fx(sx.ifv,2)+" · "+sx.tss:null),tile("Travail",sx.kj?sx.kj+" kJ":null),tile("Cadence moy.",sm.cad?sm.cad+" rpm":null),tile("Température",sm.temp?sm.temp[1]+" °C ("+sm.temp[0]+"-"+sm.temp[2]+")":null),
-    tile("Charge (TRIMP)",an.trimp??null),tile("Training Effect",sx.teA!=null?"Aéro "+fx(sx.teA,1)+" · Anaéro "+fx(+sx.teAn||0,1):null),tile("RPE",sx.rpe!==""&&sx.rpe!=null?sx.rpe+(sx.rpeEst?" (estimé)":""):null)].join("");
+    tile("Charge (TRIMP)",an.trimp??null),tile("Training Effect",sx.teA!=null||sx.teAn!=null?teTxt(sx):null),tile("RPE",sx.rpe!==""&&sx.rpe!=null?sx.rpe+(sx.rpeEst?" (estimé)":""):null)].join("");
   // 2. séance prévue / réalisée
   const repsT=an.set&&an.set.reps.length&&!an.set.spr?`<div class="tablewrap"><table><thead><tr><th>Rép.</th><th>Départ</th><th>Puissance</th><th>% FTP</th><th>FC moy. / max</th></tr></thead><tbody>${an.set.reps.map((r,i)=>`<tr><td>${i+1}</td><td>${r.t} min</td><td class="num">${r.w} W</td><td class="num">${Math.round(r.w/ftp*100)} %</td><td class="num">${r.hr?r.hr+" / "+r.hrMax+" bpm":"—"}</td></tr>`).join("")}</tbody></table></div>`:"";
   const hrEf=an.hrEfforts&&an.hrEfforts.length?`<div class="tablewrap"><table><thead><tr><th>Bloc à FC élevée</th><th>Départ</th><th>Durée</th><th>FC moy. / max</th></tr></thead><tbody>${an.hrEfforts.map((e,i)=>`<tr><td>${i+1}</td><td>${e.t} min</td><td>${fmtMin(e.d)}</td><td class="num">${e.hr} / ${e.hrMax} bpm</td></tr>`).join("")}</tbody></table></div><p class="small muted">Blocs d’au moins 2 min au-dessus de 85 % de ta FC max (${Math.round(fcRef()*.85)} bpm). Sans capteur, c’est le meilleur repère des efforts réellement faits.</p>`:"";
@@ -2295,7 +2322,7 @@ function reviewHTML(sx){
     ${sec("Meilleurs efforts",(ef?`<div class="tablewrap"><table><thead><tr><th>Durée</th><th>Puissance</th><th>W/kg</th><th>Comparaison</th></tr></thead><tbody>${ef}</tbody></table></div>`:"")+(hrb?`<p class="small">${hrb}</p>`:""))}
     ${sec("Fatigue au fil de la sortie",th+(an.dec!=null?`<p class="small">Découplage aérobie : ${fx(an.dec,1)} % (≤ 5 % : bonne endurance de base sur cette durée).</p>`:"")+(an.hrDrift!=null?`<p class="small">Dérive cardiaque entre les deux moitiés : ${an.hrDrift>=0?"+":""}${an.hrDrift} bpm.</p>`:"")+(sm.coastPct!=null?`<p class="small">Roue libre : ${sm.coastPct} % du temps${sm.cad?" · cadence moyenne en pédalant "+sm.cad+" rpm":""}.</p>`:""))}
     ${sec("Charge, récupération et nutrition",`<p class="small">${rec.map(esc).join("<br>")}</p>`)}
-    <p class="small muted">Analyse automatique à partir du fichier de la sortie et de la séance prévue ce jour-là. Repères : découplage ≤ 5 % (repère d’entraîneurs, Friel) ; TRIMP d’Edwards ; zones de FC en % de FC max ; glucides brûlés estimés selon l’intensité ; Training Effect Garmin en complément.${!sx.an?" Données seconde par seconde absentes : redépose le fichier pour avoir le graphique, les montées, les zones et les efforts.":""}</p></div>`;
+    <p class="small muted">Analyse automatique à partir du fichier de la sortie et de la séance prévue ce jour-là. Repères : découplage ≤ 5 % (repère d’entraîneurs, Friel) ; TRIMP d’Edwards ; zones de FC en % de FC max ; glucides brûlés estimés selon l’intensité ; Training Effect Garmin, ou estimé par l’appli (indiqué « estimé ») quand le fichier ne le contient pas.${!sx.an?" Données seconde par seconde absentes : redépose le fichier pour avoir le graphique, les montées, les zones et les efforts.":""}</p></div>`;
 }
 
 /* ---------- analyse de l'historique : où j'en suis ---------- */
@@ -2337,7 +2364,7 @@ function analyzeHistory(weeks){
   R.estRPE=ss.filter(x=>x.rpeEst).length/ss.length;
   const te=ss.filter(x=>x.teA!=null||x.teAn!=null);
   if(te.length){ const bc={}; te.forEach(x=>{const b=benefitRank(x); if(b) bc[BEN[b]]=(bc[BEN[b]]||0)+1;});
-    R.te={n:te.length, a:mean(te.map(x=>+x.teA||0)), an:mean(te.map(x=>+x.teAn||0)), hard:te.filter(teHard).length, ben:Object.entries(bc).sort((a,b)=>b[1]-a[1]),
+    R.te={n:te.length, est:te.filter(x=>x.teEst).length, a:mean(te.map(x=>+x.teA||0)), an:mean(te.map(x=>+x.teAn||0)), hard:te.filter(teHard).length, ben:Object.entries(bc).sort((a,b)=>b[1]-a[1]),
       gl:last4.length?mean(last4.map(w=>ss.filter(x=>mondayOf(x.date)===w.m).reduce((a,x)=>a+(+x.gLoad||0),0))):0}; }
   return R;
 }
@@ -2387,7 +2414,7 @@ function renderHistory(){
     ["Intensité",R.dist?`${p(R.dist.low)} basse (Z1-Z2) · ${p(R.dist.mid)} tempo (Z3) · ${p(R.dist.hi)} au-dessus du seuil, d’après la ${R.dist.src} (${fmtMin(R.dist.min)} de données).`:"Pas de données détaillées (puissance ou FC seconde par seconde)."],
     ["Fréquence cardiaque",(R.hrMax?`Plus haute valeur tenue 10 s : ${R.hrMax} bpm (réglage actuel ${S.settings.fcmax}). `:"")+(R.hr20?`Meilleure moyenne sur 20 min : ${R.hr20} bpm ; ta FC seuil (LTHR) est probablement un peu en dessous si cet effort n’était pas une course. Le test FC seuil la fixe précisément.`:"")||"Pas de FC enregistrée."],
     ["Puissance",R.mmp[1200]||R.mmp[300]?`5 s ${R.mmp[5]||"—"} W · 1 min ${R.mmp[60]||"—"} W · 5 min ${R.mmp[300]||"—"} W · 20 min ${R.mmp[1200]||"—"} W${R.ftpEst?" · FTP ≈ "+R.ftpEst+" W":""}${R.cp?" · CP (3 et 12 min) ≈ "+R.cp+" W":""}. Ce sont tes meilleurs efforts de la période, pas forcément tes maximums.`:"Pas de capteur de puissance sur la période."],
-    ...(R.te?[["Training Effect Garmin",`${R.te.n} séance(s) avec Training Effect : moyenne aérobie ${fx(R.te.a,1)}, anaérobie ${fx(R.te.an,1)} ; ${R.te.hard} séance(s) dure(s) selon Garmin.${R.te.ben.length?"<br>Effet principal : "+R.te.ben.map(([k,n])=>esc(BEN_FR[k]||k)+" "+n).join(" · "):""}${R.te.gl?"<br>Charge Garmin : "+Math.round(R.te.gl)+" par semaine en moyenne sur 4 semaines.":""}`]]:[]),
+    ...(R.te?[["Training Effect",`${R.te.n} séance(s) avec Training Effect${R.te.est?" (dont "+R.te.est+" estimé(s) par l’appli)":""} : moyenne aérobie ${fx(R.te.a,1)}, anaérobie ${fx(R.te.an,1)} ; ${R.te.hard} séance(s) dure(s).${R.te.ben.length?"<br>Effet principal : "+R.te.ben.map(([k,n])=>esc(BEN_FR[k]||k)+" "+n).join(" · "):""}${R.te.gl?"<br>Charge Garmin : "+Math.round(R.te.gl)+" par semaine en moyenne sur 4 semaines.":""}`]]:[]),
     ["Charge",`RPE × minutes : ${Math.round(R.load4)} en moyenne sur 4 semaines, ${Math.round(R.loadLast)} la semaine dernière.${R.estRPE>.5?" RPE majoritairement estimés depuis la puissance ou la FC : corrige-les dans l’historique pour une charge juste.":""}`]
   ];
   out.innerHTML=`<div class="tablewrap"><table><tbody>${rows.map(r=>`<tr><th style="width:150px">${r[0]}</th><td>${r[1]}</td></tr>`).join("")}</tbody></table></div>
@@ -2604,8 +2631,8 @@ function weekAdvice(R,mon){
   if(kc>=1&&comp>=.85&&comp<=1.15&&!tired) a.push(["good","Semaine réussie : séances clés faites, volume respecté, pas de fatigue anormale. La semaine prochaine suit le plan"+(nDl?" (semaine allégée prévue).":".")]);
   const teW=R.rows.filter(r=>r.te&&r.te[0]==="warn");
   const tooEasy=teW.filter(r=>(EXP_BEN[r.d.main.id]||0)>=4).length, tooHard=teW.filter(r=>(EXP_BEN[r.d.main.id]||9)<=2).length;
-  if(tooEasy) a.push(["warn",tooEasy+" séance(s) clé(s) moins intense(s) que prévu d’après le Training Effect Garmin : vérifie ta FTP (trop basse ?) ou tiens mieux les cibles des répétitions."]);
-  if(tooHard) a.push(["warn",tooHard+" sortie(s) facile(s) trop appuyée(s) d’après le Training Effect Garmin : reste en Z2 sur les sorties d’endurance, c’est ce qui permet de réussir les séances dures."]);
+  if(tooEasy) a.push(["warn",tooEasy+" séance(s) clé(s) moins intense(s) que prévu d’après le Training Effect : vérifie ta FTP (trop basse ?) ou tiens mieux les cibles des répétitions."]);
+  if(tooHard) a.push(["warn",tooHard+" sortie(s) facile(s) trop appuyée(s) d’après le Training Effect : reste en Z2 sur les sorties d’endurance, c’est ce qui permet de réussir les séances dures."]);
   if(R.nCI<4) a.push(["warn","Check-in rempli "+R.nCI+" jour(s) sur 7 : les alertes de fatigue sont peu fiables avec si peu de données."]);
   if(R.rpeAvg!=null&&R.rpeAvg>6&&R.W.phase==="base") a.push(["warn","RPE moyen de "+fx(R.rpeAvg,1)+" en phase de base : trop d’intensité, les sorties faciles doivent rester faciles."]);
   return a;
@@ -3058,7 +3085,7 @@ document.addEventListener("click",e=>{const t=document.getElementById("tabs"); i
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){document.getElementById("tabs").classList.remove("open");document.getElementById("moreBtn").setAttribute("aria-expanded","false");}});
 window.addEventListener("hashchange",()=>show(location.hash.slice(1)));
 
-function renderAllNow(){renderToday();renderWeek();renderMonth();renderSeason();renderLib();renderSuivi();renderHistory();renderBilan();renderSettings();renderEvidence();}
+function renderAllNow(){(S.sessions||[]).forEach(x=>{try{applyTE(x);}catch(e){}});renderToday();renderWeek();renderMonth();renderSeason();renderLib();renderSuivi();renderHistory();renderBilan();renderSettings();renderEvidence();}
 // Rendu différé et regroupé : évite de reconstruire un tableau pendant qu'un de ses champs perd le focus
 let renderTimer=null;
 function renderAll(){ if(renderTimer) return; renderTimer=setTimeout(()=>{renderTimer=null; renderAllNow();},0); }
