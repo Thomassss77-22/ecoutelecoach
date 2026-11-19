@@ -2745,7 +2745,9 @@ function strength(list){
 // début manuel des blocs : l'échauffement (ou le Z2 d'approche) part tout seul et dure jusqu'à l'appui sur Tour (Lap),
 // qui lance le premier bloc ; idem entre deux blocs (la récup qui les sépare attend l'appui pour lancer le bloc suivant)
 function lapOpen(steps){ if(!steps||S.settings.lapStart===0) return steps; const nb=x=>new TextEncoder().encode(x).length;
-  const tag=x=>{ const full=x.n+" · appui Tour"; const short=(x.int==="warmup"?"Échauffement":x.int==="rest"?"Récup":x.lo!=null&&x.lo<=75?"Z2":"Prêt")+" · appui Tour"; return Object.assign(x,{open:true,n:nb(full)<=31?full:short}); };
+  // le nom de l'étape porte la durée idéale : le compteur affiche le temps écoulé dans l'étape, il suffit de comparer
+  const tag=x=>{ const base=x.int==="warmup"?"Échauff.":x.int==="rest"?"Récup":x.lo!=null&&x.lo<=75?"Z2":"Prêt";
+    const mn=x.d?Math.round(x.d/60):0; return Object.assign(x,{open:true,ideal:x.d||0,n:(mn?base+" "+mn+" min":"Bloc suivant")+" · appui Tour"}); };
   const out=[]; steps.forEach(x=>out.push(Object.assign({},x))); if(!out.some(x=>x.rep)) return out;
   const firstRep=out.findIndex(x=>x.rep), lastRep=out.length-1-[...out].reverse().findIndex(x=>x.rep);
   // avant le 1er bloc : la dernière étape simple (échauffement ou Z2) attend l'appui
