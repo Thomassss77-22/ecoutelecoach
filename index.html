@@ -133,7 +133,7 @@ td.num{text-align:right}
 .legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px;color:var(--muted)}
 .filter{display:flex;gap:6px;flex-wrap:wrap}
 .filter button{font:650 13px var(--font-body);border:1px solid var(--line2);background:var(--surface);color:var(--ink);border-radius:999px;padding:6px 13px;cursor:pointer}
-.filter button[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.filter button[aria-pressed="true"],#bilCur[aria-pressed="true"],#bilNow[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
 .lib{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}
 .lib .card h3{display:flex;justify-content:space-between;gap:8px}
 .kv{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;font-size:15px}
@@ -1163,7 +1163,7 @@ const EXP_BEN={E1:1,E2:2,E3:2,E4:2,E5:3,D1:3,T1:3,S1:4,S2:4,V1:5,V2:5,V3:5,A1:6,
 function teCheck(planned,s){
   const ex=EXP_BEN[planned]; if(!ex||(s.teA==null&&s.teAn==null&&!s.benefit)) return null;
   const b=benefitRank(s), ta=+s.teA||0, tn=+s.teAn||0, lab=b?BEN_FR[BEN[b]]:null;
-  const te="TE aérobie "+fx(ta,1)+", anaérobie "+fx(tn,1)+(s.teEst?" estimés":"")+(lab?", effet principal : "+lab:"");
+  const te="TE aérobie "+(s.teA==null?"—":fx(ta,1))+", anaérobie "+(s.teAn==null?"—":fx(tn,1))+(s.teEst?" estimés":"")+(lab?", effet principal : "+lab:"");
   if(ex<=2){ if(b>=4||tn>=2) return ["warn","Plus intense que prévu pour une séance facile ("+te+"). Elle comptera comme une séance dure."];
     if(ex===1&&ta>=3) return ["warn","Récupération trop appuyée ("+te+")."]; return ["good","Intensité conforme ("+te+")."]; }
   if(ex>=5&&(b?b<=3:tn<1&&ta<3.5)) return ["warn","Moins intense que prévu ("+te+") : répétitions probablement en dessous de la cible, ou récupérations trop longues."];
@@ -2654,7 +2654,7 @@ function nutriHTML(n){ if(!n) return "<p class='small muted'>Pas de besoin parti
 /* ---------- bilans ---------- */
 const fx=(n,d)=>Number(n).toFixed(d).replace(".",",");
 function firstDataDate(){const ds=S.sessions.map(s=>s.date).concat(Object.keys(S.checkins)).sort();return ds[0]||null;}
-let bilOffset=-1;
+let bilOffset=0;
 function weekReport(mon){
   const W=buildWeek(mon,null,{asPlanned:true}), end=addDays(mon,6), logs=S.sessions.filter(s=>s.date>=mon&&s.date<=end);
   const rows=W.days.map(d=>{const done=logs.filter(s=>s.date===d.date), pl=d.main.id, past=d.date<TODAY, today=d.date===TODAY;
@@ -2696,7 +2696,8 @@ function renderBilan(){
   const el=document.getElementById("bilanOut"); if(!el) return;
   const mon=addDays(mondayOf(TODAY),bilOffset*7); const R=weekReport(mon); const adv=weekAdvice(R,mon);
   const next=addDays(mon,7), nPh=phaseFor(next);
-  document.getElementById("bilTitle").textContent="Bilan de la semaine du "+parse(mon).toLocaleDateString("fr-FR",{day:"numeric",month:"long"});
+  document.getElementById("bilTitle").textContent=(bilOffset===0?"Bilan de la semaine en cours, du ":"Bilan de la semaine du ")+parse(mon).toLocaleDateString("fr-FR",{day:"numeric",month:"long"});
+  [["bilCur",0],["bilNow",-1]].forEach(([id,o])=>{const b=document.getElementById(id); if(b) b.setAttribute("aria-pressed",String(bilOffset===o));});
   const pct=(a,b)=>b?Math.round(a/b*100)+" %":"—";
   el.innerHTML=`<div class="row">
       <span class="chip"><span class="dot" style="background:${phColor(R.W.phase)}"></span>${PHL[R.W.phase]}${R.W.deload?" · allégée":""}</span>
