@@ -1653,7 +1653,7 @@ function snapData(snap){if(!snap)return null;if(snap.exists===false)return null;
 
 /* ---------- compte en ligne (version web hors de Claude) : connexion et sauvegarde automatique via Supabase ---------- */
 // URL du projet et clé publique « anon » : publiques par conception, les données sont protégées par les règles d'accès de la table (chacun ne lit et n'écrit que sa ligne).
-const CLOUD={url:"",key:""};
+const CLOUD={url:"https://vqltuxmafwadbcpfoyod.supabase.co",key:"sb_publishable_xrG6JYT_ozkDwYfnTZWaew_5MxzPaAG"};
 const LS_OWNER="coach-route-owner", LS_TS="coach-route-ts", LS_OFF="coach-route-offline";
 let sb=null, cloudUser=null;
 const cloudOn=()=>!!(CLOUD.url&&CLOUD.key);
