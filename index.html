@@ -1532,7 +1532,10 @@ function decideToday(ci){
 
   // 9. variante selon le temps et le volume restant
   const remain=Math.max(0,plan.cap-weekMin);
-  const avail=Math.min(time,remain>=25?remain:time);
+  let avail=Math.min(time,remain>=25?remain:time);
+  // « Temps dispo » est un plafond, pas la durée de la séance : on vise la durée prévue par la semaine pour ce jour
+  const plannedDur=slot.dur>0&&LIB[slot.main.id]&&LIB[slot.main.id].sport!=="repos"?slot.dur:0;
+  if(plannedDur&&(LIB[cand]||{}).sport==="velo"&&(cand===slot.main.id||["E1","E2","E3","E4"].includes(cand))) avail=Math.min(avail,plannedDur);
   let f=fitDur(cand,avail);
   if(R.lvl==="warn"&&LIB[cand]&&LIB[cand].key){f={dur:LIB[cand].dS,v:"courte"};}
   if(R.lvl==="bad"&&cand==="E1") f={dur:Math.min(45,time),v:"courte"};
@@ -2244,7 +2247,7 @@ async function dataImport(f){ const m=document.getElementById("dataMsg");
   }catch(e){ m.textContent="Ce fichier n’est pas une copie de données Écoute le Coach."; } }
 setTimeout(()=>{ if(!(window.claude&&typeof window.claude.use==="function")) document.documentElement.classList.add("standalone"); },1500);
 // nouvelle version publiée : le navigateur garde la page en cache ~10 min ; on vérifie et on propose de recharger
-const BUILD="20261120092128";
+const BUILD="20261120103212";
 async function checkUpdate(){ if(window.claude&&typeof window.claude.use==="function") return; if(!/^https?:/.test(location.protocol)) return;
   try{ const t=await (await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"})).text(); const m=t.match(/const BUILD="([^"]+)"/);
     if(m&&m[1]!==BUILD&&!document.getElementById("updBar")){ const d=document.createElement("div"); d.id="updBar"; d.className="updbar";
