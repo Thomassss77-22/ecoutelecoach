@@ -392,6 +392,7 @@ header.top .mobile-brand .logo{width:42px;height:28px;border-radius:7px}
 @media (max-width:760px){.updbar{bottom:calc(80px + env(safe-area-inset-bottom));width:calc(100% - 24px);border-radius:16px}}
 #pmcKpi{grid-template-columns:repeat(3,minmax(0,1fr))}#pmcKpi .s{white-space:normal;overflow:visible;text-overflow:clip}
 
+.whybox{margin-top:6px;padding:6px 9px;border-left:3px solid var(--line2);background:var(--raised);border-radius:0 var(--r-s) var(--r-s) 0;font-size:12px;line-height:1.45;font-weight:400;color:var(--muted)}.whybox b{color:var(--ink)}.whybox div+div{margin-top:3px}
 .editbtn{white-space:nowrap;font:inherit;font-size:13px;font-weight:700;color:var(--accent);background:transparent;border:1px solid var(--line2);border-radius:999px;padding:3px 12px;margin-top:6px;cursor:pointer}
 .editbtn:hover{border-color:var(--accent);background:var(--accent-soft)}.editbtn.on{background:var(--accent-soft);border-color:var(--accent)}
 .histbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;padding:8px 10px;margin:0 0 8px;border:1px solid var(--line);border-radius:var(--r-m);background:var(--raised)}
@@ -537,7 +538,7 @@ body.dsheet-open{overflow:hidden}
         <div class="row"><button class="btn ghost small" id="wkSend" type="button">Envoyer les séances à venir sur ma montre</button><span class="small muted" id="wkSendMsg"></span></div>
         <div class="row"><button class="btn ghost small" id="wkGarmin" type="button">Exporter la semaine pour Garmin (.zip de .fit)</button><button class="btn ghost small" id="wkIcs" type="button" title="Les 4 prochaines semaines du plan, à importer dans Google Agenda, Apple Calendrier ou Outlook">Ajouter à mon agenda (.ics)</button><span class="small muted" id="wkGarminMsg"></span></div>
       </details>
-      <div class="card" style="padding-top:8px"><div id="wkHist"></div><div class="tablewrap" id="weekTable"></div>
+      <div class="card" style="padding-top:8px"><div id="wkHist"></div><div class="row" style="justify-content:flex-end;margin:0 0 6px"><button class="btn ghost small" type="button" id="wkWhyTog"></button></div><div class="tablewrap" id="weekTable"></div>
         <p class="small muted">Pour déplacer une séance : « Modifier » sous le jour, ou glisse la ligne sur un autre jour (ordinateur). L’appli vérifie aussitôt les règles d’espacement et de charge.</p></div>
       <div id="weekWarn"></div>
       <div class="sheetbg" id="sheetBg" hidden></div>
@@ -1698,6 +1699,8 @@ function renderWeek(){
     (W.deload?`<span class="chip warn">Semaine allégée (−40 % de volume)</span>`:`<span class="chip">Semaine de charge n°${((mesoIdx(mon)%(S.settings.meso==="2:1"?3:4))+(S.settings.meso==="2:1"?3:4))%(S.settings.meso==="2:1"?3:4)+1}</span>`)+
     `<span class="chip">${W.keysPlanned} séance(s) clé(s)</span><span class="chip">Total ${fmtMin(W.total)} / max ${fmtMin(W.cap)}</span>${W.capWhy?`<span class="chip warn" title="Plafond abaissé d’après ta charge réelle">${esc(W.capWhy)}</span>`:""}${(W.capWhy||(S.capOff&&S.capOff[W.mon]))&&W.mon>=mondayOf(TODAY)?`<label class="small" style="flex-direction:row;align-items:center;gap:6px;display:inline-flex"><input type="checkbox" id="capOffChk" style="width:auto" ${S.capOff&&S.capOff[W.mon]?"checked":""}>Ignorer les ajustements de charge cette semaine</label>`:""}<span class="muted">${esc(PH[W.phase].tid)}</span>`;
   const cok=document.getElementById("capOffChk"); if(cok) cok.onchange=()=>{S.capOff=S.capOff||{}; if(cok.checked) S.capOff[mon]=1; else delete S.capOff[mon]; save(); renderAll();};
+  let whyOn=true; try{ whyOn=localStorage.getItem("coach-why")!=="0"; }catch(e){}
+  const wt=document.getElementById("wkWhyTog"); if(wt){ wt.textContent=whyOn?"Masquer les explications":"Afficher les explications"; wt.onclick=()=>{ try{ localStorage.setItem("coach-why",whyOn?"0":"1"); }catch(e){} renderWeek(); }; }
   const rows=W.days.map(d=>{
     if(d.past&&d.main.id!=="RACE"){ const dn=d.done.map(x=>esc((LIB[x.id]||{}).nom||x.id)+" · "+fmtMin(+x.dur||0)+(x.rpe!==""&&x.rpe!=null?" · RPE "+x.rpe:"")).join("<br>");
       return `<tr class="past" style="opacity:.6"><td><b>${DAYS[d.i]}</b><br><span class="muted small">${fmtD(d.date)}</span><br><span class="small muted">jour passé</span></td>
@@ -1707,10 +1710,11 @@ function renderWeek(){
     const pin=(S.pins||{})[d.date]||{}, mod=!!(pin.id||(pin.add||[]).length||pin.noGym);
     const mv=fixed?"<span class='small muted'>course fixe</span>":`<button class="editbtn${mod?" on":""}" type="button" data-edit="${d.i}" aria-label="Modifier ${DAYS[d.i]}">${mod?"✎ Modifié":"Modifier"}</button>`;
     const key=d.main.id==="RACE"||s.key;
+    const wh=d.main.id==="RACE"||!whyOn?null:whyHere(W,d), whyHtml=wh&&(wh.obj||wh.why)?`<div class="whybox">${wh.obj?`<div><b>À quoi ça sert :</b> ${esc(wh.obj)}</div>`:""}${wh.why?`<div><b>Pourquoi ici :</b> ${esc(wh.why)}</div>`:""}</div>`:"";
     const content=d.main.id==="RACE"?"Priorité "+d.main.race.prio:(s.sport==="repos"?"—":(d.v==="longue"?s.long:s.court));
     const extra=d.extra.map(x=>"+ "+esc(LIB[x].nom)+" ("+fmtMin(LIB[x].dS)+")"+((d.pinAdd||[]).includes(x)?` <button class="xbtn" type="button" data-unadd="${d.date}|${x}" aria-label="Retirer ${esc(LIB[x].nom)}">✕</button>`:"")).join("<br>");
     return `<tr draggable="${!fixed}" data-dr="${d.i}" style="cursor:${fixed?"default":"grab"}"><td><b>${DAYS[d.i]}</b><br><span class="muted small">${fmtD(d.date)}</span><br>${mv}</td>
-      <td><b>${esc(nom)}</b>${key?' <span class="tag key">clé</span>':""}${d.pinned?' <span class="tag pin">choisie</span>':""}${["velo","course"].includes(s.sport)&&d.main.id!=="RACE"?svgMini(d.main.id,d.v,d.dur):""}${extra?"<span class='small' style='display:block;margin-top:2px'>"+extra+"</span>":""}</td>
+      <td><b>${esc(nom)}</b>${key?' <span class="tag key">clé</span>':""}${d.pinned?' <span class="tag pin">choisie</span>':""}${["velo","course"].includes(s.sport)&&d.main.id!=="RACE"?svgMini(d.main.id,d.v,d.dur):""}${extra?"<span class='small' style='display:block;margin-top:2px'>"+extra+"</span>":""}${whyHtml}</td>
       <td class="num">${d.dur?fmtMin(d.dur):"—"}</td><td class="small">${esc(d.main.id==="RACE"?"Course":s.int)}</td><td class="small">${esc(content)}${d.notes.length?"<br><i class='muted'>"+esc(d.notes.join(" · "))+"</i>":""}</td><td class="small num">${ch.gLo}-${ch.gHi} g<br><span class="muted">${ch.lo}-${ch.hi} g/kg</span></td></tr>`;}).join("");
   document.getElementById("weekTable").innerHTML=`<table><thead><tr><th>Jour</th><th>Séance</th><th>Durée</th><th>Intensité</th><th>Contenu</th><th>Glucides du jour</th></tr></thead><tbody>${rows}</tbody></table>`;
   const hasPins=W.days.some(d=>d.pinned||d.pinAdd);
@@ -2231,7 +2235,7 @@ async function dataImport(f){ const m=document.getElementById("dataMsg");
   }catch(e){ m.textContent="Ce fichier n’est pas une copie de données Écoute le Coach."; } }
 setTimeout(()=>{ if(!(window.claude&&typeof window.claude.use==="function")) document.documentElement.classList.add("standalone"); },1500);
 // nouvelle version publiée : le navigateur garde la page en cache ~10 min ; on vérifie et on propose de recharger
-const BUILD="20261120074349";
+const BUILD="20261120090700";
 async function checkUpdate(){ if(window.claude&&typeof window.claude.use==="function") return; if(!/^https?:/.test(location.protocol)) return;
   try{ const t=await (await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"})).text(); const m=t.match(/const BUILD="([^"]+)"/);
     if(m&&m[1]!==BUILD&&!document.getElementById("updBar")){ const d=document.createElement("div"); d.id="updBar"; d.className="updbar";
@@ -3098,6 +3102,34 @@ function renderSheet(){ if(!sheet) return; const {mon,i}=sheet, el=document.getE
 }
 document.addEventListener("keydown",e=>{ if(e.key==="Escape"&&sheet) closeSheet(); });
 document.addEventListener("click",e=>{ if(e.target&&e.target.id==="sheetBg") closeSheet(); });
+// ---------- à quoi sert chaque séance et pourquoi elle est ici (d'après ses voisines de la semaine) ----------
+function whyHere(W,d){ const D=W.days, L=x=>LIB[x]||{}, nm=x=>DAYS[x.i].toLowerCase();
+  const kind=x=>{ if(!x) return ""; const id=x.main.id; if(id==="RACE") return "race"; const l=L(id); if(l.sport==="repos") return "rest"; if(l.sport==="muscu") return "gym"; if(l.sport==="course") return "run"; if(l.key) return "key"; if(l.sport==="velo"&&(x.dur||0)>=150&&x.main.id!=="E3") return "long"; return "easy"; };
+  const k=kind(d), id=d.main.id, l=L(id), pv=D[d.i-1], nx=D[d.i+1], kp=kind(pv), kn=kind(nx);
+  const hasG=!!(d.gym&&d.main.id!==d.gym);
+  const before=pv?(pv.past&&pv.done&&pv.done.length?"après ta séance de la veille":kp==="rest"?"après un jour de repos, donc des jambes fraîches":kp==="key"?"au lendemain d’une séance dure":kp==="long"?"au lendemain d’une longue sortie":kp==="gym"?"au lendemain de la muscu":kp==="race"?"au lendemain d’une course":"après un jour facile, donc des jambes disponibles"):"en début de semaine";
+  const after=nx?(kn==="rest"?"suivie d’un repos pour absorber":kn==="key"?"avant la séance dure du "+nm(nx):kn==="long"?"avant la longue sortie du "+nm(nx):kn==="race"?"avant la course du "+nm(nx):kn==="gym"?"avant la muscu du "+nm(nx):"suivie d’un jour facile"):"";
+  const keys=D.filter(x=>x.i!==d.i&&!x.past&&(kind(x)==="key"||x.main.id==="RACE"));
+  const near=keys.map(x=>({x,g:Math.abs(x.i-d.i)})).sort((a,b)=>a.g-b.g)[0];
+  let why="";
+  if(k==="race") return {obj:"",why:""};
+  if(k==="key"){
+    
+    why="Séance dure : elle demande des jambes fraîches, donc elle est placée "+before+(after?", "+after:"")+"."+(near?(near.g>=2?" Elle est à "+near.g*24+" h de la séance dure du "+nm(near.x)+" (minimum 48 h entre deux séances intenses).":" Elle est collée à la séance dure du "+nm(near.x)+" : c’est l’exception qui n’est possible que dans un bloc de choc."):"");
+    if(["P2","P3"].includes(id)) why="Un test ne se fait jamais fatigué (il sous-estimerait ta FTP) : il est placé "+before+(after?", "+after:"")+".";
+  } else if(k==="long"){
+    const glued=kp==="key"||kn==="key";
+    why="Ton créneau le plus long ("+fmtMin(d.avail||d.dur)+") sert à la sortie longue, "+before+(after?", "+after:"")+"."+(glued?" Elle touche une séance dure : roule-la tranquille pour protéger la séance dure. Tu peux l’échanger avec un autre jour dans « Modifier ».":" Elle n’est pas collée à une séance dure, pour ne pas dégrader la qualité de l’intensité.");
+  } else if(k==="gym"){
+    why="La musculation se place à 48 h d’une autre séance de jambes et hors des 3 jours avant une course, "+before+(after?", "+after:"")+".";
+  } else if(k==="run"){
+    why="Footing court sur un jour libre, "+before+" : jamais la veille d’une séance dure ni le lendemain d’une muscu, car l’impact de la course fatigue les jambes.";
+  } else if(k==="rest"){
+    why=(d.notes||[]).some(n=>/imposé/.test(n))?"Au moins 1 jour de repos par semaine : c’est là que l’adaptation se fait. Placé "+(kn==="key"?"la veille d’une séance dure":kp==="key"||kp==="long"?"après une séance dure":"là où il gêne le moins")+".":"Jour de repos : l’adaptation se fait pendant la récupération. Placé "+(kn==="key"||kn==="long"?"la veille d’une séance dure":kp==="key"||kp==="long"?"après une séance dure":"entre deux enchaînements de séances")+".";
+  } else {
+    why="Séance facile : elle remplit le volume sans fatigue, "+before+(after?", "+after:"")+". Elle fait le lien entre les séances dures."+(id==="E3"?" Les sprints se font frais, dans une sortie facile, jamais la veille d’une séance dure.":"");
+  }
+  return {obj:l.obj||"",why:why.replace(/\s+/g," ").trim()}; }
 // ---------- « je ne veux pas faire cette séance » : alternatives simulées sur la semaine, vérifiées, classées ----------
 function altSuggest(mon,i,what){
   const simW=np=>{ const sv=S.pins; S.pins=np; try{ const W=buildWeek(mon); return {W,v:validateWeek(W)}; } finally{ S.pins=sv; } };
