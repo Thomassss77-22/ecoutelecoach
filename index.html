@@ -1191,6 +1191,8 @@ function buildWeek(mon,availOverride,opt={}){
     usedCats.push(LIB[id].cat); d.main={id};
     if(deload) d.notes.push("semaine allégée : version courte, une série de moins");
   }
+  // une seule séance en zone modérée par semaine : si une séance clé de tempo ou de seuil est déjà là, la sortie longue reste en Z2 pure
+  { const lg=days.find(d=>d.main&&d.main.id==="E5"&&!d.pinned); if(lg&&days.some(d=>d.main&&!d.past&&["tempo","seuil"].includes((LIB[d.main.id]||{}).cat))){ lg.main={id:"E4"}; lg.notes.push("Z2 pure : le travail en zone modérée est déjà fait dans la séance clé de la semaine"); } }
   // musculation
   const raceSoon=d=>races.some(r=>r.prio!=="C"&&diff(d.date,r.date)>=0&&diff(d.date,r.date)<=3);
   const gymId=phase==="base"&&widx%4===0&&diff(st.mesoStart,mon)<21?"M1":P.gymType;
@@ -2242,7 +2244,7 @@ async function dataImport(f){ const m=document.getElementById("dataMsg");
   }catch(e){ m.textContent="Ce fichier n’est pas une copie de données Écoute le Coach."; } }
 setTimeout(()=>{ if(!(window.claude&&typeof window.claude.use==="function")) document.documentElement.classList.add("standalone"); },1500);
 // nouvelle version publiée : le navigateur garde la page en cache ~10 min ; on vérifie et on propose de recharger
-const BUILD="20261120091346";
+const BUILD="20261120092128";
 async function checkUpdate(){ if(window.claude&&typeof window.claude.use==="function") return; if(!/^https?:/.test(location.protocol)) return;
   try{ const t=await (await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"})).text(); const m=t.match(/const BUILD="([^"]+)"/);
     if(m&&m[1]!==BUILD&&!document.getElementById("updBar")){ const d=document.createElement("div"); d.id="updBar"; d.className="updbar";
