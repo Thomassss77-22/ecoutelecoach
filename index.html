@@ -1217,7 +1217,7 @@ function buildWeek(mon,availOverride,opt={}){
     if(d.avail>=45) d.main={id:(P.sprints&&!deload&&!tag&&!nextKey(d.i)&&!days.some(x=>(x.main&&["SP2","A1","A2"].includes(x.main.id))||(x.main&&x.main.id==="E3")||(x.past&&(x.done||[]).some(s=>["E3","SP2"].includes(s.id)||(s.an&&s.an.id==="E3")))))?"E3":"E2"};
     else if(d.avail>=30) d.main={id:"E1"}; else d.main={id:"R0"};
   });
-  if(!days.some(d=>d.main.id==="R0"&&!(d.past&&d.done.length))){
+  if(!days.some(d=>d.main.id==="R0"&&!(d.past&&d.done.some(x=>x.id!=="R0")))){ // un jour de repos enregistré (séance « repos ») ou sans séance compte comme repos
     const c=days.filter(d=>["E1","E2","E3","C1","C2"].includes(d.main.id)&&!d.gym&&!d.pinned&&!d.past).sort((a,b)=>a.avail-b.avail)[0];
     if(c){c.main={id:"R0"};c.notes.push("jour de repos imposé : au moins 1 par semaine");}
   }
@@ -2231,7 +2231,7 @@ async function dataImport(f){ const m=document.getElementById("dataMsg");
   }catch(e){ m.textContent="Ce fichier n’est pas une copie de données Écoute le Coach."; } }
 setTimeout(()=>{ if(!(window.claude&&typeof window.claude.use==="function")) document.documentElement.classList.add("standalone"); },1500);
 // nouvelle version publiée : le navigateur garde la page en cache ~10 min ; on vérifie et on propose de recharger
-const BUILD="20261119202458";
+const BUILD="20261120074349";
 async function checkUpdate(){ if(window.claude&&typeof window.claude.use==="function") return; if(!/^https?:/.test(location.protocol)) return;
   try{ const t=await (await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"})).text(); const m=t.match(/const BUILD="([^"]+)"/);
     if(m&&m[1]!==BUILD&&!document.getElementById("updBar")){ const d=document.createElement("div"); d.id="updBar"; d.className="updbar";
