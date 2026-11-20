@@ -1211,11 +1211,14 @@ function buildWeek(mon,availOverride,opt={}){
     if(d){d.main={id:phase==="base"&&r===1?"C2":"C1"}; if(!["base","transition"].includes(phase)){d.main.cap=40;d.notes.push("footing limité à 40 min : en période de qualité, l’impact de la course ne doit pas entamer les séances vélo");}}
   }
   // reste
+  // sprints : sur un jour facile loin des séances dures (ni la veille ni le lendemain si possible), pour les faire frais
+  const e3c=days.filter(d=>!d.main&&d.avail>=45&&!nextKey(d.i)&&(P.sprints&&!deload&&!tag&&!days.some(x=>(x.main&&["SP2","A1","A2"].includes(x.main.id))||(x.main&&x.main.id==="E3")||(x.past&&(x.done||[]).some(s=>["E3","SP2"].includes(s.id)||(s.an&&s.an.id==="E3"))))));
+  const e3i=e3c.length?e3c.sort((a,b)=>(!!isKey(days[a.i-1])-!!isKey(days[b.i-1]))||(b.avail-a.avail))[0].i:-1;
   days.forEach(d=>{
     if(d.main) return;
     if(tag==="maladie"){d.main={id:d.avail>=30?"E1":"R0",cap:45};return;}
     if(tag==="voyage"){d.main={id:"R0"};return;}
-    if(d.avail>=45) d.main={id:(P.sprints&&!deload&&!tag&&!nextKey(d.i)&&!days.some(x=>(x.main&&["SP2","A1","A2"].includes(x.main.id))||(x.main&&x.main.id==="E3")||(x.past&&(x.done||[]).some(s=>["E3","SP2"].includes(s.id)||(s.an&&s.an.id==="E3")))))?"E3":"E2"};
+    if(d.avail>=45) d.main={id:d.i===e3i?"E3":"E2"};
     else if(d.avail>=30) d.main={id:"E1"}; else d.main={id:"R0"};
   });
   if(!days.some(d=>d.main.id==="R0"&&!(d.past&&d.done.some(x=>x.id!=="R0")))){ // un jour de repos enregistré (séance « repos ») ou sans séance compte comme repos
@@ -1235,6 +1238,10 @@ function buildWeek(mon,availOverride,opt={}){
       else { d.extra=d.extra.filter(x=>x!==d.gym); d.notes=d.notes.filter(n=>!n.startsWith("muscu")); d.gym=null; warns.push(DAYS[d.i]+" : la musculation ne tient pas dans le créneau de "+fmtMin(d.avail)+" avec la séance vélo, elle est retirée ce jour-là."); } }
     const lk=LIB[d.main.id]; if(lk&&lk.key&&(deload||phase==="affutage")&&lk.dS) av=Math.min(av,lk.dS);
     if(["P2","P3"].includes(d.main.id)) av=Math.min(av,LIB[d.main.id].dS);
+    // veille d'une séance dure : sortie facile courte (90 min au plus) pour arriver frais sur l'intensité
+    if(!d.pinned&&["E1","E2","E3"].includes(d.main.id)&&nextKey(d.i)&&days[d.i+1].main.id!=="RACE"&&av>90){ av=90; d.notes.push("veille de séance dure : 1 h 30 au plus, pour arriver frais"); }
+    // en période de courses, la sortie longue reste le seul gros stimulus du week-end : le jour facile collé à elle est limité à 2 h
+    if(!d.pinned&&["E1","E2"].includes(d.main.id)&&["specifique","competition","affutage"].includes(phase)&&[d.i-1,d.i+1].some(j=>days[j]&&["E4","E5","D1"].includes(days[j].main.id))&&av>120){ av=120; d.notes.push("à côté de la sortie longue : 2 h au plus en période de courses"); }
     const f=fitDur(d.main.id,av); d.dur=f.dur; d.v=f.v;
     if(lk&&lk.key&&phase==="affutage") d.notes.push("affûtage : version courte, intensité maintenue");
     if(f.tight) d.notes.push("créneau court : version réduite");
@@ -2235,7 +2242,7 @@ async function dataImport(f){ const m=document.getElementById("dataMsg");
   }catch(e){ m.textContent="Ce fichier n’est pas une copie de données Écoute le Coach."; } }
 setTimeout(()=>{ if(!(window.claude&&typeof window.claude.use==="function")) document.documentElement.classList.add("standalone"); },1500);
 // nouvelle version publiée : le navigateur garde la page en cache ~10 min ; on vérifie et on propose de recharger
-const BUILD="20261120090700";
+const BUILD="20261120091346";
 async function checkUpdate(){ if(window.claude&&typeof window.claude.use==="function") return; if(!/^https?:/.test(location.protocol)) return;
   try{ const t=await (await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"})).text(); const m=t.match(/const BUILD="([^"]+)"/);
     if(m&&m[1]!==BUILD&&!document.getElementById("updBar")){ const d=document.createElement("div"); d.id="updBar"; d.className="updbar";
