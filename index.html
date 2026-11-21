@@ -3152,8 +3152,9 @@ function whyHere(W,d){ const D=W.days, L=x=>LIB[x]||{}, nm=x=>DAYS[x.i].toLowerC
     why="Séance dure : elle demande des jambes fraîches, donc elle est placée "+before+(after?", "+after:"")+"."+(near?(near.g>=2?" Elle est à "+near.g*24+" h de la séance dure du "+nm(near.x)+" (minimum 48 h entre deux séances intenses).":" Elle est collée à la séance dure du "+nm(near.x)+" : c’est l’exception qui n’est possible que dans un bloc de choc."):"");
     if(["P2","P3"].includes(id)) why="Un test ne se fait jamais fatigué (il sous-estimerait ta FTP) : il est placé "+before+(after?", "+after:"")+".";
   } else if(k==="long"){
-    const glued=kp==="key"||kn==="key";
-    why="Ton créneau le plus long ("+fmtMin(d.avail||d.dur)+") sert à la sortie longue, "+before+(after?", "+after:"")+"."+(glued?" Elle touche une séance dure : roule-la tranquille pour protéger la séance dure. Tu peux l’échanger avec un autre jour dans « Modifier ».":" Elle n’est pas collée à une séance dure, pour ne pas dégrader la qualité de l’intensité.");
+    const hardYest=!!(pv&&pv.past&&pv.pastKey), glued=kp==="key"||kn==="key"||hardYest;
+    const ease=hardYest?" Hier tu as fait une séance dure : garde cette sortie vraiment facile, sous "+Math.round(fcRef()*.8)+" bpm (petit braquet dans les bosses, pas de sprint), mange dès la première heure (60 à 90 g de glucides par heure), et raccourcis si tu es très lourd après 1 h 30. L’intensité, tu l’as déjà faite.":"";
+    why="Ton créneau le plus long ("+fmtMin(d.avail||d.dur)+") sert à la sortie longue, "+before+(after?", "+after:"")+"."+(glued?(hardYest?" Elle suit une séance dure."+ease:" Elle touche une séance dure : roule-la tranquille pour protéger la séance dure.")+" Tu peux l’échanger avec un autre jour dans « Modifier ».":" Elle n’est pas collée à une séance dure, pour ne pas dégrader la qualité de l’intensité.");
   } else if(k==="gym"){
     why="La musculation se place à 48 h d’une autre séance de jambes et hors des 3 jours avant une course, "+before+(after?", "+after:"")+".";
   } else if(k==="run"){
