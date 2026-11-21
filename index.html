@@ -1096,6 +1096,8 @@ function runLib(){
 }
 
 /* ---------- phase et cycles ---------- */
+const sico=id=>{const sp=(LIB[id]||{}).sport; return sp==="velo"?"🚴":sp==="course"?"🏃":sp==="muscu"?"🏋️":"";};
+const sicoH=id=>{const i=sico(id); return i?`<span class="sico" title="${(LIB[id]||{}).sport==="velo"?"Vélo":(LIB[id]||{}).sport==="course"?"Course à pied":"Musculation"}">${i}</span> `:"";};
 const raceSport=r=>r&&(r.sport||(sportProfile()==="course"?"course":"velo"));
 // classe d'objectif d'une course à pied, d'après sa distance
 const runDistOf=r=>{const d=+(r&&r.dist)||0; return d>=30?42.195:d>=15?21.0975:10;};
@@ -1796,7 +1798,7 @@ function renderToday(){
   box.innerHTML=`
   <article class="hero ${r.level}" aria-labelledby="heroName">
     <div class="meta"><span>${fmtD(TODAY).replace(/^./,c=>c.toUpperCase())}</span><span><span class="dot" style="background:${phColor(r.plan.phase)};margin-right:6px"></span>${PHL[r.plan.phase]}${r.plan.deload?", semaine allégée":""}</span><span class="chip ${r.R.lvl}"><span class="dot" style="background:currentColor"></span>${r.R.label}</span></div>
-    <div><h1 class="name" id="heroName">${esc(r.title).replace(/ ([:;?!])/g,"\u00a0$1")}</h1>${r.id==="RACE"?`<p class="obj">${esc(r.race.name)}${r.race.profile?", profil "+esc(r.race.profile):""}</p>`:s.obj&&s.sport!=="repos"?`<p class="obj">${esc(s.obj)}</p>`:s.sport==="repos"?`<p class="obj">${esc(s.court||"Repos complet : c’est là que l’entraînement des jours précédents se transforme en progrès.")}</p>`:""}</div>
+    <div><h1 class="name" id="heroName">${sicoH(r.id)}${esc(r.title).replace(/ ([:;?!])/g,"\u00a0$1")}</h1>${r.id==="RACE"?`<p class="obj">${esc(r.race.name)}${r.race.profile?", profil "+esc(r.race.profile):""}</p>`:s.obj&&s.sport!=="repos"?`<p class="obj">${esc(s.obj)}</p>`:s.sport==="repos"?`<p class="obj">${esc(s.court||"Repos complet : c’est là que l’entraînement des jours précédents se transforme en progrès.")}</p>`:""}</div>
     ${["velo","course"].includes(s.sport)&&r.id!=="RACE"?svgWorkout(r.id,r.variant,r.dur):""}
     ${s.sport!=="repos"?`<div class="fields">${fields.map(f=>`<div class="field"><span>${f[0]}</span><b>${esc(f[1])}</b></div>`).join("")}</div>`:""}
     ${r.note?`<div class="alert warn">${esc(r.note)}</div>`:""}
@@ -1924,9 +1926,9 @@ function renderWeek(){
     const key=d.main.id==="RACE"||s.key;
     const wh=d.main.id==="RACE"||!whyOn?null:whyHere(W,d), whyHtml=wh&&(wh.obj||wh.why)?`<div class="whybox">${wh.obj?`<div><b>À quoi ça sert :</b> ${esc(wh.obj)}</div>`:""}${wh.why?`<div><b>Pourquoi ici :</b> ${esc(wh.why)}</div>`:""}</div>`:"";
     const content=d.main.id==="RACE"?"Priorité "+d.main.race.prio:(s.sport==="repos"?"—":(d.v==="longue"?s.long:s.court));
-    const extra=d.extra.map(x=>"+ "+esc(LIB[x].nom)+" ("+fmtMin(LIB[x].dS)+")"+((d.pinAdd||[]).includes(x)?` <button class="xbtn" type="button" data-unadd="${d.date}|${x}" aria-label="Retirer ${esc(LIB[x].nom)}">✕</button>`:"")).join("<br>");
+    const extra=d.extra.map(x=>"+ "+sicoH(x)+esc(LIB[x].nom)+" ("+fmtMin(LIB[x].dS)+")"+((d.pinAdd||[]).includes(x)?` <button class="xbtn" type="button" data-unadd="${d.date}|${x}" aria-label="Retirer ${esc(LIB[x].nom)}">✕</button>`:"")).join("<br>");
     return `<tr draggable="${!fixed}" data-dr="${d.i}" style="cursor:${fixed?"default":"grab"}"><td><b>${DAYS[d.i]}</b><br><span class="muted small">${fmtD(d.date)}</span><br>${mv}</td>
-      <td><b>${esc(nom)}</b>${key?' <span class="tag key">clé</span>':""}${d.pinned?' <span class="tag pin">choisie</span>':""}${["velo","course"].includes(s.sport)&&d.main.id!=="RACE"?svgMini(d.main.id,d.v,d.dur):""}${extra?"<span class='small' style='display:block;margin-top:2px'>"+extra+"</span>":""}${whyHtml}</td>
+      <td><b>${sicoH(d.main.id)}${esc(nom)}</b>${key?' <span class="tag key">clé</span>':""}${d.pinned?' <span class="tag pin">choisie</span>':""}${["velo","course"].includes(s.sport)&&d.main.id!=="RACE"?svgMini(d.main.id,d.v,d.dur):""}${extra?"<span class='small' style='display:block;margin-top:2px'>"+extra+"</span>":""}${whyHtml}</td>
       <td class="num">${d.dur?fmtMin(d.dur):"—"}</td><td class="small">${esc(d.main.id==="RACE"?"Course":s.int)}</td><td class="small">${esc(content)}${d.notes.length?"<br><i class='muted'>"+esc(d.notes.join(" · "))+"</i>":""}</td><td class="small num">${ch.gLo}-${ch.gHi} g<br><span class="muted">${ch.lo}-${ch.hi} g/kg</span></td></tr>`;}).join("");
   document.getElementById("weekTable").innerHTML=`<table><thead><tr><th>Jour</th><th>Séance</th><th>Durée</th><th>Intensité</th><th>Contenu</th><th>Glucides du jour</th></tr></thead><tbody>${rows}</tbody></table>`;
   const hasPins=W.days.some(d=>d.pinned||d.pinAdd);
@@ -1966,9 +1968,9 @@ function renderMonth(){
     html+=`<div class="mwk" style="border-left-color:${phColor(W.phase)}"><b>${PHL[W.phase]}</b><br>${W.deload?"allégée<br>":""}${tagOf(mon)?esc(TAGS[tagOf(mon)].split(" /")[0])+"<br>":""}${W.shock?"bloc de choc<br>":""}${fmtMin(W.total)}</div>`;
     W.days.forEach(d=>{const inM=d.date.slice(0,7)===ym, s=LIB[d.main.id]||{}; let body="";
       if(d.main.id==="RACE"){body=`<span class="race">🏁 ${esc(d.main.race.prio)}</span><span class="lbl">${esc(d.main.race.name)}</span>`; if(inM) rc.push(d.main.race);}
-      else if(d.past){body=d.done.length?d.done.map(x=>`<span class="done">✓ ${esc(ABR[x.id]||x.id)}</span><span class="lbl muted">${fmtMin(+x.dur||0)}</span>`).join(""):`<span class="muted">—</span>`; if(inM) done+=d.dur;}
+      else if(d.past){body=d.done.length?d.done.map(x=>`<span class="done">✓ ${sicoH(x.id)}${esc(ABR[x.id]||x.id)}</span><span class="lbl muted">${fmtMin(+x.dur||0)}</span>`).join(""):`<span class="muted">—</span>`; if(inM) done+=d.dur;}
       else {const ex=d.extra.map(x=>`<span>+ ${esc(ABR[x]||x)}</span>`).join("");
-        body=d.main.id==="R0"?`<span class="muted">Repos</span>${ex}`:`<span class="${s.key?"k":""}">${esc(ABR[d.main.id]||s.nom)}</span><span class="lbl muted">${fmtMin(d.dur)}</span>${ex}`;
+        body=d.main.id==="R0"?`<span class="muted">Repos</span>${ex}`:`<span class="${s.key?"k":""}">${sicoH(d.main.id)}${esc(ABR[d.main.id]||s.nom)}</span><span class="lbl muted">${fmtMin(d.dur)}</span>${ex}`;
         if(inM){plan+=d.dur+(d.gymDur||0); if(s.key) keys++;}}
       html+=`<button type="button" class="mcell${inM?"":" out"}${d.past?" past":""}${d.date===TODAY?" today":""}" data-mw="${mon}" title="${esc(fmtD(d.date)+" · "+(d.main.id==="RACE"?d.main.race.name:d.past?"jour passé":s.nom||""))}"><span class="n">${+d.date.slice(8)}</span>${body}</button>`;});
   }
@@ -2025,7 +2027,7 @@ function renderLib(){
   document.getElementById("libFilter").innerHTML=cats.map(c=>`<button type="button" data-c="${c}" aria-pressed="${libCat===c}">${c==="all"?"Toutes":CATL[c]}</button>`).join("");
   document.querySelectorAll("#libFilter button").forEach(b=>b.onclick=()=>{libCat=b.dataset.c;renderLib();});
   const list=Object.values(LIB).filter(s=>s.sport!=="repos"&&(s.sport==="muscu"||s.sport===libSport)&&(libCat==="all"||s.cat===libCat||(libCat==="endurance"&&s.cat==="recup")||(libCat==="test"&&s.cat==="course_prep")));
-  document.getElementById("libGrid").innerHTML=list.map(s=>`<div class="card libcard"><div class="lhead"><h3>${esc(s.nom)}</h3><span class="ltags">${s.key?'<span class="tag key">clé</span>':""}<span class="tag">${CATL[s.cat]}</span></span></div>
+  document.getElementById("libGrid").innerHTML=list.map(s=>`<div class="card libcard"><div class="lhead"><h3>${sicoH(s.id)}${esc(s.nom)}</h3><span class="ltags">${s.key?'<span class="tag key">clé</span>':""}<span class="tag">${CATL[s.cat]}</span></span></div>
     <p class="small lobj">${esc(s.obj)}</p>
     ${["velo","course"].includes(s.sport)?svgMini(s.id,"courte"):""}
     <div class="lmeta small"><span><i>courte</i>${fmtMin(s.dS)}</span><span><i>longue</i>${fmtMin(s.dL)}</span><span><i>phases</i>${s.phases.map(p=>PHL[p]).join(", ")}</span></div>
@@ -2084,7 +2086,7 @@ function renderRunLoad(ws,wLab){
   const L=runs.slice(0,10);
   document.getElementById("runTable").innerHTML=L.length?`<table><thead><tr><th>Date</th><th>Séance</th><th>Durée</th><th>Distance</th><th>Allure</th><th>FC moy.</th><th>vs plus longue 30 j</th></tr></thead><tbody>${L.map(x=>{const k=runSpike(x),km=runKm(x),pace=km&&x.dur?fmtPace(km/(((x.an&&x.an.sum&&x.an.sum.moveMin)||+x.dur)/60)):"—";
     const chip=!k?`<span class="small muted">pas de référence</span>`:`<span class="chip ${k.r>2?"bad":k.r>1.1?"warn":"good"}">${k.r>1?"+":""}${Math.round((k.r-1)*100)} %</span><br><span class="small muted">réf. ${k.unit==="km"?fx(k.ref,1)+" km":fmtMin(Math.round(k.ref))}</span>`;
-    return `<tr><td>${fmtD(x.date)}</td><td>${esc((LIB[x.id]||{nom:x.id}).nom)}</td><td class="num">${fmtMin(+x.dur||0)}</td><td class="num">${km!=null?fx(km,1)+" km":"—"}</td><td class="num">${pace}</td><td class="num">${x.hr||"—"}</td><td>${chip}</td></tr>`;}).join("")}</tbody></table>`:`<p class="small muted">Aucune sortie de course enregistrée.</p>`;
+    return `<tr><td>${fmtD(x.date)}</td><td>${sicoH(x.id)}${esc((LIB[x.id]||{nom:x.id}).nom)}</td><td class="num">${fmtMin(+x.dur||0)}</td><td class="num">${km!=null?fx(km,1)+" km":"—"}</td><td class="num">${pace}</td><td class="num">${x.hr||"—"}</td><td>${chip}</td></tr>`;}).join("")}</tbody></table>`:`<p class="small muted">Aucune sortie de course enregistrée.</p>`;
 }
 function computeAlerts(){
   const A=[]; const mon=mondayOf(TODAY);
