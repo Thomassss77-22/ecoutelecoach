@@ -4641,7 +4641,7 @@ function ringsHTML(mon){let R;try{R=weekReport(mon);}catch(e){return "";}
  return ring(pv,"var(--accent)","Volume",R.plannedMin?fmtMin(R.doneMin)+" sur "+fmtMin(R.plannedMin):"aucun volume prévu",Math.round(pv)+"%")
   +ring(pk,"var(--good)","Séances clés",R.keysPl?R.keysDone+" sur "+R.keysPl:"aucune prévue",R.keysPl?Math.round(pk)+"%":"—")
   +ring(Math.min(pl,100),pl>130?"var(--bad)":"var(--warn)","Charge",Lp?"moyenne 4 sem. : "+Math.round(Lp):"pas d’historique",Lp?Math.round(pl)+"%":"—");}
-function chartHTML(D){const W=640,H=165,pl=34,pb=30,pt=18,pr=8,n=D.length,bw=(W-pl-pr)/n;
+function chartHTML(D){const W=640,H=135,pl=34,pb=30,pt=18,pr=8,n=D.length,bw=(W-pl-pr)/n;
  const top=Math.max(60,...D.map(d=>d.v+d.c)),stepH=top<=300?60:top<=720?120:top<=1200?240:360,mx=Math.ceil(top/stepH)*stepH;
  const y=v=>H-pb-(H-pb-pt)*v/mx;let g="";for(let v=0;v<=mx;v+=stepH){const yy=y(v);g+=`<line x1="${pl}" x2="${W-pr}" y1="${yy}" y2="${yy}" stroke="var(--line)" ${v?'stroke-dasharray="2 4"':""}/><text x="${pl-6}" y="${yy+3}" text-anchor="end">${v/60} h</text>`;}
  let bars="";D.forEach((d,i)=>{const x=pl+i*bw+bw*.17,w=bw*.66;let acc=0;const segs=[[d.v,"var(--v4-1)"],[d.cr,"var(--v4-2)"],[d.g,"var(--v4-3)"]].filter(z=>z[0]>0);
@@ -5075,23 +5075,28 @@ try{ render(); }catch(e){ console.warn("lf",e); }
 .v4donut b small{display:block;font:600 11.5px "Inter",sans-serif;color:var(--muted);letter-spacing:0}
 .v4tbl{margin-top:8px;font-size:12.5px}.v4tbl summary{cursor:pointer;color:var(--muted);font-weight:600}
 .v4tbl table{margin-top:8px;border-collapse:collapse;width:100%}.v4tbl td,.v4tbl th{padding:4px 8px;border-bottom:1px solid var(--line);text-align:left}
-#v4Today{grid-column:2;grid-row:2}.today>#ciCard{grid-row:2!important;grid-column:1}
-.today .side-col{grid-row:3;grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:16px;align-items:start}
-.today .side-col>.card:first-child{grid-row:span 4}
-#v4Today .v4row{grid-template-columns:1fr;gap:10px}
-#v4Today .v4side{grid-template-columns:auto 1fr;justify-items:stretch;align-items:center;gap:18px}
-#v4Today .v4ring{width:104px;height:104px;margin:0}#v4Today .v4ring b{font-size:22px}#v4Today .v4ring b small{font-size:10.5px}
-#v4Today .v4tiles{margin-top:10px;gap:10px}#v4Today .v4tile{padding:10px 12px 6px}#v4Today .v4tile .v{font-size:20px}#v4Today .v4tile svg{height:38px}
-#v4Today .v4tile .d{font-size:11px;line-height:1.3;min-height:28px}
+#v4Today{grid-column:1/-1;grid-row:2;display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,.9fr) minmax(0,1.15fr);gap:6px 24px;align-items:center}
+#v4Today>.v4head{grid-column:1/-1;margin:0}
+#v4Today>.v4row{display:contents}
+#v4Today .v4side{grid-template-columns:1fr;gap:8px;justify-items:center}
+#v4Today .v4ring{width:96px;height:96px;margin:0}#v4Today .v4ring b{font-size:21px}#v4Today .v4ring b small{font-size:10px}
+#v4Today .v4tbl{display:none}
+#v4Today .v4tiles{grid-template-columns:1fr;gap:8px;margin:0}
+#v4Today .v4tile{display:grid;grid-template-columns:minmax(0,auto) minmax(0,1fr);gap:0 12px;align-items:center;padding:8px 12px}
+#v4Today .v4tile .k,#v4Today .v4tile .v,#v4Today .v4tile .d{grid-column:1}#v4Today .v4tile .v{font-size:19px;margin:0}
+#v4Today .v4tile .d{font-size:10.5px;min-height:0;margin:0;max-width:150px}
+#v4Today .v4tile svg{grid-column:2;grid-row:1/4;height:44px}
+.today>#ciCard{grid-row:3!important;grid-column:1}
+.today .side-col{grid-row:3;grid-column:2;display:flex;flex-direction:column;gap:16px}
 .v4foldbox{position:relative;overflow:hidden;max-height:var(--fh,380px);transition:max-height .4s var(--ease,ease)}
 .v4foldbox:not(.open)::after{content:"";position:absolute;left:0;right:0;bottom:0;height:70px;background:linear-gradient(transparent,var(--surface));pointer-events:none}
 .v4foldbox.open{max-height:none}
 .v4foldbtn{margin-top:8px;background:none;border:0;color:var(--accent);font:700 13.5px "Inter",sans-serif;cursor:pointer;padding:6px 0}
 #v4Mason{columns:2;column-gap:16px;margin-top:0}#v4Mason>*{break-inside:avoid;margin:0 0 16px;display:block;width:100%}
 #v4Mason>.stack,.v4gone{display:none}
-#v2dash .v2rings{display:none}
+#v2dash .v2rings{display:none}body.lite #loadNote,body.lite #v4Mason p.small.muted:not(.v4keep){display:none}
 body.lite .v4tile>p.small{display:none}
-@media (max-width:900px){#v4Today,.today>#ciCard,.today .side-col{grid-row:auto!important;grid-column:auto!important}#v4Today{grid-column:1/-1;order:-1}.today .hero{order:-2}.today .side-col{display:flex;flex-direction:column}#v4Mason{columns:1}}
+@media (max-width:900px){#v4Today,.today>#ciCard,.today .side-col{grid-row:auto!important;grid-column:auto!important}#v4Today{grid-column:1/-1;order:-1;grid-template-columns:1fr}.today .hero{order:-2}.today .side-col{display:flex;flex-direction:column}#v4Mason{columns:1}}
 #v4tip{position:fixed;z-index:100001;pointer-events:none;background:var(--ink);color:var(--surface);padding:8px 11px;border-radius:10px;font:500 12.5px/1.45 "Inter",sans-serif;box-shadow:0 8px 24px -6px rgba(0,0,0,.35);opacity:0;transform:translateY(4px);transition:opacity .12s,transform .12s;max-width:240px}
 #v4tip.on{opacity:1;transform:none}#v4tip b{display:block;font-weight:700;margin-bottom:1px}
 .v4empty{color:var(--muted);font-size:13.5px;padding:14px 0}
@@ -5220,11 +5225,12 @@ function weekCard(mon,title,compact){ const {dd,items,used}=weekItems(mon), done
   const by={velo:0,course:0,muscu:0}; dd.forEach(d=>SP.forEach(p=>{ by[p[0]]+=d.done[p[0]]+d.pl[p[0]]; }));
   const rows=SP.filter(p=>by[p[0]]>0).map(p=>`<div><span><i style="background:${p[2]}"></i>${p[1]}</span><b>${fmt(by[p[0]])}</b></div>`).join("");
   return {done,plan,tot,html:`<div class="v4head"><h2>${E(title)}</h2><span class="s">${tot?fmt(done)+" faites · "+fmt(plan)+" à venir":"Aucune séance cette semaine"}</span></div>
-   <div class="v4row"><div>${bars(items,{aria:"Minutes par jour, par sport",h:compact?175:210})}${legend(used)}${table(["Jour","Fait","Prévu"],dd.map(d=>[dl(d.date),sum(d.done)?fmt(sum(d.done)):"—",sum(d.pl)?fmt(sum(d.pl)):"—"]))}</div>
+   <div class="v4row"><div>${bars(items,{aria:"Minutes par jour, par sport",h:compact?150:210})}${legend(used)}${table(["Jour","Fait","Prévu"],dd.map(d=>[dl(d.date),sum(d.done)?fmt(sum(d.done)):"—",sum(d.pl)?fmt(sum(d.pl)):"—"]))}</div>
    <div class="v4side">${ring(tot?done/tot:0,"var(--v4-1)",tot?Math.round(done/tot*100)+" %":"—","du volume")}<div class="v4facts">${rows||'<div><span>Repos</span><b>—</b></div>'}</div></div></div>`}; }
 function renderTodayV4(){ const out=document.getElementById("todayOut"); if(!out) return; const c=weekCard(mondayOf(TODAY),"Ta semaine",true);
   mount("v4Today",out,c.html+tileGrid(),"card v4card v4");
-  const side=document.querySelector("#todayOut .side-col"), an=side&&side.querySelector(":scope>.card:not(.lite-x):not(.trace)"); if(an) fold(an,420); }
+  const side=document.querySelector("#todayOut .side-col"), an=side&&side.querySelector(":scope>.card:not(.lite-x):not(.trace)"); if(an) fold(an,300);
+  const fb=side&&side.querySelector("#freeBox"); if(fb) fold(fb,92,"Ouvrir"); }
 function fold(card,h,lab){ lab=lab||"Voir toute l’analyse"; if(!card||card.querySelector(":scope>.v4foldbox")) return; const box=document.createElement("div"); box.className="v4foldbox"; box.style.setProperty("--fh",h+"px");
   while(card.firstChild) box.appendChild(card.firstChild); card.appendChild(box);
   const ev=()=>{ if(!box.scrollHeight) return false; if(box.scrollHeight<=h+40){ box.classList.add("open"); return true; } if(card.querySelector(":scope>.v4foldbtn")) return true; const b=document.createElement("button"); b.type="button"; b.className="v4foldbtn"; b.textContent=lab+" ▾";
@@ -5304,7 +5310,9 @@ function renderFormeV4(){ const hc=document.getElementById("hrvChart"); if(!hc) 
     a=`<div class="v4head"><h2>Forme et fatigue</h2><span class="s">12 semaines</span></div>${lines2([{n:"Forme de fond",c:"var(--v4-1)",v:pm.map(r=>r[1])},{n:"Fatigue",c:"var(--v4-2)",v:pm.map(r=>r[2])}],{aria:"Forme de fond et fatigue sur 12 semaines",labels})}<div class="v4leg"><span><i style="background:var(--v4-1)"></i>Forme de fond (42 j)</span><span><i style="background:var(--v4-2)"></i>Fatigue (7 j)</span></div>${table(["Jour","Forme","Fatigue"],pm.filter((_,i)=>i%7===pm.length%7||i===pm.length-1).map(r=>[dl(r[0]),Math.round(r[1]),Math.round(r[2])]))}`; }
   if(tot>0){ b=`<div class="v4head"><h2>Par sport</h2><span class="s">12 semaines</span></div><div class="v4side">${donut(parts,hrs(tot))}<div class="v4facts">${parts.map(p=>`<div><span><i style="background:${p.c}"></i>${p.n}</span><b>${fmt(p.v)} · ${Math.round(p.v/tot*100)} %</b></div>`).join("")}</div></div>`; }
   put("v4Pmc",a); put("v4Sport",b); put("v4Heat",heatmap(16).html);
-  const rc=M.querySelector(":scope>.card.only-run"); if(rc) fold(rc,430,"Voir toutes les sorties"); }
+  const rc=M.querySelector(":scope>.card.only-run"); if(rc) fold(rc,260,"Voir toutes les sorties");
+  const ca=(id,h,l)=>{ const e=document.getElementById(id), c=e&&e.closest("#v4Mason>.card"); if(c) fold(c,h,l); };
+  ca("alerts",230,"Voir toutes les alertes"); ca("loadChart",330,"Voir le détail"); const lf=document.getElementById("lfCard"); if(lf) fold(lf,360,"Voir le détail"); }
 /* ---------- Bilan : prévu / fait par jour ---------- */
 function renderBilanV4(){ const el=document.getElementById("bilanOut"); if(!el||typeof bilOffset!=="number") return; const mon=addDays(mondayOf(TODAY),bilOffset*7);
   let W; try{ W=buildWeek(mon,null,{asPlanned:true}); }catch(e){ return; }
