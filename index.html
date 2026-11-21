@@ -607,6 +607,7 @@ body.dsheet-open{overflow:hidden}
     <div class="pagehead"><h1>Séances</h1><p class="muted">Toutes les séances du plan, avec leurs zones et leurs fichiers pour ton compteur.</p></div>
     <div class="subtabs" role="tablist" data-view="seances"><button role="tab" type="button" data-sub="biblio">Bibliothèque</button><button role="tab" type="button" data-sub="zones">Mes zones</button></div>
     <div class="subview stack" data-sub="biblio">
+      <div class="subtabs" role="tablist" id="libSport" aria-label="Sport"></div>
       <div class="filter" id="libFilter"></div>
       <div class="lib" id="libGrid"></div>
     </div>
@@ -1896,17 +1897,21 @@ function renderSeason(){
 }
 
 /* ---------- rendu : séances ---------- */
-let libCat="all";
+let libCat="all",libSport="velo";
 function renderLib(){
   const st=S.settings,f=st.ftp,fc=fcRef(),W=p=>Math.round(f*p/100);
   const Z=[["Z1 Récupération","< 55",`< ${W(55)}`,"< 68","1-2"],["Z2 Endurance","56-75",`${W(56)}-${W(75)}`,"68-80","2-3"],["Z3 Tempo","76-90",`${W(76)}-${W(90)}`,"80-88","4-5"],["Z4 Seuil","91-105",`${W(91)}-${W(105)}`,"88-92","6-7"],["Z5 PMA / VO2max","106-120",`${W(106)}-${W(120)}`,"> 92","8-9"],["Z6 Anaérobie","121-150",`${W(121)}-${W(150)}`,"non pertinent","9-10"],["Z7 Sprint","maximal","> "+W(150),"non pertinent","10"]];
   document.getElementById("zonesTable").innerHTML=`<table><thead><tr><th>Zone</th><th>% FTP</th><th>Watts (FTP ${f} W)</th><th>% FC max (${fc} bpm)</th><th>RPE</th></tr></thead><tbody>${Z.map(z=>`<tr><td><b>${z[0]}</b></td><td>${z[1]}</td><td class="num">${z[2]}</td><td>${z[3]}</td><td>${z[4]}</td></tr>`).join("")}</tbody></table>`;
   const VC=["endurance","long","tempo","seuil","vo2","court","anaerobie","durabilite","sprint"],RC=["course","c_long","c_seuil","c_vma","c_spec","c_cotes","c_test"],pr=sportProfile();
-  const cats=["all",...(pr==="course"?[]:VC),...(runActive()?RC:[]),"muscu",...(pr==="course"?[]:["test"])];
+  const both=pr!=="course"&&runActive(); if(pr==="course"||!runActive()) libSport=pr==="course"?"course":"velo";
+  const ls=document.getElementById("libSport"); ls.style.display=both?"":"none";
+  ls.innerHTML=both?[["velo","Cyclisme"],["course","Course à pied"]].map(([k,l])=>`<button role="tab" type="button" data-ls="${k}" aria-selected="${libSport===k}">${l}</button>`).join(""):"";
+  ls.querySelectorAll("[data-ls]").forEach(b=>b.onclick=()=>{libSport=b.dataset.ls;libCat="all";renderLib();});
+  const cats=["all",...(libSport==="course"?RC:[...VC,"test"]),"muscu"];
   if(!cats.includes(libCat)) libCat="all";
   document.getElementById("libFilter").innerHTML=cats.map(c=>`<button type="button" data-c="${c}" aria-pressed="${libCat===c}">${c==="all"?"Toutes":CATL[c]}</button>`).join("");
   document.querySelectorAll("#libFilter button").forEach(b=>b.onclick=()=>{libCat=b.dataset.c;renderLib();});
-  const list=Object.values(LIB).filter(s=>s.sport!=="repos"&&!(pr==="course"&&s.sport==="velo")&&!(!runActive()&&s.sport==="course")&&(libCat==="all"||s.cat===libCat||(libCat==="endurance"&&s.cat==="recup")||(libCat==="test"&&s.cat==="course_prep")));
+  const list=Object.values(LIB).filter(s=>s.sport!=="repos"&&(s.sport==="muscu"||s.sport===libSport)&&(libCat==="all"||s.cat===libCat||(libCat==="endurance"&&s.cat==="recup")||(libCat==="test"&&s.cat==="course_prep")));
   document.getElementById("libGrid").innerHTML=list.map(s=>`<div class="card libcard"><div class="lhead"><h3>${esc(s.nom)}</h3><span class="ltags">${s.key?'<span class="tag key">clé</span>':""}<span class="tag">${CATL[s.cat]}</span></span></div>
     <p class="small lobj">${esc(s.obj)}</p>
     ${["velo","course"].includes(s.sport)?svgMini(s.id,"courte"):""}
