@@ -1319,7 +1319,7 @@ function isDeload(mon,phase){
 // durée utile minimale d'une endurance vélo et durée maximale la veille d'une séance dure, selon le niveau
 const EZMIN={amateur:60,elite:75,pro:90}, EVEMAX={amateur:90,elite:105,pro:120};
 // plus longue course des 30 jours qui précèdent la semaine (faite ou prévue) : la sortie longue ne redescend pas sous 90 % de cette valeur pour tenir un plafond
-function recentLongRun(mon){ const fp=memoFp(); let lr=S.sessions.filter(x=>x.date<TODAY&&x.date>=addDays(mon,-30)&&(LIB[x.id]||{}).sport==="course").reduce((a,x)=>Math.max(a,+x.dur||0),0);
+function recentLongRun(mon){ const fp=memoFp(); let lr=S.sessions.filter(x=>x.date<TODAY&&x.date>=addDays(mon,-30)&&sessSport(x)==="course").reduce((a,x)=>Math.max(a,+x.dur||0),0);
   for(let k=1;k<=4;k++){ const m=addDays(mon,-7*k); if(m>=mondayOf(TODAY)) lr=Math.max(lr,weekRunMax(m,fp)); } return lr; }
 const c3Floor=(mon,cur,f=.9)=>Math.max(LIB.C3.dS,Math.min(cur,Math.round(recentLongRun(mon)*f/5)*5));
 function weekCap(mon,phase,deload){return S.settings.maxH*60*(deload?.6:1)*PH[phase].vol*tagFactor(mon)}
@@ -1372,7 +1372,7 @@ function runKeyCands(phase,goal,widx,used){
 }
 const runCatOf=id=>Object.keys(CATR).find(c=>CATR[c].includes(id))||(LIB[id]||{}).cat;
 // plus longue sortie de course des 30 derniers jours (en minutes, à défaut de distance) : garde-fou de Frandsen 2025
-function longestRun30(){return S.sessions.filter(x=>x.date<TODAY&&x.date>=addDays(TODAY,-30)&&(LIB[x.id]||{}).sport==="course").reduce((a,x)=>Math.max(a,+x.dur||0),0);}
+function longestRun30(){return S.sessions.filter(x=>x.date<TODAY&&x.date>=addDays(TODAY,-30)&&sessSport(x)==="course").reduce((a,x)=>Math.max(a,+x.dur||0),0);}
 function fitDur(id,avail){
   const s=LIB[id]; if(!s||s.sport==="repos") return {dur:0,v:"—"};
   if(["E1","E2","E3","E4","E5","C1","C3"].includes(id)) return {dur:Math.max(Math.min(avail,s.dL),Math.min(s.dS,avail)),v:avail>=s.dL*.8?"longue":"courte"};
@@ -1425,12 +1425,12 @@ function weekVol(m){
 // plus longue course d'une semaine (faite pour les jours passés, prévue pour les autres), mémorisée : sert à chaîner le garde-fou +10 % d'une semaine à l'autre
 const RUN_SUM=new Map();
 // minutes de course d'une semaine (faites pour le passé, prévues sinon) : sert à limiter la progression du volume de course
-function weekRunSum(m,fp){ if(m<mondayOf(TODAY)) return S.sessions.filter(x=>x.date>=m&&x.date<=addDays(m,6)&&(LIB[x.id]||{}).sport==="course").reduce((a,x)=>a+(+x.dur||0),0); weekRunMax(m,fp); return RUN_SUM.get(m)||0; }
+function weekRunSum(m,fp){ if(m<mondayOf(TODAY)) return S.sessions.filter(x=>x.date>=m&&x.date<=addDays(m,6)&&sessSport(x)==="course").reduce((a,x)=>a+(+x.dur||0),0); weekRunMax(m,fp); return RUN_SUM.get(m)||0; }
 function weekRunMax(m,fp){
   if(fp!==runFp){RUN_MEMO.clear();RUN_SUM.clear();runFp=fp;}
   if(!RUN_MEMO.has(m)){ const W=buildWeek(m), isRun=id=>(LIB[id]||{}).sport==="course";
-    RUN_SUM.set(m,W.days.reduce((a,d)=>a+(d.past?(d.done||[]).filter(x=>isRun(x.id)).reduce((b,x)=>b+(+x.dur||0),0):(isRun(d.main.id)?(d.dur||0):0)),0));
-    RUN_MEMO.set(m,W.days.reduce((a,d)=>Math.max(a,d.past?Math.max(0,...(d.done||[]).filter(x=>isRun(x.id)).map(x=>+x.dur||0)):(isRun(d.main.id)?(d.dur||0):0)),0)); }
+    RUN_SUM.set(m,W.days.reduce((a,d)=>a+(d.past?(d.done||[]).filter(x=>sessSport(x)==="course").reduce((b,x)=>b+(+x.dur||0),0):(isRun(d.main.id)?(d.dur||0):0)),0));
+    RUN_MEMO.set(m,W.days.reduce((a,d)=>Math.max(a,d.past?Math.max(0,...(d.done||[]).filter(x=>sessSport(x)==="course").map(x=>+x.dur||0)):(isRun(d.main.id)?(d.dur||0):0)),0)); }
   return RUN_MEMO.get(m);
 }
 
@@ -1625,7 +1625,7 @@ function buildWeek(mon,availOverride,opt={}){
   });
   // garde-fou blessure : une séance de course ne dépasse pas de plus de 10 % la plus longue des 30 derniers jours (Frandsen 2025, en durée faute de distance)
   // semaines futures : la plus longue course est aussi cherchée dans les 4 semaines précédentes du plan, pour que la sortie longue progresse de 10 % au plus d'une semaine à l'autre
-  if(runActive()&&!opt.phase&&mon>=mondayOf(TODAY)){ const lr0=S.sessions.filter(x=>x.date<TODAY&&x.date>=addDays(mon,-30)&&(LIB[x.id]||{}).sport==="course").reduce((a,x)=>Math.max(a,+x.dur||0),0), fp=mon>mondayOf(TODAY)?memoFp():"", lrP=mon>mondayOf(TODAY)?Math.max(0,...[1,2,3,4].map(j=>addDays(mon,-7*j)).filter(m=>m>=mondayOf(TODAY)).map(m=>weekRunMax(m,fp))):0, lr=Math.max(lr0,lrP);
+  if(runActive()&&!opt.phase&&mon>=mondayOf(TODAY)){ const lr0=S.sessions.filter(x=>x.date<TODAY&&x.date>=addDays(mon,-30)&&sessSport(x)==="course").reduce((a,x)=>Math.max(a,+x.dur||0),0), fp=mon>mondayOf(TODAY)?memoFp():"", lrP=mon>mondayOf(TODAY)?Math.max(0,...[1,2,3,4].map(j=>addDays(mon,-7*j)).filter(m=>m>=mondayOf(TODAY)).map(m=>weekRunMax(m,fp))):0, lr=Math.max(lr0,lrP);
     // durée utile de la sortie longue selon l'objectif (choix d'ingénierie appuyé sur la pratique : 10 km ≤ 1 h 30, semi ≤ 2 h, marathon ≤ 2 h 30 ; sans objectif de course : 2 h)
     const hasRR=racesSorted().some(r=>r.date>=mon&&raceSport(r)==="course"), lrCap=hasRR?({10:90,21.0975:120,42.195:150})[goal]||120:120;
     days.filter(d=>!d.past&&!d.pinned&&d.main.id==="C3"&&d.dur>lrCap).forEach(d=>{ d.dur=lrCap; d.notes.push("sortie longue limitée à "+fmtMin(lrCap)+" : au-delà, le gain pour "+(hasRR?"un "+RDL[goal]:"ton niveau")+" est faible et le risque de blessure augmente"); });
@@ -2436,7 +2436,9 @@ function renderSuiviKpi(A){
   el.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>setSuiviSub(b.dataset.go));
   const bd=document.getElementById("alertBadge"); if(bd){ bd.hidden=!(red+org); bd.textContent=red+org; bd.style.background=red?"var(--bad)":"var(--warn)"; }
 }
-function sessSport(x){ return x.id==="RACE"?"velo":(LIB[x.id]||{}).sport||"velo"; }
+// une course enregistrée garde son sport : celui noté à l'import, sinon celui de la course du calendrier ce jour-là, sinon le profil
+function sessSport(x){ if(x.id!=="RACE") return (LIB[x.id]||{}).sport||"velo"; if(x.sport) return x.sport;
+  const r=(S.settings.races||[]).find(r=>r.date===x.date); return r?raceSport(r):(sportProfile()==="course"?"course":"velo"); }
 function renderSessList(){
   const box=document.getElementById("histTable"); if(!box) return;
   document.querySelectorAll("#sessFilter [data-f]").forEach(b=>{ b.setAttribute("aria-pressed",String(b.dataset.f===sessF)); b.onclick=()=>{sessF=b.dataset.f; sessN=20; renderSessList();}; });
@@ -2940,7 +2942,7 @@ function estRPE(m,sport){
   return sport==="muscu"?6:3;
 }
 function addImported(rec){
-  const sp=x=>x.id==="RACE"?"velo":(LIB[x.id]||{}).sport;
+  const sp=x=>sessSport(x);
   let dup=(rec.ext&&S.sessions.find(s=>s.ext===rec.ext))||S.sessions.find(s=>s.date===rec.date&&s.start&&rec.start&&Math.abs(s.start-rec.start)<300);
   // séance saisie à la main le même jour (sans heure) : même sport et durée proche → c'est la même sortie
   if(!dup) dup=S.sessions.find(s=>s.date===rec.date&&!s.start&&sp(s)===sp(rec)&&Math.abs((+s.dur||0)-rec.dur)<=Math.max(15,rec.dur*.25));
@@ -2970,7 +2972,7 @@ function mergeInto(old,rec){
 }
 function recFromMetrics(m,sport,startSec,src,ext,name){
   const d=new Date(startSec*1000); const date=iso(d);
-  const r=Object.assign({date,start:startSec,id:inferId(m,sport),dur:m.dur,rpe:estRPE(m,sport),rpeEst:true,note:name||"",src,ext},m);
+  const r=Object.assign({date,start:startSec,sport,id:inferId(m,sport),dur:m.dur,rpe:estRPE(m,sport),rpeEst:true,note:name||"",src,ext},m);
   if(m.rpeDevice){r.rpe=m.rpeDevice;r.rpeEst=false;}
   if(sport==="velo"&&r.id!=="RACE"){ const hard=benefitRank(r), easy=["E1","E2","E3","E4","E5","D1"].includes(r.id);
     if(easy&&hard>=6) r.id=r.dur>=150?"E5":"A1"; else if(easy&&hard===5) r.id="V1"; else if(easy&&hard===4) r.id="S1"; }
