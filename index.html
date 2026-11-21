@@ -346,6 +346,9 @@ html.locked body{overflow:hidden}
 .rcgrid .rheat{flex-direction:row!important;align-items:center;gap:8px;align-self:end;min-height:40px}
 .rcgrid .rheat input{width:auto}
 .setcard{max-width:820px}
+body.sp-course .only-velo{display:none!important}
+body:not(.sp-mixte) .only-mixte{display:none!important}
+body.run-off .only-run{display:none!important}
 @media (max-width:760px){ .rcgrid{grid-template-columns:repeat(2,minmax(0,1fr))} }
 
 .libcard{display:flex;flex-direction:column;gap:8px}
@@ -608,10 +611,17 @@ body.dsheet-open{overflow:hidden}
       <div class="lib" id="libGrid"></div>
     </div>
     <div class="subview stack" data-sub="zones">
-      <div class="card">
-        <h2>Mes zones</h2>
-        <p class="small muted">Calculées à partir de ta FTP et de ta FC (Réglages). Elles servent de cibles à toutes les séances.</p>
+      <div class="card only-velo">
+        <h2>Mes zones vélo</h2>
+        <p class="small muted">Calculées à partir de ta FTP et de ta FC (Réglages). Elles servent de cibles à toutes les séances vélo.</p>
         <div class="tablewrap stackable" id="zonesTable"></div>
+      </div>
+      <div class="card only-run">
+        <h2>Mes zones de course</h2>
+        <p class="small muted" id="runZonesNote"></p>
+        <div class="tablewrap stackable" id="runZonesTable"></div>
+        <h3 style="margin-top:16px">Mes allures de course</h3>
+        <div class="tablewrap stackable" id="runPaceTable"></div>
       </div>
     </div>
   </section>
@@ -735,8 +745,16 @@ body.dsheet-open{overflow:hidden}
   <section class="view" id="v-reglages">
     <div class="pagehead"><h1>Réglages</h1><p class="muted">Ton profil, tes courses et la façon dont l’appli construit ton plan. Tout est enregistré dès que tu modifies un champ.</p></div>
     <div class="subtabs" role="tablist" data-view="reglages"><button role="tab" type="button" data-sub="profil">Profil</button><button role="tab" type="button" data-sub="plan">Plan</button><button role="tab" type="button" data-sub="courses">Courses</button><button role="tab" type="button" data-sub="compteur">Compteur</button><button role="tab" type="button" data-sub="compte">Compte et données</button></div>
-    <div class="subview" data-sub="profil"><div class="card setcard">
-        <h2>Profil physiologique</h2><p class="small muted">La base de toutes les zones et cibles. Mets-les à jour après chaque test.</p>
+    <div class="subview stack" data-sub="profil">
+      <div class="card setcard">
+        <h2>Mes sports</h2><p class="small muted">Ce que tu pratiques décide de ce que l’appli t’affiche et de ce qu’elle planifie.</p>
+        <form class="form" onsubmit="return false">
+          <label>Je pratique<select id="sp_profile"><option value="velo">Le cyclisme (course à pied en complément facultatif)</option><option value="course">La course à pied</option><option value="mixte">Les deux</option></select></label>
+          <label class="only-mixte">Sport prioritaire<select id="sp_prio"><option value="auto">Automatique : le sport de ma prochaine course A</option><option value="velo">Le vélo</option><option value="course">La course à pied</option></select><span class="small muted">Les séances clés vont au sport prioritaire du bloc ; l’autre sport sert surtout de volume facile.</span></label>
+        </form>
+      </div>
+      <div class="card setcard only-velo">
+        <h2>Cyclisme</h2><p class="small muted">La base de toutes les zones et cibles vélo. Mets-les à jour après chaque test.</p>
         <form class="form" onsubmit="return false">
           <label>FTP (W)<input id="st_ftp" type="number" min="80" step="1"></label>
           <label>FC max (bpm)<input id="st_fcmax" type="number" min="120" max="230"></label>
@@ -745,7 +763,22 @@ body.dsheet-open{overflow:hidden}
           <label>Poids (kg)<input id="st_kg" type="number" min="35" step="0.5"></label>
           <label>Heures d’entraînement par semaine (dernier mois, tous sports)<input id="st_acHours" type="number" min="0" max="40" step="0.5" placeholder="auto"><span class="small muted">Sert au Training Effect estimé (classe d’activité Firstbeat). Vide : calculé sur tes séances enregistrées.</span></label>
         </form>
-    </div></div>
+      </div>
+      <div class="card setcard only-run">
+        <h2>Course à pied</h2><p class="small muted">Tes allures et tes zones de course. La FC est plus haute en course qu’à vélo : elle a ses propres valeurs.</p>
+        <form class="form" onsubmit="return false">
+          <label>VMA (km/h)<input id="rn_vma" type="number" min="8" max="26" step="0.1" placeholder="vide : estimée par ton record"><span class="small muted">Demi-Cooper (6 min à fond), VAMEVAL ou piste.</span></label>
+          <label>Record récent : distance<select id="rn_recDist"><option value="5">5 km</option><option value="10">10 km</option><option value="21.1">Semi-marathon</option><option value="42.2">Marathon</option></select></label>
+          <label>Record récent : temps<input id="rn_recTime" type="text" inputmode="numeric" placeholder="mm:ss ou h:mm:ss"></label>
+          <label>Date de ce record<input id="rn_recDate" type="date"><span class="small muted">Au-delà de 8 semaines, il décrit moins bien ta forme du moment.</span></label>
+          <label>FC max en course (bpm)<input id="rn_fcmax" type="number" min="120" max="230" placeholder="vide : estimée"></label>
+          <label>FC au seuil en course (bpm)<input id="rn_lthr" type="number" min="100" max="215" placeholder="vide : estimée"><span class="small muted">Test de 30 min à fond : moyenne des 20 dernières minutes.</span></label>
+          <label>FC de repos (bpm, facultatif)<input id="rn_rhr" type="number" min="30" max="100"></label>
+          <label>Zones FC de course<select id="rn_hrMethod"><option value="seuil">Sur la FC au seuil (conseillé)</option><option value="rfc">Sur la réserve cardiaque (Karvonen, avec FC de repos)</option></select></label>
+        </form>
+        <div class="small" id="rnState" style="margin-top:10px"></div>
+      </div>
+    </div>
     <div class="subview" data-sub="plan"><div class="card setcard">
         <h2>Construction du plan</h2><p class="small muted">Volume, cycle de charge et phase : ce qui fixe la forme de tes semaines.</p>
         <form class="form" onsubmit="return false">
@@ -854,7 +887,7 @@ function defaultState(){
   const mon=mondayOf(TODAY);
   return {
     v:1,
-    settings:{ftp:300,fcmax:195,kg:68,wkTarget:"power",lapStart:1,level:"amateur",source:"garmin",hasPower:1,lthr:"",maxH:12,meso:"3:1",mesoStart:mon,phase:"auto",runOn:1,runMax:2,cho:90,
+    settings:{ftp:300,fcmax:195,kg:68,wkTarget:"power",lapStart:1,level:"amateur",source:"garmin",hasPower:1,lthr:"",maxH:12,meso:"3:1",mesoStart:mon,phase:"auto",runOn:1,runMax:2,cho:90,sportProfile:"velo",prioSport:"auto",vma:"",runRecDist:"10",runRecTime:"",runRecDate:"",fcmaxRun:"",lthrRun:"",rhr:"",hrMethod:"seuil",
       days:[{on:1,max:60},{on:1,max:90},{on:1,max:60},{on:1,max:90},{on:0,max:0},{on:1,max:240},{on:1,max:180}],
       races:[
         {date:"2027-03-14",name:"Exemple : course de reprise",prio:"C",profile:"plat"},
@@ -2005,6 +2038,62 @@ document.querySelectorAll(".subtabs[data-view]").forEach(t=>{ const v=t.dataset.
   t.querySelectorAll("[data-sub]").forEach(b=>{ b.onclick=()=>setSub(v,b.dataset.sub);
     b.onkeydown=e=>{ if(e.key!=="ArrowRight"&&e.key!=="ArrowLeft") return; const L=[...t.querySelectorAll("[data-sub]")], i=L.indexOf(b), n=L[(i+(e.key==="ArrowRight"?1:-1)+L.length)%L.length]; setSub(v,n.dataset.sub); n.focus(); }; });
   setSub(v,getSub(v)); });
+
+/* ---------- course à pied : profil, zones, allures ---------- */
+const sportProfile=()=>S.settings.sportProfile||"velo";
+const runActive=()=>sportProfile()!=="velo"||!!+S.settings.runOn;
+function applySportClass(){const b=document.body,p=sportProfile();["sp-velo","sp-course","sp-mixte"].forEach(c=>b.classList.toggle(c,c==="sp-"+p));b.classList.toggle("run-off",!runActive());}
+function parseDur(t){t=String(t||"").trim();if(!t)return null;const a=t.split(/[:h'’]/).map(x=>x.trim()).filter(x=>x!=="");if(!a.length||a.some(x=>!/^\d+(\.\d+)?$/.test(x)))return null;const n=a.map(Number);let sec=n.length===3?n[0]*3600+n[1]*60+n[2]:n.length===2?n[0]*60+n[1]:n[0]*60;return sec>0?sec:null;}
+const fmtPace=kmh=>{if(!(kmh>0))return "—";let s=Math.round(3600/kmh);return Math.floor(s/60)+":"+String(s%60).padStart(2,"0")+" /km";};
+const fmtHms=sec=>{sec=Math.round(sec);const h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),x=sec%60;return (h?h+" h "+String(m).padStart(2,"0"):m)+" min "+String(x).padStart(2,"0")+" s";};
+// Riegel 1981 : T2 = T1 × (D2/D1)^1,06. Tend à surestimer le marathon des coureurs peu volumineux.
+const riegel=(d1,t1,d2)=>t1*Math.pow(d2/d1,1.06);
+function runProf(){
+  const st=S.settings,pr=sportProfile(),o={est:[]};
+  if(+st.fcmaxRun>0) o.fcmax=+st.fcmaxRun;
+  else if(pr==="course"){o.fcmax=+st.fcmax;}
+  else {o.fcmax=+st.fcmax+5;o.est.push("FC max de course = FC max vélo + 5 bpm (écart moyen dans la littérature, à remplacer par un test)");}
+  if(+st.lthrRun>0) o.lthr=+st.lthrRun;
+  else if(pr!=="course"&&+st.lthr>0){o.lthr=+st.lthr+7;o.est.push("FC au seuil de course = FC seuil vélo + 7 bpm (pratique courante, aucun facteur validé)");}
+  else {o.lthr=Math.round(o.fcmax*0.9);o.est.push("FC au seuil de course = 90 % de la FC max (estimation grossière)");}
+  const d=+st.runRecDist,t=parseDur(st.runRecTime);
+  if(d>0&&t){o.rec={d,t,date:st.runRecDate||"",old:st.runRecDate?diff(st.runRecDate,TODAY)>56:false};}
+  if(+st.vma>0){o.vma=+st.vma;o.vmaSrc="test";}
+  else if(o.rec){const D=o.rec.d*Math.pow(360/o.rec.t,1/1.06);o.vma=Math.round(D/360*3600*10)/10;o.vmaSrc="record";o.est.push("VMA estimée à partir de ton record (équivalent 6 min par Riegel) : fais un demi-Cooper pour la mesurer");}
+  o.rhr=+st.rhr>0?+st.rhr:null;
+  return o;
+}
+function runHrZones(o){
+  const st=S.settings;
+  if(st.hrMethod==="rfc"&&o.rhr){const R=o.fcmax-o.rhr,b=p=>Math.round(o.rhr+R*p/100);
+    return {lab:"% de la réserve cardiaque (FC max "+o.fcmax+", repos "+o.rhr+")",z:[["< 70",`< ${b(70)}`],["70-80",`${b(70)}-${b(80)}`],["80-87",`${b(80)}-${b(87)}`],["87-94",`${b(87)}-${b(94)}`],["> 94",`> ${b(94)}`]]};}
+  const L=o.lthr,b=p=>Math.round(L*p/100);
+  return {lab:"% de la FC au seuil ("+L+" bpm)",z:[["< 85",`< ${b(85)}`],["85-94",`${b(85)}-${b(94)}`],["94-100",`${b(94)}-${L}`],["100-103",`${L}-${b(103)}`],["non pertinent","—"]]};
+}
+function renderRunZones(){
+  const box=document.getElementById("runZonesTable"); if(!box) return;
+  const o=runProf(),H=runHrZones(o),V=o.vma,P=(a,b)=>V?(b?fmtPace(V*b/100).replace(" /km","")+"-"+fmtPace(V*a/100):"< "+fmtPace(V*a/100)):"VMA à renseigner";
+  const Z=[["Z1 Endurance fondamentale",[60,75],"Footings, sortie longue, récupération","2-3"],["Z2 Tempo / allure marathon",[75,85],"Allure marathon, sortie longue avec blocs","4-5"],["Z3 Seuil",[85,92],"Seuil continu ou fractionné, allure semi","6-7"],["Z4 VMA longue",[92,100],"Allure 10 km à 5 km, 1 000 m, 4 × 4 min","8"],["Z5 VMA courte",[100,110],"30/30, 200 m, côtes courtes","9"]];
+  box.innerHTML=`<table><thead><tr><th>Zone</th><th>% VMA</th><th>Allure${V?" (VMA "+V+" km/h)":""}</th><th>FC, ${esc(H.lab)}</th><th>bpm</th><th>Usage</th><th>RPE</th></tr></thead><tbody>${Z.map((z,i)=>`<tr><td><b>${z[0]}</b></td><td>${z[1][0]}-${z[1][1]}</td><td class="num">${P(z[1][0],i<4?z[1][1]:0)}</td><td>${H.z[i][0]}</td><td class="num">${H.z[i][1]}</td><td class="small">${z[2]}</td><td>${z[3]}</td></tr>`).join("")}</tbody></table>`;
+  document.getElementById("runZonesNote").innerHTML="Qualité : l’allure est la cible, la FC sert de garde-fou haut. Endurance : la FC (ou la sensation) est la cible, car chaleur, dénivelé et dérive cardiaque faussent l’allure."+(o.est.length?"<br><b>Valeurs estimées :</b> "+o.est.map(esc).join(" ; ")+".":"");
+  // allures de course : record (Riegel) en priorité, sinon % de VMA (repères de pratique, non validés)
+  const D=[["5 km",5],["10 km",10],["Semi-marathon",21.0975],["Marathon",42.195]],PV={5:95,10:90,21.0975:84,42.195:78};
+  const rows=D.map(([n,d])=>{let src,t;
+    if(o.rec){t=riegel(o.rec.d,o.rec.t,d);src=Math.abs(d-o.rec.d)<0.2?"ton record":"Riegel depuis ton record";}
+    else if(V){t=d/(V*PV[d]/100)*3600;src=PV[d]+" % de la VMA (repère de pratique)";}
+    if(!t) return `<tr><td><b>${n}</b></td><td colspan="3" class="muted">Renseigne une VMA ou un record récent.</td></tr>`;
+    const kmh=d/t*3600; return `<tr><td><b>${n}</b></td><td class="num">${fmtPace(kmh)}</td><td class="num">${fmtHms(t)}</td><td class="small">${src}${V?" · "+Math.round(kmh/V*100)+" % VMA":""}</td></tr>`;}).join("");
+  document.getElementById("runPaceTable").innerHTML=`<table><thead><tr><th>Distance</th><th>Allure</th><th>Temps prévu</th><th>Source</th></tr></thead><tbody>${rows}</tbody></table><p class="small muted">${o.rec&&o.rec.old?"Ton record date de plus de 8 semaines : refais un test ou une course pour recaler les allures. ":""}La prédiction du marathon à partir d’un 10 km est souvent trop optimiste si tu cours moins de 50 km par semaine.</p>`;
+}
+const RUNSET={sportProfile:"sp_profile",prioSport:"sp_prio",vma:"rn_vma",runRecDist:"rn_recDist",runRecTime:"rn_recTime",runRecDate:"rn_recDate",fcmaxRun:"rn_fcmax",lthrRun:"rn_lthr",rhr:"rn_rhr",hrMethod:"rn_hrMethod"};
+function renderRunSettings(){
+  Object.entries(RUNSET).forEach(([k,id])=>{const el=document.getElementById(id);if(!el)return;el.value=S.settings[k]==null?"":S.settings[k];
+    el.onchange=()=>{let v=el.value;if(el.type==="number")v=v===""?"":+v;if(k==="runRecTime"&&v&&!parseDur(v)){alert("Temps non reconnu : écris par exemple 44:30 ou 1:43:00.");el.value=S.settings[k]||"";return;}
+      S.settings[k]=v;if(k==="sportProfile"&&v!=="velo")S.settings.runOn=1;save();renderAll();};});
+  const o=runProf(),st=document.getElementById("rnState");
+  if(st) st.innerHTML=`FC max course <b>${o.fcmax}</b> · FC seuil course <b>${o.lthr}</b>`+(o.vma?` · VMA <b>${o.vma} km/h</b>${o.vmaSrc==="record"?" (estimée)":""}`:"")+(o.est.length?`<br><span class="muted">Estimé : ${o.est.map(esc).join(" ; ")}.</span>`:"");
+  const ro=document.getElementById("st_runOn"); if(ro) ro.disabled=sportProfile()!=="velo";
+}
 
 /* ---------- rendu : réglages ---------- */
 const setMap={ftp:"st_ftp",fcmax:"st_fcmax",kg:"st_kg",maxH:"st_maxh",meso:"st_meso",mesoStart:"st_mesoStart",phase:"st_phase",runOn:"st_runOn",runMax:"st_runMax",cho:"st_cho",wkTarget:"st_wkTarget",lapStart:"st_lapStart",acHours:"st_acHours",level:"st_level",hasPower:"st_hasPower",lthr:"st_lthr"};
@@ -3789,7 +3878,7 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape"){document.getElement
 window.addEventListener("hashchange",()=>{const [v,sub]=location.hash.slice(1).split("/"); show(v); if(sub) setSub(v,sub);});
 
 function labelTables(){ document.querySelectorAll(".stackable table").forEach(t=>{ const h=[...t.querySelectorAll("thead th")].map(x=>x.textContent.trim()); t.querySelectorAll("tbody tr").forEach(r=>[...r.children].forEach((c,i)=>{ if(h[i]) c.setAttribute("data-label",h[i]); })); }); }
-function renderAllNow(){try{migrateWeekEdits();}catch(e){}(S.sessions||[]).forEach(x=>{try{applyTE(x);}catch(e){}});renderToday();renderWeek();renderMonth();renderSeason();renderLib();renderSuivi();renderHistory();renderBilan();renderSettings();renderEvidence();labelTables();}
+function renderAllNow(){try{applySportClass();}catch(e){}try{migrateWeekEdits();}catch(e){}(S.sessions||[]).forEach(x=>{try{applyTE(x);}catch(e){}});renderToday();renderWeek();renderMonth();renderSeason();renderLib();renderSuivi();renderHistory();renderBilan();renderSettings();try{renderRunSettings();renderRunZones();}catch(e){console.error(e);}renderEvidence();labelTables();}
 // Rendu différé et regroupé : évite de reconstruire un tableau pendant qu'un de ses champs perd le focus
 let renderTimer=null;
 function renderAll(){ if(renderTimer) return; renderTimer=setTimeout(()=>{renderTimer=null; renderAllNow();},0); }
