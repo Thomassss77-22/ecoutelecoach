@@ -839,9 +839,11 @@ body.dsheet-open{overflow:hidden}
     <div class="stack">
       <details class="alert bad medal"><summary><b>Ce plan ne remplace pas un avis médical</b></summary><p style="margin:6px 0 0">Avant une reprise de la compétition à haute intensité, un examen médical avec ECG de repos est recommandé ; une épreuve d’effort est à discuter avec un médecin du sport ou un cardiologue en cas d’antécédent familial de mort subite ou de cardiopathie avant 50 ans, de symptôme à l’effort, ou d’ECG anormal. Douleur thoracique, palpitations, malaise ou essoufflement inhabituel à l’effort : arrêt immédiat et consultation, sans reprise avant avis.</p></details>
     </div>
-    <div class="subtabs" role="tablist" data-view="preuves"><button role="tab" type="button" data-sub="synthese">Synthèse</button><button role="tab" type="button" data-sub="nutrition">Nutrition</button><button role="tab" type="button" data-sub="moteur">Règles du moteur</button><button role="tab" type="button" data-sub="algo">Séance du jour</button></div>
+    <div class="subtabs" role="tablist" data-view="preuves"><button role="tab" type="button" data-sub="synthese">Synthèse vélo</button><button role="tab" type="button" data-sub="cap" class="only-run">Course à pied</button><button role="tab" type="button" data-sub="mix" class="only-run">Vélo + course</button><button role="tab" type="button" data-sub="nutrition">Nutrition</button><button role="tab" type="button" data-sub="moteur">Règles du moteur</button><button role="tab" type="button" data-sub="algo">Séance du jour</button></div>
     <div>
       <div class="subview" data-sub="synthese"><div class="card"><h2>Synthèse des preuves</h2><p class="small muted">Détail, limites et 35 références dans le document de la phase 1 : <a href="https://claude.ai/artifact/7uTyU6TTGx5D1sjtQ4pzWV">Cyclisme sur route 90-130 km : synthèse des preuves</a>.</p><div class="tablewrap stackable" id="evTable"></div></div></div>
+      <div class="subview" data-sub="cap"><div class="card"><h2>Course à pied : règles et preuves</h2><p class="small muted">Niveau de preuve : <b>F</b> fort (plusieurs méta-analyses ou essais concordants) · <b>M</b> modéré · <b>f</b> faible · <b>E</b> pratique d’élite non validée expérimentalement · <b>∅</b> pas de preuve, choix prudent de l’appli.</p><div class="tablewrap stackable" id="capTable"></div></div></div>
+      <div class="subview" data-sub="mix"><div class="card"><h2>Vélo et course ensemble</h2><p class="small muted">Attention au sens des études : certaines traitent la course comme complément du vélo, d’autres le vélo comme complément de la course. L’appli applique chacune au seul profil qu’elle concerne.</p><div class="tablewrap stackable" id="mixTable"></div></div></div>
       <div class="subview" data-sub="nutrition"><div class="card"><h2>Règles de nutrition</h2><div class="tablewrap stackable" id="nutTable"></div></div></div>
       <div class="subview" data-sub="moteur"><div class="card"><h2>Règles du moteur</h2><div class="tablewrap stackable" id="rulesTable"></div></div></div>
       <div class="subview" data-sub="algo"><div class="card"><h2>Algorithme de la séance du jour</h2><p class="small muted">Les questions que l’appli se pose chaque matin, dans l’ordre, pour choisir ta séance.</p><div class="tablewrap stackable" id="algoTable"></div></div></div>
@@ -2276,7 +2278,33 @@ function renderSettings(){
 }
 
 /* ---------- rendu : preuves ---------- */
-function renderEvidence(){
+function renderEvidenceRun(){
+  const T=(id,rows)=>{const e=document.getElementById(id); if(e) e.innerHTML=`<table><thead><tr><th>Règle</th><th>Ce que fait l’appli</th><th>Niveau</th><th>Sources</th></tr></thead><tbody>${rows.map(r=>`<tr><td><b>${r[0]}</b></td><td>${r[1]}</td><td class="num"><b>${r[2]}</b></td><td class="small">${r[3]}</td></tr>`).join("")}</tbody></table>`;};
+  T("capTable",[
+    ["Distribution de l’intensité","≥ 80 % du temps en endurance facile ; pyramidal par défaut, plus d’allure de course en spécifique. Polarisé et pyramidal font jeu égal sur la performance ; le polarisé semble mieux convenir aux compétiteurs, le pyramidal aux récréatifs.","M","Rosenblat 2025 ; Silva Oliveira 2024 ; Casado 2022 ; Haugen 2022"],
+    ["Séances clés","2 par semaine + sortie longue ; une sortie longue avec allure marathon compte comme séance clé. 48 h entre deux séances dures.","E","Haugen 2022 ; Casado 2022"],
+    ["VMA","4 × 4 min à 92-100 % VMA, 30/30 à 100-105 %.","M","Helgerud 2007 ; Billat 2001"],
+    ["Seuil","Continu 20-35 min ou fractionné à récupération courte, 85-91 % VMA. Le double seuil norvégien n’est pas proposé : il suppose 120-180 km/sem. et un lactatomètre.","E","Casado 2023 ; Haugen 2022"],
+    ["Allure spécifique","Allure 10 km, semi ou marathon prédite depuis un record (Riegel, souvent trop optimiste au marathon pour les petits volumes) ou en % de VMA.","f / E","Riegel 1981 ; Haugen 2022"],
+    ["Durée des plans","10 km : spécifique 6 sem. ; semi : 7 sem. ; marathon : 9 sem. ; construction avant.","∅","Choix d’ingénierie appuyé sur la pratique"],
+    ["Affûtage","10 km 10 j, semi 14 j, marathon 21 j ; volume −40 à −60 %, intensité et fréquence maintenues.","F","Bosquet 2007 ; Wang 2023"],
+    ["Garde-fou blessure","Aucune sortie à plus de +10 % de la plus longue des 30 jours précédents (risque ×1,5 à ×2,3 au-delà). La « règle des 10 % par semaine » n’est pas utilisée : elle n’a pas réduit les blessures.","M","Frandsen 2025 ; Buist 2008 ; Nielsen 2014"],
+    ["Ratio aigu/chronique","Non utilisé.","—","Impellizzeri 2020"],
+    ["Après un marathon","7 jours sans course, pas d’intensité avant 2-3 semaines.","f","Sherman 1984 ; Bernat-Adell 2021"],
+    ["Musculation","Lourde (> 80 % du max) + pliométrie, 2/sem. en base, 1 en spécifique : améliore l’économie de course.","F","Balsalobre-Fernández 2016 ; Llanos-Lagos 2024"],
+    ["FC de course","FC max et seuil propres à la course ; sans test, FC vélo + 5 et + 7 bpm (estimation à remplacer).","M / f","Millet 2009 ; Kasiak 2023"],
+    ["Nutrition","Semi : 30-60 g/h ; marathon : 60-90 g/h, charge glucidique 10-12 g/kg/j sur 36-48 h ; caféine 3-6 mg/kg.","F","Burke 2019 (IAAF) ; Jeukendrup 2017 ; Guest 2021"]]);
+  T("mixTable",[
+    ["Transfert vélo ↔ course","Réel pour le « moteur » (VO2max), faible pour les muscles et l’économie de course. Les deux ne sont pas interchangeables.","M−","Menges 2026 ; Millet 2009 ; Tanaka 1994"],
+    ["Vélo en complément de la course","Les jours libres d’une semaine course deviennent du vélo facile (90 min au plus) : volume aérobie sans impact. Le vélo ne remplace ni la sortie longue ni l’allure spécifique.","E / ∅","Haugen 2022"],
+    ["Vélo à la place de la course (blessure)","Jusqu’à 6 semaines à fréquence, durée et intensité égales : performance en course maintenue.","f / M","Eyestone 1993"],
+    ["Course en complément du vélo","Footing facile, 40 min au plus hors base, jamais la veille d’une séance clé vélo. Aucun essai sur la performance du cycliste ; intérêt osseux plausible mais non démontré.","∅","Olmedillas 2012 (densité osseuse des cyclistes)"],
+    ["Interférence","Course longue ou dure → 48 h avant une séance vélo dure ; jambes lourdes ≥ 4/5 : la course du jour passe en vélo très facile.","M","Twist et Eston 2009 ; Burt et Twist 2011 ; Marcora et Bosio 2007"],
+    ["Sport prioritaire","Séances clés dans le sport prioritaire du bloc ; 3 séances clés au plus par semaine, tous sports confondus.","E / ∅","Pratique du triathlon"],
+    ["Charge","Une charge commune (minutes × RPE) + un suivi mécanique propre à la course.","M","Foster 2001 ; Frandsen 2025"],
+    ["Musculation et endurance","Pas d’interférence sur la force max ni le volume musculaire ; force explosive réduite si même séance. Effet possible de la course sur les fibres lentes : preuve préliminaire.","M / f","Schumann 2022 ; Lundberg 2022"]]);
+}
+function renderEvidence(){try{renderEvidenceRun();}catch(e){}
   const E=[
     ["Répartition de l’intensité","Grande majorité du temps à basse intensité. Le polarisé améliore un peu plus le VO2pic, sans avantage démontré sur la performance ; les pros sont pyramidaux.","Modéré","Silva Oliveira 2024 ; Burnley 2022 / Foster 2022 ; Mateo-March 2026","≈ 80 % du temps en Z1-Z2 ; pyramidal en base, plus polarisé en spécifique."],
     ["HIIT et intervalles","Intervalles longs et 30/15 efficaces, par des voies en partie différentes ; 30/15 supérieurs chez le cycliste dans 2 essais.","Modéré","Rosenblat 2020, 2022 ; Rønnestad 2015, 2020","Alterner PMA longue (V1) et courts (V2, V3) ; 2 séances clés par semaine au maximum."],
