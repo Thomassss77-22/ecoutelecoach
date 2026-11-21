@@ -920,8 +920,13 @@ const PH={
     tid:"Libre, sans structure",focus:"1 à 3 semaines de coupure active : autres sports, plaisir, aucune séance clé."}
 };
 const CAT={tempo:["T1"],seuil:["S1","S3","S2"],vo2:["V1","V5","V4"],court:["V2","V3"],anaerobie:["A1","A2"],durabilite:["D1"],sprint:["SP2"]};
-const CATL={recup:"Récupération",endurance:"Endurance",long:"Sortie longue",tempo:"Tempo",seuil:"Seuil",vo2:"PMA / VO2max",court:"Intervalles courts",anaerobie:"Anaérobie répétée",durabilite:"Durabilité",sprint:"Sprint",course:"Course à pied",muscu:"Musculation",course_prep:"Avant course",test:"Test",repos:"Repos"};
+const CATL={recup:"Récupération",endurance:"Endurance",long:"Sortie longue",tempo:"Tempo",seuil:"Seuil",vo2:"PMA / VO2max",court:"Intervalles courts",anaerobie:"Anaérobie répétée",durabilite:"Durabilité",sprint:"Sprint",course:"Footing",c_long:"Sortie longue course",c_seuil:"Seuil course",c_vma:"VMA",c_spec:"Allure spécifique",c_cotes:"Côtes",c_test:"Test course",muscu:"Musculation",course_prep:"Avant course",test:"Test",repos:"Repos"};
 let LIB={};
+// allure de course pour une distance (km/h) : record (Riegel) en priorité, sinon repère en % de VMA
+const RUN_PV={5:95,10:90,21.0975:84,42.195:78};
+function runRaceKmh(d){const o=runProf(); if(o.rec) return d/riegel(o.rec.d,o.rec.t,d)*3600; return o.vma?o.vma*RUN_PV[d]/100:null;}
+// % VMA → équivalent % FTP, pour les couleurs et graphiques communs aux deux sports
+function vmaToF(p){const P=[[50,45],[60,55],[75,75],[85,92],[92,105],[100,118],[110,140]];if(p<=P[0][0])return P[0][1];for(let i=1;i<P.length;i++){if(p<=P[i][0]){const[a,b]=P[i-1],[c,d]=P[i];return Math.round(b+(p-a)/(c-a)*(d-b));}}return 140;}
 function buildLib(){
   const f=S.settings.ftp, fc=fcRef();
   const W=p=>Math.round(f*p/100);
@@ -1012,6 +1017,7 @@ function buildLib(){
       obj:"Recaler la FTP et les zones toutes les 6-8 semaines ; mesurer la durabilité.",int:"Efforts maximaux",
       court:"Échauffement 20 min, 3 × 10 s sprint, 5 min maximal, 10 min Z1, 20 min maximal. FTP ≈ 95 % de la puissance sur 20 min (convention de terrain, imprécise chez certains). Pas de version de 45 min : un test raccourci fausse les zones.",
       long:"Version durabilité : refaire le 5 min maximal après 2 h 30 en Z2 (≈ 2 000 kJ) et comparer à la valeur à frais. Repère indicatif, pas de norme validée : une baisse nettement plus forte que celle mesurée chez des cyclistes entraînés (environ 3 % sur 20 min, 10 % sur 6 min après ~4 h) signale une durabilité à travailler."},
+    ...runLib(),
     {id:"C1",nom:"Footing",cat:"course",sport:"course",key:false,phases:PHASES,dS:25,dL:60,
       obj:"Endurance générale et charge osseuse, sans fatigue spécifique.",int:"FC < "+Math.round(fc*.75)+" bpm (75 % FC max) · RPE 2-3",
       court:"25-35 min, terrain souple.",long:"45-60 min. Augmentation progressive du volume de course (repère de prudence : environ +10 % par semaine, règle de terrain non démontrée)."},
@@ -1033,6 +1039,53 @@ function buildLib(){
   const lv=S.settings.level||"amateur"; const ext={amateur:[180,300],elite:[240,330],pro:[300,360]}[lv]||[180,300];
   LIB.E2.dL=ext[0]; LIB.E4.dL=ext[1]; LIB.E5.dL=ext[1];
   if(lv!=="amateur"){LIB.E4.long=LIB.E4.long.replace("4 h-5 h",fmtMin(ext[1]-60)+"-"+fmtMin(ext[1]));LIB.E5.long=LIB.E5.long.replace("4 h-5 h",fmtMin(ext[1]-60)+"-"+fmtMin(ext[1]));}
+}
+
+/* ---------- bibliothèque course à pied ---------- */
+function runLib(){
+  const o=runProf(),V=o.vma,FC=o.fcmax;
+  const pv=(a,b)=>V?fmtPace(V*b/100).replace(" /km","")+"-"+fmtPace(V*a/100)+" ("+a+"-"+b+" % VMA)":a+"-"+b+" % VMA";
+  const hrr=(a,b)=>Math.round(FC*a/100)+"-"+Math.round(FC*b/100)+" bpm";
+  const rp=d=>{const k=runRaceKmh(d);return k?fmtPace(k):"allure visée";};
+  const PH=["base","construction","specifique","competition"];
+  return [
+    {id:"C3",nom:"Sortie longue",cat:"c_long",sport:"course",key:true,phases:PHASES,dS:60,dL:150,
+      obj:"Endurance spécifique, économie de course et tolérance des tissus à la durée. La plus importante des séances pour le semi et le marathon.",int:"Endurance fondamentale : FC "+hrr(65,78)+" · "+pv(62,75)+" · RPE 2-3",
+      court:"60-80 min en endurance fondamentale, terrain varié.",long:"1 h 30 à 2 h 30 selon l’objectif (10 km : 75-100 min ; semi : 90-120 min ; marathon : jusqu’à 2 h 30-3 h ou 30-35 km). Jamais plus de 10 % au-delà de ta plus longue sortie des 30 derniers jours (Frandsen 2025). Pour le marathon : glucides à l’allure prévue en course, pour entraîner l’intestin."},
+    {id:"C4",nom:"Sortie longue avec allure marathon",cat:"c_spec",sport:"course",key:true,phases:["specifique"],dS:90,dL:150,
+      obj:"La séance spécifique du marathon : tenir l’allure de course sur fond de fatigue (pratique d’élite, Haugen 2022).",int:"Blocs à l’allure marathon "+rp(42.195)+" · FC ≤ "+Math.round(FC*.88)+" bpm · le reste en endurance",
+      court:"30 min d’endurance, 2 × 20 min à l’allure marathon récup 5 min facile, 10 min de retour.",long:"40 min d’endurance, 3 × 5 km à l’allure marathon récup 1 km facile, puis endurance jusqu’à 25-32 km. Ravitaillement de course."},
+    {id:"C5",nom:"Seuil continu (tempo)",cat:"c_seuil",sport:"course",key:true,phases:["base","construction","specifique"],dS:45,dL:70,
+      obj:"Relever le seuil : allure tenue longtemps sans s’emballer.",int:pv(85,90)+" · FC "+hrr(85,90)+" · RPE 6-7 · tu pourrais tenir 10 à 15 min de plus",
+      court:"15 min d’échauffement, 20 min au seuil, 10 min de retour.",long:"15 min d’échauffement, 30-35 min au seuil, 10 min de retour."},
+    {id:"C6",nom:"Seuil fractionné",cat:"c_seuil",sport:"course",key:true,phases:["base","construction","specifique"],dS:50,dL:75,
+      obj:"Plus de temps au seuil qu’en continu pour la même fatigue, grâce aux récupérations courtes (logique du seuil norvégien, sans lactatomètre).",int:pv(86,91)+" · FC "+hrr(85,90)+" · RPE 6-7 · récupération courte",
+      court:"15 min d’échauffement, 5 × 6 min récup 1 min trot, 10 min de retour.",long:"15 min d’échauffement, 4 × 10 min récup 1 min 30 trot, 10 min de retour."},
+    {id:"C7",nom:"VMA longue 4 × 4 min",cat:"c_vma",sport:"course",key:true,phases:["base","construction","specifique"],dS:50,dL:60,
+      obj:"Développer la VO2max : le 4 × 4 min fait plus progresser la VO2max que l’endurance continue ou le seuil (Helgerud 2007).",int:pv(92,100)+" · FC "+hrr(90,95)+" en fin de répétition · RPE 8",
+      court:"20 min d’échauffement avec 3 accélérations, 4 × 4 min récup 3 min trot, 10 min de retour.",long:"20 min d’échauffement, 5 × 4 min ou 6 × 1 000 m récup 3 min trot, 10 min de retour."},
+    {id:"C8",nom:"VMA courte 30/30",cat:"c_vma",sport:"course",key:true,phases:["base","construction"],dS:45,dL:55,
+      obj:"Temps passé près de la VO2max avec peu de fatigue musculaire ; travaille aussi la vitesse de foulée.",int:pv(100,105)+" sur 30 s / trot 30 s · RPE 8-9 · la FC n’est pas un repère sur 30 s",
+      court:"20 min d’échauffement, 2 × 8 × (30 s / 30 s) récup 3 min, 10 min de retour.",long:"20 min d’échauffement, 3 × 10 × (30 s / 30 s) récup 3 min, 10 min de retour."},
+    {id:"C9",nom:"Allure 10 km",cat:"c_spec",sport:"course",key:true,phases:["specifique","competition"],dS:55,dL:70,
+      obj:"Apprendre et tenir l’allure exacte de l’objectif 10 km.",int:"Allure 10 km "+rp(10)+" · RPE 7-8",
+      court:"20 min d’échauffement, 6 × 1 000 m à l’allure 10 km récup 1 min 30 trot, 10 min de retour.",long:"20 min d’échauffement, 3 × 3 km à l’allure 10 km récup 2 min trot, 10 min de retour."},
+    {id:"C10",nom:"Allure semi-marathon",cat:"c_spec",sport:"course",key:true,phases:["specifique","competition"],dS:60,dL:85,
+      obj:"Tenir l’allure du semi le plus longtemps possible (approche « spécifique » à la Canova, pratique d’élite).",int:"Allure semi "+rp(21.0975)+" · RPE 6-7",
+      court:"15 min d’échauffement, 3 × 10 min à l’allure semi récup 2 min trot, 10 min de retour.",long:"15 min d’échauffement, 3 × 15 min (ou 3 × 5 km) à l’allure semi récup 2 min trot, 10 min de retour."},
+    {id:"C11",nom:"Côtes",cat:"c_cotes",sport:"course",key:true,phases:["base","construction"],dS:45,dL:60,
+      obj:"Force spécifique et puissance de foulée, avec moins d’impact qu’en vitesse sur le plat.",int:"Côte de 4 à 8 % · effort dur mais contrôlé (RPE 8) · descente en trottinant",
+      court:"20 min d’échauffement, 8 × 60 s en côte, récup en descendant, 10 min de retour.",long:"20 min d’échauffement, 10 × 90 s en côte, récup en descendant, 10 min de retour."},
+    {id:"C12",nom:"Fartlek",cat:"c_vma",sport:"course",key:false,phases:["base","construction","transition"],dS:40,dL:55,
+      obj:"Varier les allures sans pression de chrono : une séance de qualité légère.",int:"Accélérations à l’allure 10 km ("+rp(10)+") · le reste en endurance",
+      court:"15 min d’échauffement, 10 × (1 min vite / 1 min facile), 10 min de retour.",long:"15 min d’échauffement, 6 × (3 min vite / 2 min facile), 10 min de retour."},
+    {id:"C13",nom:"Test VMA (demi-Cooper)",cat:"c_test",sport:"course",key:true,phases:["base","construction","specifique"],dS:45,dL:45,
+      obj:"Mesurer ta VMA : la distance couverte en 6 min, divisée par 100, donne ta VMA en km/h (1 600 m → 16 km/h).",int:"6 min le plus loin possible, allure régulière · RPE 10",
+      court:"20 min d’échauffement avec 3 accélérations, 6 min à fond sur piste ou terrain plat, 15 min de retour. Reporte la VMA dans Réglages.",long:"Même contenu."},
+    {id:"C14",nom:"Test FC seuil course 30 min",cat:"c_test",sport:"course",key:true,phases:["base","construction","specifique"],dS:55,dL:55,
+      obj:"Mesurer ta FC au seuil en course, plus haute qu’à vélo.",int:"30 min au maximum que tu peux tenir de façon régulière · RPE 9",
+      court:"15 min d’échauffement, 30 min à fond sur terrain plat. Appuie sur Tour à 10 min : la FC moyenne des 20 dernières minutes est ta FC seuil. Reporte-la dans Réglages.",long:"Même contenu."}
+  ];
 }
 
 /* ---------- phase et cycles ---------- */
@@ -1092,7 +1145,7 @@ function pickKey(prio,excludeCats,widx,phase){
 }
 function fitDur(id,avail){
   const s=LIB[id]; if(!s||s.sport==="repos") return {dur:0,v:"—"};
-  if(["E1","E2","E3","E4","E5","C1"].includes(id)) return {dur:Math.max(Math.min(avail,s.dL),Math.min(s.dS,avail)),v:avail>=s.dL*.8?"longue":"courte"};
+  if(["E1","E2","E3","E4","E5","C1","C3"].includes(id)) return {dur:Math.max(Math.min(avail,s.dL),Math.min(s.dS,avail)),v:avail>=s.dL*.8?"longue":"courte"};
   if(avail>=s.dL) return {dur:s.dL,v:"longue"};
   return {dur:Math.min(s.dS,avail||s.dS),v:"courte",tight:avail<s.dS};
 }
@@ -1597,7 +1650,7 @@ function fillCI(){const c=S.checkins[TODAY]||{};const plan=buildWeek(mondayOf(TO
 // profil d'effort : chaque étape de la séance, largeur = durée, hauteur et couleur = intensité (zones)
 function zoneColor(pct){ return pct==null?"var(--z7)":pct<56?"var(--z1)":pct<76?"var(--z2)":pct<91?"var(--z3)":pct<106?"var(--z4)":pct<121?"var(--z5)":pct<151?"var(--z6)":"var(--z7)"; }
 function svgWorkout(id,variant,dur){
-  let st; try{st=wkSteps(id,variant,(["E1","E2","E4","E5","C1","C2"].includes(id)?dur:null));}catch(e){return "";} if(!st||!st.length) return "";
+  let st; try{st=wkSteps(id,variant,(["E1","E2","E4","E5","C1","C2","C3"].includes(id)?dur:null));}catch(e){return "";} if(!st||!st.length) return "";
   const f=[],w=a=>a.forEach(x=>{if(x.rep){for(let i=0;i<x.rep;i++)w(x.steps);}else f.push(x);}); w(st);
   const tot=f.reduce((a,x)=>a+(x.d||0),0); if(!tot) return "";
   const W=1000,H=120,base=H, minW=2.5; let x=0;
@@ -1610,7 +1663,7 @@ function svgWorkout(id,variant,dur){
     <div class="legend" style="margin-top:6px"><span><span class="zbar" style="background:none;border-top:2px dashed var(--line2);height:0;vertical-align:3px"></span>100 % FTP</span>${[["z1","récup"],["z2","endurance"],["z3","tempo"],["z4","seuil"],["z5","PMA"],["z6","anaérobie"],["z7","sprint"]].filter(z=>f.some(s=>zoneColor(s.lo==null?null:pct(s))==="var(--"+z[0]+")")).map(z=>`<span><span class="zbar" style="background:var(--${z[0]})"></span>${z[1]}</span>`).join("")}</div></div>`;
 }
 function svgMini(id,variant,dur){
-  let st; try{st=wkSteps(id,variant,(["E1","E2","E4","E5","C1","C2"].includes(id)?dur:null));}catch(e){return "";} if(!st||!st.length) return "";
+  let st; try{st=wkSteps(id,variant,(["E1","E2","E4","E5","C1","C2","C3"].includes(id)?dur:null));}catch(e){return "";} if(!st||!st.length) return "";
   const f=[],w=a=>a.forEach(x=>{if(x.rep){for(let i=0;i<x.rep;i++)w(x.steps);}else f.push(x);}); w(st); const tot=f.reduce((a,x)=>a+(x.d||0),0); if(!tot) return "";
   let x=0; const H=26; const bars=f.map(s=>{const p=s.lo==null?175:(s.lo+s.hi)/2, wd=Math.max(1.5,s.d/tot*200), h=Math.max(4,Math.min(1,(p-30)/150)*H); const r=`<rect x="${x.toFixed(1)}" y="${(H-h).toFixed(1)}" width="${Math.max(.8,wd-.6).toFixed(1)}" height="${h.toFixed(1)}" rx="1" fill="${zoneColor(s.lo==null?null:p)}"/>`; x+=s.d/tot*200; return r;}).join("");
   return `<svg viewBox="0 0 200 ${H}" preserveAspectRatio="none" style="display:block;width:100%;max-width:220px;height:26px;margin:6px 0 2px" aria-hidden="true">${bars}</svg>`;
@@ -1652,8 +1705,8 @@ function renderToday(){
   if(cis){ cis.textContent=ciDone?"Rempli":"À remplir"; cis.className="state chip "+(ciDone?"good":"warn"); }
   if(cic&&!cic.dataset.touched){ cic.open=!ciDone&&window.innerWidth>900; cic.ontoggle=()=>{cic.dataset.touched="1";}; }
   renderFree(r,ci);
-  const qs=document.getElementById("qSend"); if(qs) qs.onclick=()=>askSendGarmin(r.id,r.variant,(["E1","E2","E4","E5","C1","C2"].includes(r.id)?r.dur:null),TODAY,"qGarminMsg");
-  const qg=document.getElementById("qGarmin"); if(qg) qg.onclick=()=>offerZip([workoutFile(r.id,r.variant,(["E1","E2","E4","E5","C1","C2"].includes(r.id)?r.dur:null),TODAY.replace(/-/g,""),r.dur)],"seance_"+TODAY+".zip","qGarminMsg");
+  const qs=document.getElementById("qSend"); if(qs) qs.onclick=()=>askSendGarmin(r.id,r.variant,(["E1","E2","E4","E5","C1","C2","C3"].includes(r.id)?r.dur:null),TODAY,"qGarminMsg");
+  const qg=document.getElementById("qGarmin"); if(qg) qg.onclick=()=>offerZip([workoutFile(r.id,r.variant,(["E1","E2","E4","E5","C1","C2","C3"].includes(r.id)?r.dur:null),TODAY.replace(/-/g,""),r.dur)],"seance_"+TODAY+".zip","qGarminMsg");
   const ql=document.getElementById("qLog"); if(ql) ql.onclick=()=>{
     const dur=+document.getElementById("qDur").value||0, rpe=document.getElementById("qRpe").value;
     if(!dur&&r.id!=="R0"){alertMsg("Indique la durée.");return;}
@@ -1768,9 +1821,9 @@ function renderWeek(){
   const sb=document.getElementById("wkShock"); const okPh=["base","construction","specifique"].includes(W.phase);
   sb.textContent=W.shock?"Annuler le bloc de choc":"Faire de cette semaine un bloc de choc"; sb.disabled=!okPh&&!W.shock;
   sb.onclick=()=>{S.shock=S.shock||{}; if(S.shock[mon]) delete S.shock[mon]; else S.shock[mon]=true; save(); renderAll();};
-  document.getElementById("wkSend").onclick=()=>openSend(W.days.filter(d=>d.date>=TODAY&&d.main.id!=="RACE"&&d.main.id!=="R0").map(d=>({id:d.main.id,variant:d.v,dur:(["E1","E2","E4","E5","C1","C2"].includes(d.main.id)?d.dur:null),date:d.date})),"wkSendMsg");
+  document.getElementById("wkSend").onclick=()=>openSend(W.days.filter(d=>d.date>=TODAY&&d.main.id!=="RACE"&&d.main.id!=="R0").map(d=>({id:d.main.id,variant:d.v,dur:(["E1","E2","E4","E5","C1","C2","C3"].includes(d.main.id)?d.dur:null),date:d.date})),"wkSendMsg");
   document.getElementById("wkIcs").onclick=()=>icsExport("wkGarminMsg");
-  document.getElementById("wkGarmin").onclick=()=>offerZip(W.days.flatMap(d=>{const lab=d.date.replace(/-/g,"").slice(4)+"_"+DAYS[d.i].slice(0,3);const arr=[];if(d.main.id!=="RACE"&&d.main.id!=="R0")arr.push(workoutFile(d.main.id,d.v,(["E1","E2","E4","E5","C1","C2"].includes(d.main.id)?d.dur:null),lab,d.dur));d.extra.forEach(x=>arr.push(workoutFile(x,"courte",null,lab)));return arr;}),"semaine_"+mon+".zip","wkGarminMsg");
+  document.getElementById("wkGarmin").onclick=()=>offerZip(W.days.flatMap(d=>{const lab=d.date.replace(/-/g,"").slice(4)+"_"+DAYS[d.i].slice(0,3);const arr=[];if(d.main.id!=="RACE"&&d.main.id!=="R0")arr.push(workoutFile(d.main.id,d.v,(["E1","E2","E4","E5","C1","C2","C3"].includes(d.main.id)?d.dur:null),lab,d.dur));d.extra.forEach(x=>arr.push(workoutFile(x,"courte",null,lab)));return arr;}),"semaine_"+mon+".zip","wkGarminMsg");
   const rs=document.getElementById("wkReset"); if(rs) rs.onclick=()=>{delete S.weekEdits[mon];save();renderAll();};
   document.querySelectorAll("[data-unadd]").forEach(el=>el.onclick=()=>{ const [date,id]=el.dataset.unadd.split("|"); editWeek(mon,DAYS[diff(mon,date)]+" : "+((LIB[id]||{}).nom||id)+" retiré",()=>{ const q=Object.assign({},S.pins[date]||{}), a=[...(q.add||[])], k=a.indexOf(id); if(k>=0) a.splice(k,1); q.add=a; S.pins[date]=q; }); renderAll(); });
   document.querySelectorAll("[data-edit]").forEach(el=>el.onclick=()=>openSheet(mon,+el.dataset.edit));
@@ -1848,10 +1901,12 @@ function renderLib(){
   const st=S.settings,f=st.ftp,fc=fcRef(),W=p=>Math.round(f*p/100);
   const Z=[["Z1 Récupération","< 55",`< ${W(55)}`,"< 68","1-2"],["Z2 Endurance","56-75",`${W(56)}-${W(75)}`,"68-80","2-3"],["Z3 Tempo","76-90",`${W(76)}-${W(90)}`,"80-88","4-5"],["Z4 Seuil","91-105",`${W(91)}-${W(105)}`,"88-92","6-7"],["Z5 PMA / VO2max","106-120",`${W(106)}-${W(120)}`,"> 92","8-9"],["Z6 Anaérobie","121-150",`${W(121)}-${W(150)}`,"non pertinent","9-10"],["Z7 Sprint","maximal","> "+W(150),"non pertinent","10"]];
   document.getElementById("zonesTable").innerHTML=`<table><thead><tr><th>Zone</th><th>% FTP</th><th>Watts (FTP ${f} W)</th><th>% FC max (${fc} bpm)</th><th>RPE</th></tr></thead><tbody>${Z.map(z=>`<tr><td><b>${z[0]}</b></td><td>${z[1]}</td><td class="num">${z[2]}</td><td>${z[3]}</td><td>${z[4]}</td></tr>`).join("")}</tbody></table>`;
-  const cats=["all","endurance","long","tempo","seuil","vo2","court","anaerobie","durabilite","sprint","course","muscu","test"];
+  const VC=["endurance","long","tempo","seuil","vo2","court","anaerobie","durabilite","sprint"],RC=["course","c_long","c_seuil","c_vma","c_spec","c_cotes","c_test"],pr=sportProfile();
+  const cats=["all",...(pr==="course"?[]:VC),...(runActive()?RC:[]),"muscu",...(pr==="course"?[]:["test"])];
+  if(!cats.includes(libCat)) libCat="all";
   document.getElementById("libFilter").innerHTML=cats.map(c=>`<button type="button" data-c="${c}" aria-pressed="${libCat===c}">${c==="all"?"Toutes":CATL[c]}</button>`).join("");
   document.querySelectorAll("#libFilter button").forEach(b=>b.onclick=()=>{libCat=b.dataset.c;renderLib();});
-  const list=Object.values(LIB).filter(s=>s.sport!=="repos"&&(libCat==="all"||s.cat===libCat||(libCat==="endurance"&&s.cat==="recup")||(libCat==="test"&&s.cat==="course_prep")));
+  const list=Object.values(LIB).filter(s=>s.sport!=="repos"&&!(pr==="course"&&s.sport==="velo")&&!(!runActive()&&s.sport==="course")&&(libCat==="all"||s.cat===libCat||(libCat==="endurance"&&s.cat==="recup")||(libCat==="test"&&s.cat==="course_prep")));
   document.getElementById("libGrid").innerHTML=list.map(s=>`<div class="card libcard"><div class="lhead"><h3>${esc(s.nom)}</h3><span class="ltags">${s.key?'<span class="tag key">clé</span>':""}<span class="tag">${CATL[s.cat]}</span></span></div>
     <p class="small lobj">${esc(s.obj)}</p>
     ${["velo","course"].includes(s.sport)?svgMini(s.id,"courte"):""}
@@ -3161,7 +3216,7 @@ function renderHistBar(mon){ const el=document.getElementById("wkHist"); if(!el)
 
 /* ---------- panneau d’un jour : conseils du coach, choix libre vérifié, ajout, échange ---------- */
 const CATZ={recup:"var(--z1)",endurance:"var(--z2)",long:"var(--z2)",durabilite:"var(--z2)",tempo:"var(--z3)",seuil:"var(--z4)",vo2:"var(--z5)",court:"var(--z5)",anaerobie:"var(--z6)",sprint:"var(--z7)",course:"var(--ph-construction)",muscu:"var(--accent-2)",test:"var(--ph-affutage)",course_prep:"var(--z1)",repos:"var(--line2)"};
-const PICKG=[["Facile",["recup","endurance","long"]],["Intensité",["tempo","seuil","vo2","court","anaerobie","sprint","durabilite"]],["Course à pied",["course"]],["Musculation",["muscu"]],["Tests et veille de course",["test","course_prep"]]];
+const PICKG=[["Facile",["recup","endurance","long"]],["Intensité",["tempo","seuil","vo2","court","anaerobie","sprint","durabilite"]],["Course à pied",["course","c_long","c_seuil","c_vma","c_spec","c_cotes","c_test"]],["Musculation",["muscu"]],["Tests et veille de course",["test","course_prep"]]];
 function openSheet(mon,i){ sheet={mon,i,alt:"main",lastFocus:document.activeElement}; renderSheet(); const el=document.getElementById("daySheet"); el.hidden=false; document.getElementById("sheetBg").hidden=false; document.body.classList.add("dsheet-open"); requestAnimationFrame(()=>el.classList.add("in")); el.focus(); }
 function closeSheet(){ const el=document.getElementById("daySheet"); if(!el||el.hidden) return; el.classList.remove("in"); el.hidden=true; document.getElementById("sheetBg").hidden=true; document.body.classList.remove("dsheet-open"); const f=sheet&&sheet.lastFocus; sheet=null; if(f&&f.focus) try{f.focus();}catch(e){} }
 function renderSheet(){ if(!sheet) return; const {mon,i}=sheet, el=document.getElementById("daySheet"); const W=buildWeek(mon), d=W.days[i];
@@ -3486,8 +3541,9 @@ function wkSteps(id,variant,dur){
     case "P3": return [WU(12),{rep:3,steps:[{n:"Accélération 30 s",d:30,lo:null,hi:null,int:"active"},RC(90)]},{n:"30 min à fond : 10 premières",d:600,lo:null,hi:null,int:"active"},{n:"20 min : FC moy = FC seuil",d:1200,lo:null,hi:null,int:"active"},CD(15)];
     case "P2": return L?[Z2(150,"Z2 · ~2000 kJ"),{n:"5 min À FOND",d:300,lo:null,hi:null,int:"active"},CD(15)]
                        :[WU(20),{rep:3,steps:[SPR(10),RC(110)]},{n:"5 min À FOND",d:300,lo:null,hi:null,int:"active"},RC(600,"Récup 10 min"),{n:"20 min À FOND",d:1200,lo:null,hi:null,int:"active"},CD(10)];
-    case "C1": return [{n:"Footing facile",d:m(D),lo:null,hi:null,hr:[60,75],int:"active"}];
-    case "C2": return [{n:"Footing facile",d:m(Math.max(10,D-15)),lo:null,hi:null,hr:[60,75],int:"warmup"},{rep:6,steps:[{n:"15 s rapide relâché",d:15,lo:null,hi:null,int:"active"},{n:"Marche 1 min",d:60,lo:null,hi:null,int:"rest"}]},{n:"Footing facile",d:m(5),lo:null,hi:null,hr:[60,75],int:"cooldown"}];
+    case "C1": return [{n:"Footing facile",d:m(D),lo:55,hi:70,hr:[60,75],int:"active"}];
+    case "C2": return [{n:"Footing facile",d:m(Math.max(10,D-15)),lo:55,hi:70,hr:[60,75],int:"warmup"},{rep:6,steps:[{n:"15 s rapide relâché",d:15,lo:null,hi:null,int:"active"},{n:"Marche 1 min",d:60,lo:40,hi:45,int:"rest"}]},{n:"Footing facile",d:m(5),lo:55,hi:70,hr:[60,75],int:"cooldown"}];
+    default: if(/^C\d+$/.test(id)) return runSteps(id,L,D);
     case "M1": return strength([["Goblet squat 12-15",L?3:2,90],["Fentes 12/jambe",L?3:2,90],["Hip thrust 12-15",L?3:2,90],["SDT roumain 12",L?3:2,90],["Gainage 40 s",3,30]]);
     case "M2": return strength([["Demi-squat 4-6 lourd",4,180],["Fente bulgare 6/jambe",3,120],["SDT roumain 6",3,120],...(L?[["Squat jump x3",3,90],["Mollets 10",3,60]]:[]),["Gainage 45 s",3,30]]);
     case "M3": return strength([["Demi-squat 3-5",3,180],["Fente bulgare 5/jambe",2,120],["Squat jump x3",3,90],...(L?[["SDT roumain 5",2,120]]:[])]);
@@ -3498,6 +3554,33 @@ function strength(list){
   const out=[{n:"Échauffement 10 min",d:600,lo:null,hi:null,int:"warmup"}];
   list.forEach(([n,sets,rest])=>out.push({rep:sets,steps:[{n,d:null,lo:null,hi:null,int:"active"},{n:"Repos",d:rest,lo:null,hi:null,int:"rest"}]}));
   return out;
+}
+// étapes des séances de course : v = cible en % VMA (allure), sp = allure de course (km), hr = % FC max course ; lo/hi = équivalent % FTP pour les graphiques
+function runSteps(id,L,D){
+  const m=x=>Math.round(x*60);
+  const E=(min,n,int)=>({n:n||"Endurance",d:m(min),v:[62,75],hr:[65,78],lo:vmaToF(62),hi:vmaToF(75),int:int||"active"});
+  const WU=min=>E(min,"Échauffement","warmup"),CD=min=>E(min,"Retour au calme","cooldown"),TR=(sec,n)=>({n:n||"Trot",d:sec,v:[50,62],lo:45,hi:55,int:"rest"});
+  const Q=(sec,a,b,n)=>({n,d:sec,v:[a,b],lo:vmaToF(a),hi:vmaToF(b),int:"active"});
+  const SP=(sec,km,n)=>{const k=runRaceKmh(km),o=runProf(),p=k&&o.vma?k/o.vma*100:{5:95,10:90,21.0975:84,42.195:78}[km];return {n,d:sec,sp:km,v:[p-1.5,p+1.5],lo:vmaToF(p-1.5),hi:vmaToF(p+1.5),int:"active"};};
+  const MAX=(sec,n)=>({n,d:sec,lo:null,hi:null,int:"active"});
+  // durée d'un 1 000 m ou de 5 km à une allure donnée
+  const tKm=(km,dist)=>{const k=runRaceKmh(km);return k?Math.round(dist/k*3600):Math.round(dist*240);};
+  switch(id){
+    case "C3": return [E(D,"Sortie longue")];
+    case "C4": return L?[E(40),{rep:3,steps:[SP(tKm(42.195,5),42.195,"5 km allure marathon"),E(6,"1 km facile","rest")]},E(Math.max(10,D-40-3*(tKm(42.195,5)/60+6)),"Endurance")]
+                       :[E(30),{rep:2,steps:[SP(m(20),42.195,"20 min allure marathon"),E(5,"Facile","rest")]},CD(10)];
+    case "C5": return [WU(15),Q(m(L?32:20),85,90,"Seuil "+(L?32:20)+" min"),CD(10)];
+    case "C6": return L?[WU(15),{rep:4,steps:[Q(m(10),86,91,"Seuil 10 min"),TR(90)]},CD(10)]:[WU(15),{rep:5,steps:[Q(m(6),86,91,"Seuil 6 min"),TR(60)]},CD(10)];
+    case "C7": return [WU(20),{rep:L?5:4,steps:[Q(m(4),92,100,"VMA 4 min"),TR(180)]},CD(10)];
+    case "C8": { const out=[WU(20)],nb=L?3:2,k=L?10:8; for(let b=0;b<nb;b++){out.push({rep:k,steps:[Q(30,100,105,"30 s vite"),TR(30,"30 s trot")]}); if(b<nb-1) out.push(TR(180,"Récup 3 min"));} out.push(CD(10)); return out; }
+    case "C9": return L?[WU(20),{rep:3,steps:[SP(tKm(10,3),10,"3 km allure 10 km"),TR(120)]},CD(10)]:[WU(20),{rep:6,steps:[SP(tKm(10,1),10,"1 000 m allure 10 km"),TR(90)]},CD(10)];
+    case "C10": return [WU(15),{rep:3,steps:[SP(m(L?15:10),21.0975,(L?15:10)+" min allure semi"),TR(120)]},CD(10)];
+    case "C11": return [WU(20),{rep:L?10:8,steps:[MAX(L?90:60,"Côte "+(L?90:60)+" s"),TR(L?120:90,"Descente trot")]},CD(10)];
+    case "C12": return L?[WU(15),{rep:6,steps:[SP(m(3),10,"3 min vite"),E(2,"2 min facile","rest")]},CD(10)]:[WU(15),{rep:10,steps:[SP(60,10,"1 min vite"),E(1,"1 min facile","rest")]},CD(10)];
+    case "C13": return [WU(20),MAX(360,"6 min à fond"),CD(15)];
+    case "C14": return [WU(15),MAX(600,"10 min à fond, puis Tour"),MAX(1200,"20 min à fond : FC seuil"),CD(10)];
+  }
+  return null;
 }
 // début manuel des blocs : l'échauffement (ou le Z2 d'approche) part tout seul et dure jusqu'à l'appui sur Tour (Lap),
 // qui lance le premier bloc ; idem entre deux blocs (la récup qui les sépare attend l'appui pour lancer le bloc suivant)
@@ -3549,6 +3632,10 @@ function encodeWorkout(name,sport,steps,mode){
       const short=s.d<=60;
       if(mode==="hr"){ const r=short?[85,100]:[90,100]; tt=1;lo=Math.round(fc*r[0]/100)+100;hi=Math.round(fc*r[1]/100)+100; }
       else { const r=short?[150,300]:[100,120]; tt=4;lo=Math.round(ftp*r[0]/100)+1000;hi=Math.round(ftp*r[1]/100)+1000; }
+    } else if(sport==="course"){ const o=runProf();
+      // qualité : cible d'allure (vitesse en m/s × 1000) ; endurance : cible FC de course (la chaleur et le dénivelé faussent l'allure)
+      if(s.v&&s.int==="active"&&s.v[0]>=76&&o.vma){ let a,b; if(s.sp){const k=runRaceKmh(s.sp);a=k*.98;b=k*1.02;} else {a=o.vma*s.v[0]/100;b=o.vma*s.v[1]/100;} tt=0;lo=Math.round(a/3.6*1000);hi=Math.round(b/3.6*1000); }
+      else if(s.hr){tt=1;lo=Math.round(o.fcmax*s.hr[0]/100)+100;hi=Math.round(o.fcmax*s.hr[1]/100)+100;}
     } else if(s.hr){tt=1;lo=Math.round(fc*s.hr[0]/100)+100;hi=Math.round(fc*s.hr[1]/100)+100;}
     u8(tt);u32(tt===2?INV32:0);u32(lo);u32(hi);u8(intens[s.int]??0);
   });
