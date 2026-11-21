@@ -1442,7 +1442,7 @@ function buildWeek(mon,availOverride,opt={}){
   const shock=!RW&&!opt.phase&&!tagOf(mon)&&!!(S.shock&&S.shock[mon])&&["base","construction","specifique"].includes(phase);
   const postShock=!opt.phase&&!shock&&!!S.shock&&[1,2,3].some(k=>S.shock[addDays(mon,-7*k)]);
   const prio=prioFor(phase,mon);
-  let gym=P.gym, run=RW?Math.max(0,+st.runMax||0):(runActive()?Math.min(P.run,+st.runMax):0);
+  let gym=P.gym, run=RW?Math.max(0,Math.min(+st.runMax||0,races.some(r=>r.prio!=="C"&&r.date>=mon&&r.date<=addDays(mon,6))?3:99)):(runActive()?Math.min(P.run,+st.runMax):0);
   if(phase==="affutage"){ const ra=races.find(r=>r.prio==="A"&&r.date>=mon); if(ra&&diff(mon,ra.date)<7) keys=Math.min(keys,1); }
   if(deload){keys=Math.min(keys,1);gym=Math.min(gym,1);if(!RW)run=Math.min(run,1);}
   if(shock){keys=5;gym=0;run=0;warns.push("Bloc de choc : 5 séances d’intervalles en 7 jours (Rønnestad), jours d’affilée autorisés, le reste en endurance facile. Les 3 semaines suivantes passent à 1 séance clé.");}
@@ -1605,6 +1605,8 @@ function buildWeek(mon,availOverride,opt={}){
   if(LC&&LC.k<=1&&!S.sessions.some(s=>s.date<TODAY)) warns.push("Aucune séance enregistrée : le volume est fondé sur ton volume max, pas sur ton entraînement réel. Importe tes dernières sorties (Suivi et alertes) pour que la progression parte de ton niveau actuel.");
   cap=Math.round(cap);
   let total=days.reduce((s,d)=>s+d.dur+(d.gymDur||0)+(d.addDur||0),0);
+  // semaine de course à pied : la course elle-même n'est pas du volume d'entraînement à plafonner (sinon les footings de la semaine de course sautent)
+  const raceMin=RW?days.filter(d=>d.main&&d.main.id==="RACE").reduce((s,d)=>s+d.dur,0):0; total-=raceMin;
   if(total>cap){
     const flex=days.filter(d=>["E2","E3","E4","E5","C1","C2","E1","C3"].includes(d.main.id)&&!d.pinned);
     // affûtage : on raccourcit les sorties (jusqu'à 40 min) avant d'en supprimer, pour garder la fréquence (Bosquet 2007)
@@ -1622,6 +1624,7 @@ function buildWeek(mon,availOverride,opt={}){
         d.gym=null; d.notes.push("muscu retirée pour respecter le plafond de la semaine"); } }
     if(total>cap) warns.push(RW?"Même raccourci, le plan dépasse le plafond ("+fmtMin(total)+" pour "+fmtMin(cap)+") : séances clés, sortie longue et une muscu sont gardées. Si tu sens la fatigue, raccourcis la sortie longue plutôt que les séances clés.":"Même raccourci, le plan dépasse le plafond ("+fmtMin(total)+" pour "+fmtMin(cap)+") : séances clés, sortie longue de "+fmtMin(LC&&LC.reprise?90:120)+" et une muscu sont gardées. Si tu sens la fatigue, remplace la sortie longue par 1 h 30 d’endurance.");
   }
+  total+=raceMin;
   // acclimatation à la chaleur (Racinais 2015) : séances faciles au chaud dans les 14 jours avant une course chaude
   days.forEach(d=>{const hr=races.find(r=>raceHot(r)&&diff(d.date,r.date)>=3&&diff(d.date,r.date)<=14);
     if(hr&&["E2","E3","E5"].includes(d.main.id)){d.heat=true;d.notes.push("acclimatation chaleur : 60-90 min au chaud (dehors aux heures chaudes ou home trainer sans ventilateur, en restant en Z2), boire, arrêter en cas de vertige ou de nausée");}});
@@ -4519,6 +4522,7 @@ function finish(){const s=S.settings;
  if(isR()){s.runRecDist=A.recDist;s.runRecTime=A.recTime;if(A.recTime&&!s.runRecDate)s.runRecDate=TODAY;}
  s.races=(s.races||[]).filter(r=>!/^Exemple/.test(r.name));
  if(A.race==="oui"){const sp=A.rSport==="auto"?(A.sport==="course"?"course":"velo"):A.rSport;const r={date:A.rDate,name:A.rName,prio:A.rPrio,profile:A.rProfile,sport:sp};if(A.rDist)r.dist=A.rDist;s.races.push(r);}
+ if(A.sport!=="velo"){const lv={amateur:0,elite:1,pro:2}[A.level]||0;s.runMax=Math.max(+s.runMax||0,A.sport==="course"?[4,5,6][lv]:[3,3,4][lv]);}
  s.demo=false;s.onboarded=true;save();close();try{renderAll();}catch(e){}
  if(window.v2toast)v2toast("Bienvenue "+A.name+", ton plan est prêt");}
 function skip(){S.settings.onboarded=true;save();close();}
