@@ -679,7 +679,8 @@ body.dsheet-open{overflow:hidden}
         </div>
         <div class="stack">
           <div class="card"><h2>Charge par semaine</h2><div id="loadChart"></div><div class="kpis" id="pmcKpi" style="margin:10px 0 0"></div><p class="small muted" id="loadNote"></p></div>
-          <div class="card"><h2>Profil de puissance et durabilité</h2><div class="tablewrap" id="powerCard"></div></div>
+          <div class="card only-run"><h2>Course à pied : charge mécanique</h2><p class="small muted">Suivie à part : une heure de vélo ne « consomme » pas la tolérance de tes tendons et de tes os à la course. Le risque de blessure monte surtout quand une sortie dépasse nettement ta plus longue des 30 jours précédents (Frandsen 2025, 5 205 coureurs).</p><div class="kpis" id="runKpi" style="margin:10px 0"></div><div id="runChart"></div><div class="tablewrap" id="runTable"></div></div>
+          <div class="card only-velo"><h2>Profil de puissance et durabilité</h2><div class="tablewrap" id="powerCard"></div></div>
         </div>
       </div>
       <details class="card" style="margin-top:16px"><summary>Comment les alertes se déclenchent</summary><div class="tablewrap stackable" id="thrTable" style="margin-top:12px"></div></details>
@@ -2020,7 +2021,28 @@ function icsExport(msgEl){ const el=document.getElementById(msgEl), esc2=t=>Stri
 function tidReal(from,to){ const z=[0,0,0]; S.sessions.filter(s=>s.date>=from&&s.date<=to&&s.an&&s.an.zh).forEach(s=>{const h=s.an.zh; z[0]+=h[0]+h[1]; z[1]+=h[2]; z[2]+=h[3]+h[4];});
   const t=z[0]+z[1]+z[2]; if(t<1800) return null; const f=z.map(x=>x/t);
   const pi=f[1]>0&&f[2]>0?Math.log10(f[0]/f[1]*f[2]*100):null; return {f,pi,min:Math.round(t/60)}; }
-function weekLoad(mon){return S.sessions.filter(s=>s.date>=mon&&s.date<=addDays(mon,6)).reduce((a,s)=>a+(+s.dur||0)*(s.rpe===""||s.rpe==null?3:+s.rpe),0)}
+function weekLoad(mon,sp){return S.sessions.filter(s=>s.date>=mon&&s.date<=addDays(mon,6)&&(!sp||sessSport(s)===sp)).reduce((a,s)=>a+(+s.dur||0)*(s.rpe===""||s.rpe==null?3:+s.rpe),0)}
+// sorties de course : durée, distance, allure, et pic par rapport à la plus longue des 30 jours précédents (en distance si connue partout, sinon en durée)
+const runKm=x=>{const a=x.an&&x.an.sum&&x.an.sum.km;return a!=null?+a:(x.km!=null&&x.km!==""?+x.km:null);};
+function runSpike(x){ const prev=S.sessions.filter(o=>o!==x&&sessSport(o)==="course"&&o.date<x.date&&o.date>=addDays(x.date,-30)); if(!prev.length) return null;
+  const useKm=runKm(x)!=null&&prev.every(o=>runKm(o)!=null), v=o=>useKm?runKm(o):(+o.dur||0), ref=Math.max(...prev.map(v)); if(!ref) return null;
+  return {r:v(x)/ref,ref,unit:useKm?"km":"min"}; }
+function renderRunLoad(ws,wLab){
+  const box=document.getElementById("runKpi"); if(!box) return;
+  const runs=S.sessions.filter(x=>sessSport(x)==="course").sort((a,b)=>a.date<b.date?1:-1);
+  const wMin=m=>runs.filter(x=>x.date>=m&&x.date<=addDays(m,6)).reduce((a,x)=>a+(+x.dur||0),0), wKm=m=>runs.filter(x=>x.date>=m&&x.date<=addDays(m,6)).reduce((a,x)=>a+(runKm(x)||0),0);
+  const cur=ws[ws.length-1], prev4=ws.slice(-5,-1), avg=mean(prev4.map(wMin)), lr=longestRun30(), lrKm=Math.max(0,...runs.filter(x=>x.date>=addDays(TODAY,-30)&&x.date<TODAY).map(x=>runKm(x)||0));
+  const spikes=runs.filter(x=>x.date>=addDays(TODAY,-56)).map(x=>({x,k:runSpike(x)})).filter(o=>o.k&&o.k.r>1.1);
+  const pk=(k,v,sm,cls)=>`<div style="padding:6px 0;border-bottom:1px solid var(--line)"><span class="small muted">${k}</span><br><b${cls==="warn"?' style="color:var(--warn)"':""}>${v}</b> <span class="small muted">· ${sm}</span></div>`;
+  box.style.display="block"; box.innerHTML=pk("Cette semaine",fmtMin(wMin(cur))+(wKm(cur)?" · "+fx(wKm(cur),1)+" km":""),"moyenne des 4 semaines d’avant : "+fmtMin(Math.round(avg)))
+    +pk("Plus longue sur 30 j",lr?fmtMin(lr)+(lrKm?" · "+fx(lrKm,1)+" km":""):"—",lr?"prochaine sortie : "+fmtMin(Math.round(lr*1.1))+(lrKm?" ou "+fx(lrKm*1.1,1)+" km":"")+" au plus":"aucune course enregistrée")
+    +pk("Pics sur 8 semaines",String(spikes.length),spikes.length?"sorties > +10 % de la plus longue des 30 j précédents":"aucune sortie au-delà de +10 %",spikes.some(o=>o.k.r>1.3)?"warn":spikes.length?"":"good");
+  document.getElementById("runChart").innerHTML=runs.length?svgBars(ws.map(wMin),wLab).replace('aria-label="Charge hebdomadaire"','aria-label="Minutes de course par semaine"')+`<p class="small muted">Minutes de course par semaine.</p>`:"";
+  const L=runs.slice(0,10);
+  document.getElementById("runTable").innerHTML=L.length?`<table><thead><tr><th>Date</th><th>Séance</th><th>Durée</th><th>Distance</th><th>Allure</th><th>FC moy.</th><th>vs plus longue 30 j</th></tr></thead><tbody>${L.map(x=>{const k=runSpike(x),km=runKm(x),pace=km&&x.dur?fmtPace(km/(((x.an&&x.an.sum&&x.an.sum.moveMin)||+x.dur)/60)):"—";
+    const chip=!k?`<span class="small muted">pas de référence</span>`:`<span class="chip ${k.r>2?"bad":k.r>1.1?"warn":"good"}">${k.r>1?"+":""}${Math.round((k.r-1)*100)} %</span><br><span class="small muted">réf. ${k.unit==="km"?fx(k.ref,1)+" km":fmtMin(Math.round(k.ref))}</span>`;
+    return `<tr><td>${fmtD(x.date)}</td><td>${esc((LIB[x.id]||{nom:x.id}).nom)}</td><td class="num">${fmtMin(+x.dur||0)}</td><td class="num">${km!=null?fx(km,1)+" km":"—"}</td><td class="num">${pace}</td><td class="num">${x.hr||"—"}</td><td>${chip}</td></tr>`;}).join("")}</tbody></table>`:`<p class="small muted">Aucune sortie de course enregistrée.</p>`;
+}
 function computeAlerts(){
   const A=[]; const mon=mondayOf(TODAY);
   // Pas de ratio aigu/chronique (Impellizzeri 2020, 2021) : on contrôle le respect du plan, pas une prédiction de blessure.
@@ -2054,13 +2076,15 @@ function computeAlerts(){
   if(pn) A.push(["bad","Douleur depuis 3 jours","Arrête l’activité qui la provoque et consulte (médecin du sport ou kiné). Une douleur qui persiste n’est pas une courbature."]);
   const easyHard=S.sessions.filter(s=>s.date>=addDays(TODAY,-7)&&["E1","E2"].includes(s.id)&&+s.rpe>=5).length;
   if(easyHard>=2) A.push(["warn","Séances faciles ressenties dures","2 séances d’endurance ou plus à RPE 5 et plus en 7 jours : signe classique de fatigue accumulée."]);
+  { const lr=S.sessions.filter(x=>sessSport(x)==="course"&&x.date>=addDays(TODAY,-7)&&x.date<=TODAY).map(x=>({x,k:runSpike(x)})).filter(o=>o.k&&o.k.r>1.3).sort((a,b)=>b.k.r-a.k.r)[0];
+    if(lr) A.push([lr.k.r>2?"bad":"warn","Course à pied : sortie bien plus longue que d’habitude","Le "+fmtD(lr.x.date)+", +"+Math.round((lr.k.r-1)*100)+" % par rapport à ta plus longue sortie des 30 jours précédents. Au-delà de +10 %, le risque de blessure de surmenage augmente nettement (Frandsen 2025). Garde les prochaines sorties sous cette référence le temps que tes tissus s’adaptent."]); }
   if(S.checkins[TODAY]&&S.checkins[TODAY].cardiac==="1") A.push(["bad","Signe d’alerte cardiaque","Aucun effort avant avis médical. Urgence : 15 ou 112."]);
   return A;
 }
-function svgBars(vals,labels){
+function svgBars(vals,labels,part){
   const w=560,h=170,p=28,max=Math.max(...vals,1),bw=(w-p*2)/vals.length;
   const g=[0,.5,1].map(t=>`<line x1="${p}" x2="${w-p}" y1="${h-p-(h-2*p)*t}" y2="${h-p-(h-2*p)*t}" stroke="var(--line)"/><text x="2" y="${h-p-(h-2*p)*t+4}">${Math.round(max*t)}</text>`).join("");
-  const bars=vals.map((v,i)=>{const bh=(h-2*p)*v/max;return `<rect x="${p+i*bw+4}" y="${h-p-bh}" width="${bw-8}" height="${bh}" rx="3" fill="${i===vals.length-1?"var(--accent)":"var(--accent-soft)"}" stroke="var(--accent)"/><text x="${p+i*bw+bw/2}" y="${h-8}" text-anchor="middle">${labels[i]}</text>`}).join("");
+  const bars=vals.map((v,i)=>{const bh=(h-2*p)*v/max;return `<rect x="${p+i*bw+4}" y="${h-p-bh}" width="${bw-8}" height="${bh}" rx="3" fill="${i===vals.length-1?"var(--accent)":"var(--accent-soft)"}" stroke="var(--accent)"/>${part&&part[i]>0?`<rect x="${p+i*bw+4}" y="${h-p-(h-2*p)*part[i]/max}" width="${bw-8}" height="${(h-2*p)*part[i]/max}" rx="3" fill="var(--z4)" opacity=".85"/>`:""}<text x="${p+i*bw+bw/2}" y="${h-8}" text-anchor="middle">${labels[i]}</text>`}).join("");
   return `<svg viewBox="0 0 ${w} ${h}" width="100%" role="img" aria-label="Charge hebdomadaire">${g}${bars}</svg>`;
 }
 function svgLines(series){
@@ -2083,7 +2107,9 @@ function renderSuivi(){
   const A=computeAlerts();
   document.getElementById("alerts").innerHTML=A.length?A.map(a=>`<div class="alert ${a[0]}"><b>${esc(a[1])}</b>${esc(a[2])}</div>`).join(""):`<div class="alert good"><b>Aucune alerte</b>Rien d’anormal dans les données enregistrées.</div>`;
   const mon=mondayOf(TODAY); const ws=[7,6,5,4,3,2,1,0].map(k=>addDays(mon,-7*k));
-  document.getElementById("loadChart").innerHTML=svgBars(ws.map(weekLoad),ws.map(m=>parse(m).toLocaleDateString("fr-FR",{day:"numeric",month:"numeric"})));
+  const wLab=ws.map(m=>parse(m).toLocaleDateString("fr-FR",{day:"numeric",month:"numeric"})), both=sportProfile()==="mixte"||(sportProfile()==="velo"&&runActive());
+  document.getElementById("loadChart").innerHTML=svgBars(ws.map(m=>weekLoad(m)),wLab,both?ws.map(m=>weekLoad(m,"course")):null)+(both?`<p class="small muted">Partie orange : la course à pied. Une seule charge pour les deux sports (minutes × RPE, méthode de Foster), car c’est le seul indicateur commun validé.</p>`:"");
+  try{renderRunLoad(ws,wLab);}catch(e){console.error(e);}
   document.getElementById("loadNote").textContent="Charge = minutes × RPE de séance (méthode de Foster). Barre foncée = semaine en cours. RPE manquant compté à 3. Forme de fond, fatigue et fraîcheur : moyennes pondérées de la charge quotidienne sur 42 et 7 jours (modèle de Banister, comme le PMC de TrainingPeaks), en unités de charge et non en TSS. Ce sont des repères de tendance : aucun seuil n’est validé pour prédire une blessure ou une méforme.";
   const pm=pmc(TODAY), pk=(k,v,sm,cls)=>`<div class="kpi static ${cls||""}"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${sm}</div></div>`;
   document.getElementById("pmcKpi").innerHTML=pm?pk("Forme de fond",Math.round(pm.ctl),(pm.ctl28!=null?(pm.ctl>=pm.ctl28?"+":"")+Math.round(pm.ctl-pm.ctl28)+" sur 4 semaines":"charge chronique, 42 j"))
@@ -2120,7 +2146,7 @@ function renderSuiviKpi(A){
   const el=document.getElementById("suiviKpi"); if(!el) return;
   const mon=mondayOf(TODAY), wk=S.sessions.filter(x=>x.date>=mon&&x.date<=TODAY), wMin=wk.reduce((a,x)=>a+(+x.dur||0),0);
   const prev=[1,2,3,4].map(k=>addDays(mon,-7*k)), avg=mean(prev.map(m=>S.sessions.filter(x=>x.date>=m&&x.date<=addDays(m,6)).reduce((a,x)=>a+(+x.dur||0),0)));
-  const L=weekLoad(mon), Lp=mean(prev.map(weekLoad)), last=S.sessions.filter(x=>x.date<=TODAY).sort((a,b)=>(a.date+(a.start||0))<(b.date+(b.start||0))?1:-1)[0];
+  const L=weekLoad(mon), Lp=mean(prev.map(m=>weekLoad(m))), last=S.sessions.filter(x=>x.date<=TODAY).sort((a,b)=>(a.date+(a.start||0))<(b.date+(b.start||0))?1:-1)[0];
   const red=A.filter(a=>a[0]==="bad").length, org=A.filter(a=>a[0]==="warn").length;
   const k=(cls,sub,key,val,sm)=>`<button type="button" class="kpi ${cls}" data-go="${sub}"><div class="k">${key}</div><div class="v">${val}</div><div class="s">${sm}</div></button>`;
   el.innerHTML=k("","sorties","Cette semaine",fmtMin(wMin)||"0 min",wk.length+" séance"+(wk.length>1?"s":"")+(avg?" · moyenne "+fmtMin(Math.round(avg)):""))
@@ -2731,7 +2757,8 @@ function analyzeSeries(rec,ser){
     return {id,v,fit,set:{n:ws.n,d:ws.d,lo:ws.lo,hi:ws.hi,spr:ws.spr,plan:ws.count,reps:reps.map(r=>({w:r.w,hr:r.hr,hrMax:r.hrMax,t:r.t}))}}; };
   // la séance réellement faite : celle de la bibliothèque dont le bloc principal colle le mieux à la sortie (la séance prévue est favorisée à égalité)
   let id=rec.planned||rec.id, best=null;
-  if(hasP&&rec.id!=="RACE"){ const cands=Object.values(LIB).filter(x=>x.sport==="velo"&&(x.key||["E3","E5"].includes(x.id))&&(!["P1","P2","P3"].includes(x.id)||x.id===id)).map(x=>x.id);
+  const isRunRec=(LIB[rec.id]||{}).sport==="course"; ANA_FC=isRunRec?runProf().fcmax:null; an.run=isRunRec||undefined;
+  if(hasP&&rec.id!=="RACE"&&!isRunRec){ const cands=Object.values(LIB).filter(x=>x.sport==="velo"&&(x.key||["E3","E5"].includes(x.id))&&(!["P1","P2","P3"].includes(x.id)||x.id===id)).map(x=>x.id);
     for(const c of cands){ const t=trySet(c); if(!t) continue; t.score=t.fit+(c===id?.15:0)+(t.set.d*t.set.plan>=600?.05:0); if(!best||t.score>best.score) best=t; }
     const enduPlan=["E1","E2","E3","E4","E5"].includes(id), need=enduPlan&&LIB[best&&best.id]&&LIB[best.id].key?.8:.55;
     if(best&&best.fit>=need){ if(best.id!==id) an.other=id; id=best.id; an.set=best.set; }
@@ -2748,8 +2775,8 @@ function analyzeSeries(rec,ser){
   try{ const te=teFromSeries(ser,p,hr,hasP,hasH); if(te) an.te=te; }catch(e){}
   try{ const bl=lapBlocks(rec,ser,p,hr,an); if(bl){ an.blocks=bl;
       // la structure des tours identifie la séance faite, même sans capteur de puissance
-      if(bl.mapped&&bl.mapped!==an.id){ const pl=rec.planned; an.id=bl.mapped; delete an.notKey; if(pl&&pl!==bl.mapped) an.other=pl; else delete an.other; } } }catch(e){}
-  if(hasH){ const fc=fcRef(); an.hrOver=Math.round(hr.filter(x=>x>=fc*.8).length/60); }
+      if(bl.mapped&&bl.mapped!==an.id&&(LIB[bl.mapped]||{}).sport===(LIB[an.id]||{}).sport){ const pl=rec.planned; an.id=bl.mapped; delete an.notKey; if(pl&&pl!==bl.mapped) an.other=pl; else delete an.other; } } }catch(e){}
+  if(hasH){ const fc=ANA_FC||fcRef(); an.hrOver=Math.round(hr.filter(x=>x>=fc*.8).length/60); }
   an.coast=hasP?Math.round(p.filter(x=>x<10).length/n*100):null;
   return an;
 }
@@ -2797,8 +2824,9 @@ function lapBlocks(rec,ser,p,hr,an){
 
 /* ---------- analyse détaillée : résumé, zones, montées, efforts, fatigue, charge ---------- */
 function smoothArr(a,w){const n=a.length,o=new Array(n);let s=0,c=0,q=[];for(let i=0;i<n;i++){const v=a[i];q.push(v);if(v!=null){s+=v;c++;}if(q.length>w){const x=q.shift();if(x!=null){s-=x;c--;}}o[i]=c?s/c:null;}return o;}
+let ANA_FC=null;
 function deepStats(ser,p,hr,hasP,hasH){
-  const n=p.length, st=S.settings, fc=fcRef(), kg=+st.kg||68, o={};
+  const n=p.length, st=S.settings, fc=ANA_FC||fcRef(), kg=+st.kg||68, o={};
   const alt=ser.alt||[], spd=ser.spd||[], dist=ser.dist||[], cad=ser.cad||[], temp=ser.temp||[];
   const hasA=alt.filter(x=>x!=null).length>n*.5, hasS=spd.filter(x=>x!=null).length>n*.5, hasC=cad.filter(x=>x!=null&&x>0).length>n*.2, hasT=temp.filter(x=>x!=null).length>n*.3;
   const moving=i=>(hasS?(spd[i]||0)>1:true)||(p[i]||0)>0||(cad[i]||0)>0, mv=[]; for(let i=0;i<n;i++) if(moving(i)) mv.push(i);
@@ -2947,19 +2975,19 @@ function sessionReview(sx){
   return {good,warn,next,score};
 }
 function reviewHTML(sx){
-  const R=sessionReview(sx), an=sx.an||{}, id=an.id||sx.planned||sx.id, L=LIB[id]||{}, st=S.settings, kg=+st.kg||68, sm=an.sum||{}, ftp=an.ftp||st.ftp;
+  const R=sessionReview(sx), an=sx.an||{}, id=an.id||sx.planned||sx.id, L=LIB[id]||{}, isRunS=sessSport(sx)==="course", st=S.settings, kg=+st.kg||68, sm=an.sum||{}, ftp=an.ftp||st.ftp;
   const tile=(k,v)=>v==null||v===""?"":`<div class="card" style="padding:8px 10px;min-width:110px;flex:1"><div class="small muted">${k}</div><div style="font-weight:700">${v}</div></div>`;
   const sec=(t,b)=>b?`<div class="stack" style="gap:6px"><h4 style="margin:8px 0 0">${t}</h4>${b}</div>`:"";
   // 1. résumé
-  const tiles=[tile("Durée",fmtMin(+sx.dur||0)+(sm.stopMin>=5?` <span class="small muted">(${fmtMin(sm.moveMin)} en mouvement)</span>`:"")),tile("Distance",sm.km!=null?fx(sm.km,1)+" km":sx.km?fx(sx.km,1)+" km":null),tile("Vitesse moy.",sm.kmh?fx(sm.kmh,1)+" km/h":null),
+  const tiles=[tile("Durée",fmtMin(+sx.dur||0)+(sm.stopMin>=5?` <span class="small muted">(${fmtMin(sm.moveMin)} en mouvement)</span>`:"")),tile("Distance",sm.km!=null?fx(sm.km,1)+" km":sx.km?fx(sx.km,1)+" km":null),(isRunS?tile("Allure moy.",sm.kmh?fmtPace(sm.kmh):null):tile("Vitesse moy.",sm.kmh?fx(sm.kmh,1)+" km/h":null)),
     tile("Dénivelé +",sx.gainSum!=null?sx.gainSum+" m":sm.gain!=null?sm.gain+" m":null),tile("FC moy. / max",sx.hr?sx.hr+" / "+(sx.hrMax||"—")+" bpm":null),tile("Puissance moy. / NP",sx.avgW?sx.avgW+" / "+(sx.np||"—")+" W":null),
-    tile("IF · TSS",sx.np?fx(sx.ifv,2)+" · "+sx.tss:null),tile("Travail",sx.kj?sx.kj+" kJ":null),tile("Cadence moy.",sm.cad?sm.cad+" rpm":null),tile("Température",sm.temp?sm.temp[1]+" °C ("+sm.temp[0]+"-"+sm.temp[2]+")":null),
+    tile("IF · TSS",sx.np?fx(sx.ifv,2)+" · "+sx.tss:null),tile("Travail",sx.kj?sx.kj+" kJ":null),tile("Cadence moy.",sm.cad?(isRunS?sm.cad*2+" pas/min":sm.cad+" rpm"):null),tile("Température",sm.temp?sm.temp[1]+" °C ("+sm.temp[0]+"-"+sm.temp[2]+")":null),
     tile("Charge (TRIMP)",an.trimp??null),tile("Training Effect",sx.teA!=null||sx.teAn!=null?"Aéro "+(sx.teA!=null?fx(+sx.teA,1):"—")+" · Anaéro "+(sx.teAn!=null?fx(+sx.teAn,1):"—")+(sx.teEst?`<div class="small muted" style="font-weight:400;margin-top:2px">estimé${sx.teInfo&&sx.teInfo.epoc!=null?" · EPOC "+sx.teInfo.epoc+" ml/kg · classe "+fx(sx.teInfo.ac,1):""}${sx.teAn==null?" · anaérobie : redépose le fichier":""}</div>`:""):null),tile("RPE",sx.rpe!==""&&sx.rpe!=null?sx.rpe+(sx.rpeEst?" (estimé)":""):null)].join("");
   // 2. séance prévue / réalisée
   const repsT=an.set&&an.set.reps.length&&!an.set.spr?`<div class="tablewrap"><table><thead><tr><th>Rép.</th><th>Départ</th><th>Puissance</th><th>% FTP</th><th>FC moy. / max</th></tr></thead><tbody>${an.set.reps.map((r,i)=>`<tr><td>${i+1}</td><td>${r.t} min</td><td class="num">${r.w} W</td><td class="num">${Math.round(r.w/ftp*100)} %</td><td class="num">${r.hr?r.hr+" / "+r.hrMax+" bpm":"—"}</td></tr>`).join("")}</tbody></table></div>`:"";
   const hrEf=an.hrEfforts&&an.hrEfforts.length?`<div class="tablewrap"><table><thead><tr><th>Bloc à FC élevée</th><th>Départ</th><th>Durée</th><th>FC moy. / max</th></tr></thead><tbody>${an.hrEfforts.map((e,i)=>`<tr><td>${i+1}</td><td>${e.t} min</td><td>${fmtMin(e.d)}</td><td class="num">${e.hr} / ${e.hrMax} bpm</td></tr>`).join("")}</tbody></table></div><p class="small muted">Blocs d’au moins 2 min au-dessus de 85 % de ta FC max (${Math.round(fcRef()*.85)} bpm). Sans capteur, c’est le meilleur repère des efforts réellement faits.</p>`:"";
   // 3. zones
-  const zh=(an.zh||sx.hz)?zoneBars(an.zh||sx.hz.map(x=>x*60),["Z1 récup (<68 %)","Z2 endurance","Z3 tempo","Z4 seuil","Z5 PMA (>92 %)"],ZCOL5):"";
+  const zh=(an.zh||sx.hz)?zoneBars(an.zh||sx.hz.map(x=>x*60),isRunS?["Z1 récup (<68 %)","Z2 endurance","Z3 tempo / allure marathon","Z4 seuil","Z5 VMA (>92 %)"]:["Z1 récup (<68 %)","Z2 endurance","Z3 tempo","Z4 seuil","Z5 PMA (>92 %)"],ZCOL5)+(isRunS&&!an.run&&an.zh?`<p class="small muted">Zones calculées avec ta FC max vélo (sortie analysée avant l’arrivée de la course à pied) : redépose le fichier pour les recalculer avec ta FC de course.</p>`:""):"";
   const zp=an.zp?zoneBars(an.zp,["Z1 récup","Z2 endurance","Z3 tempo","Z4 seuil","Z5 PMA","Z6 anaérobie","Z7 neuromusc."],ZCOL7):"";
   const tgt={E1:"quasi tout en Z1",E2:"≥ 85 % en Z1-Z2",E3:"Z2 + quelques secondes très haut",E4:"≥ 85 % en Z1-Z2",E5:"Z2 avec des blocs de Z3",T1:"blocs en Z3 haute",S1:"blocs en Z4",S2:"alternance Z4/Z5",V1:"répétitions en Z5",V2:"répétitions en Z5-Z6",V3:"répétitions en Z5-Z6",A1:"répétitions en Z6",A2:"fond Z3 + relances Z6-Z7",SP2:"Z3 haute + sprints Z7"}[id];
   // 4. montées
@@ -2972,7 +3000,7 @@ function reviewHTML(sx){
     return `<tr><td>${lab}</td><td class="num">${v} W</td><td class="num">${fx(v/kg,1)} W/kg</td><td>${v>ball&&ball?"<span class='chip good'>record</span>":v>b90&&b90?"<span class='chip good'>meilleur sur 90 j</span>":b90?Math.round(v/b90*100)+" % du meilleur sur 90 j":""}</td></tr>`;}).join(""):"";
   const hrb=an.hrBest?`FC max tenue : ${an.hrBest[60]||"—"} bpm sur 1 min, ${an.hrBest[300]||"—"} sur 5 min${an.hrBest[1200]?", "+an.hrBest[1200]+" sur 20 min":""}.`:"";
   // 6. fatigue au fil de la sortie
-  const th=an.thirds?`<div class="tablewrap"><table><thead><tr><th></th><th>FC moy.</th>${an.hasP?"<th>Puissance moy.</th>":""}${an.thirds[0].kmh!=null?"<th>Vitesse</th>":""}${an.thirds[0].cad!=null?"<th>Cadence</th>":""}</tr></thead><tbody>${an.thirds.map((t,i)=>`<tr><td>${["1er tiers","2e tiers","Dernier tiers"][i]}</td><td class="num">${t.hr??"—"} bpm</td>${an.hasP?`<td class="num">${t.p} W</td>`:""}${t.kmh!=null?`<td class="num">${fx(t.kmh,1)} km/h</td>`:""}${t.cad!=null?`<td class="num">${t.cad} rpm</td>`:""}</tr>`).join("")}</tbody></table></div>`:"";
+  const th=an.thirds?`<div class="tablewrap"><table><thead><tr><th></th><th>FC moy.</th>${an.hasP?"<th>Puissance moy.</th>":""}${an.thirds[0].kmh!=null?"<th>"+(isRunS?"Allure":"Vitesse")+"</th>":""}${an.thirds[0].cad!=null?"<th>Cadence</th>":""}</tr></thead><tbody>${an.thirds.map((t,i)=>`<tr><td>${["1er tiers","2e tiers","Dernier tiers"][i]}</td><td class="num">${t.hr??"—"} bpm</td>${an.hasP?`<td class="num">${t.p} W</td>`:""}${t.kmh!=null?`<td class="num">${isRunS?fmtPace(t.kmh):fx(t.kmh,1)+" km/h"}</td>`:""}${t.cad!=null?`<td class="num">${t.cad} rpm</td>`:""}</tr>`).join("")}</tbody></table></div>`:"";
   // 7. charge, récupération, nutrition
   const durH=(+sx.dur||0)/60, hrm=sx.hr||0, kcal=sx.kcal?sx.kcal:sx.kj?Math.round(sx.kj*1.0):hrm?Math.round(Math.max(0,(-55.0969+.6309*hrm+.1988*kg+.2017*(+st.age||25))/4.184)*(+sx.dur||0)):null;
   const q=sx.ifv?sx.ifv:hrm?hrm/fcRef()/1.05:null, share=q==null?null:q<.65?.5:q<.75?.6:q<.85?.75:.9, cho=kcal&&share?Math.round(kcal*share/4):null;
