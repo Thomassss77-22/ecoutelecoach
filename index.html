@@ -5210,7 +5210,7 @@ function renderTodayV4(){ const out=document.getElementById("todayOut"); if(!out
   mount("v4Today",out,c.html+tileGrid(),"card v4card v4"); }
 /* ---------- Semaine ---------- */
 function renderWeekV4(){ const sum0=document.getElementById("weekSummary"); if(!sum0) return; const mon=addDays(mondayOf(TODAY),(typeof wkOffset==="number"?wkOffset:0)*7);
-  const c=weekCard(mon,"Charge de la semaine"); mount("v4Week",sum0,c.html,"card v4card v4"); }
+  const old=document.getElementById("v4Week"); if(old) old.remove(); }
 /* ---------- Mois ---------- */
 function renderMonthV4(){ const sum0=document.getElementById("moSummary"); if(!sum0) return; const t=parse(TODAY), first=new Date(t.getFullYear(),t.getMonth()+(typeof moOffset==="number"?moOffset:0),1), last=iso(new Date(first.getFullYear(),first.getMonth()+1,0));
   const items=[]; let pl=false;
