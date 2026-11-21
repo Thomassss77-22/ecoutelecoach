@@ -688,9 +688,13 @@ section.view.on{animation:v2in .55s var(--ease)}
         <p class="small" id="availNote"></p>
         <div class="daygrid" id="availGrid"></div>
         <div class="row small"><span>Type de semaine :</span><span id="wkTagWrap"></span><span class="muted">Examens, voyage ou maladie : l’appli réduit le volume et relance le cycle de charge ensuite.</span></div>
-        <div class="row"><button class="btn ghost small" id="wkShock" type="button">Bloc de choc</button><span class="small muted">5 séances d’intervalles en 7 jours, pour un stage ou une semaine de vacances (voir Preuves et règles).</span></div>
-        <div class="row"><button class="btn ghost small" id="wkSend" type="button">Envoyer les séances à venir sur ma montre</button><span class="small muted" id="wkSendMsg"></span></div>
-        <div class="row"><button class="btn ghost small" id="wkGarmin" type="button">Exporter la semaine pour Garmin (.zip de .fit)</button><button class="btn ghost small" id="wkIcs" type="button" title="Les 4 prochaines semaines du plan, à importer dans Google Agenda, Apple Calendrier ou Outlook">Ajouter à mon agenda (.ics)</button><span class="small muted" id="wkGarminMsg"></span></div>
+        <div class="atiles">
+<button type="button" class="atile" id="wkSend"><span class="aic"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="7"/><path d="M12 9v4l2.5 1.5M9 3h6"/></svg></span><span class="atx"><b class="tt">Envoyer sur ma montre</b><small>Les séances à venir, directement synchronisées</small></span><span class="aar" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></button>
+<button type="button" class="atile" id="wkGarmin"><span class="aic"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 20h16"/></svg></span><span class="atx"><b class="tt">Fichiers Garmin</b><small>Toute la semaine en .fit (archive .zip)</small></span><span class="aar" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></button>
+<button type="button" class="atile" id="wkIcs"><span class="aic"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4M12 14v4M10 16h4"/></svg></span><span class="atx"><b class="tt">Mon agenda</b><small>4 semaines du plan pour Google, Apple ou Outlook</small></span><span class="aar" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></button>
+<button type="button" class="atile" id="wkShock" aria-pressed="false"><span class="aic"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></span><span class="atx"><b class="tt">Bloc de choc</b><small>5 séances dures en 7 jours, pour un stage ou des vacances</small></span><span class="aar" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></button>
+        </div>
+        <p class="small muted" id="wkMsgs"><span id="wkSendMsg"></span> <span id="wkGarminMsg"></span></p>
       </details>
       <div class="card" style="padding-top:8px"><div id="wkHist"></div><div class="row" style="justify-content:flex-end;margin:0 0 6px"><button class="btn ghost small" type="button" id="wkWhyTog"></button></div><div class="tablewrap" id="weekTable"></div>
         <p class="small muted">Pour déplacer une séance : « Modifier » sous le jour, ou glisse la ligne sur un autre jour (ordinateur). L’appli vérifie aussitôt les règles d’espacement et de charge.</p></div>
@@ -2086,7 +2090,7 @@ function renderWeek(){
   document.getElementById("weekWarn").innerHTML=(W.checks&&(W.edited||hasPins)?`<div class="alert ${W.checks.some(c=>c[0]==="bad")?"bad":W.checks.length?"warn":"good"}"><b>${W.checks.length?"Semaine modifiée : "+W.checks.length+" point(s) à revoir":"Semaine modifiée : toutes les règles sont respectées"}</b>${W.checks.map(c=>esc(c[1])).join("<br>")}${W.edited?`<div class="row" style="margin-top:6px"><button class="btn small ghost" id="wkReset" type="button">Annuler les anciens échanges</button></div>`:""}</div>`:"")+(W.warns.length?`<details class="alert warn wkwarns"${W.warns.length===1?" open":""}><summary><b>${W.warns.length===1?"À savoir cette semaine":W.warns.length+" remarques sur cette semaine"}</b></summary><ul>${W.warns.map(w=>`<li>${esc(w)}</li>`).join("")}</ul></details>`:"");
   document.getElementById("wkTagWrap").innerHTML=renderWeekTagSelect(mon); bindWeekTags();
   const sb=document.getElementById("wkShock"); const okPh=["base","construction","specifique"].includes(W.phase);
-  sb.textContent=W.shock?"Annuler le bloc de choc":"Faire de cette semaine un bloc de choc"; sb.disabled=!okPh&&!W.shock;
+  sb.querySelector(".tt").textContent=W.shock?"Bloc de choc activé":"Bloc de choc"; sb.querySelector("small").textContent=W.shock?"Touche pour revenir à une semaine normale":"5 séances dures en 7 jours, pour un stage ou des vacances"; sb.setAttribute("aria-pressed",String(!!W.shock)); sb.disabled=!okPh&&!W.shock;
   sb.onclick=()=>{S.shock=S.shock||{}; if(S.shock[mon]) delete S.shock[mon]; else S.shock[mon]=true; save(); renderAll();};
   document.getElementById("wkSend").onclick=()=>openSend(W.days.filter(d=>d.date>=TODAY&&d.main.id!=="RACE"&&d.main.id!=="R0").map(d=>({id:d.main.id,variant:d.v,dur:(["E1","E2","E4","E5","C1","C2","C3"].includes(d.main.id)?d.dur:null),date:d.date})),"wkSendMsg");
   document.getElementById("wkIcs").onclick=()=>icsExport("wkGarminMsg");
@@ -4527,6 +4531,26 @@ function greet(){const h=$("#todayOut .hero .meta");if(h&&S.settings.name&&!$(".
 new MutationObserver(()=>setTimeout(greet,80)).observe(document.body,{childList:true,subtree:true});
 }catch(err){console.warn("onb",err)}})();
 </script>
+<style id="atilecss">
+.atiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:6px 0}
+.atile{display:flex;align-items:center;gap:14px;text-align:left;padding:14px 16px;border-radius:18px;border:1px solid var(--line2);background:linear-gradient(160deg,var(--raised),var(--surface));color:var(--ink);font:inherit;cursor:pointer;position:relative;overflow:hidden;transition:transform .3s var(--ease),box-shadow .3s,border-color .25s}
+.atile:hover:not(:disabled){transform:translateY(-3px);border-color:var(--accent);box-shadow:var(--sh2)}
+.atile:active{transform:scale(.98)}
+.atile:disabled{opacity:.5;cursor:not-allowed}
+.aic{flex:none;width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);transition:background .3s,color .3s,transform .4s var(--ease)}
+.aic svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.atile:hover .aic{background:var(--grad);color:#fff;transform:rotate(-8deg) scale(1.08)}
+.atx{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.atx b{font-weight:750;font-size:15px;letter-spacing:-.02em}
+.atx small{color:var(--muted);font-size:12.5px;line-height:1.3}
+.aar{flex:none;width:18px;height:18px;opacity:0;transform:translateX(-6px);transition:all .3s var(--ease);color:var(--accent)}
+.aar svg{width:100%;height:100%;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.atile:hover:not(:disabled) .aar{opacity:1;transform:none}
+.atile[aria-pressed="true"]{border-color:transparent;background:var(--grad);color:#fff;box-shadow:0 14px 30px -12px rgba(106,76,255,.8)}
+.atile[aria-pressed="true"] small{color:rgba(255,255,255,.85)}
+.atile[aria-pressed="true"] .aic{background:rgba(255,255,255,.22);color:#fff}
+.atile[aria-pressed="true"] .aar{color:#fff}
+</style>
 <style id="vizcss">
 .v2dash{gap:18px}
 .v2dash h2{display:flex;align-items:center;gap:10px}
