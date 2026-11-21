@@ -2675,11 +2675,24 @@ function sessionReview(sx){
       // comparaison avec la dernière fois
       const prev=S.sessions.filter(o=>o!==sx&&o.an&&o.an.set&&(o.an.id===id)&&o.date<sx.date&&o.an.set.d===st.d&&o.an.set.reps.length).sort((a,b)=>a.date<b.date?1:-1)[0];
       if(prev&&R.length){ const pa=mean(prev.an.set.reps.map(r=>r.w)), d=Math.round((avg-pa)/pa*100); (d>=0?good:warn).push(`Par rapport à la même séance le ${fmtD(prev.date)} : ${d>=0?"+":""}${d} % de puissance moyenne sur les répétitions.`); } } }
-  else if(L.key&&an.hasP===false&&!(an.blocks&&an.blocks.list.some(b=>b.res))){ const ws=workSet(id,an.variant||"courte");
+  else if(id!=="P3"&&L.key&&an.hasP===false&&!(an.blocks&&an.blocks.list.some(b=>b.res))){ const ws=workSet(id,an.variant||"courte");
     if(ws&&!ws.spr&&ws.d>=120&&an.hrEfforts){ const f=an.hrEfforts.filter(e=>e.d>=ws.d/60*.6).length;
       (f>=ws.count?good:warn).push(`Sans capteur : ${f} bloc(s) à FC élevée d’au moins ${fmtMin(Math.round(ws.d/60*.6))} repéré(s) pour ${ws.count} répétition(s) de ${fmtMin(Math.round(ws.d/60))} prévue(s).${f<ws.count?" Séance incomplète, ou répétitions trop courtes pour faire monter la FC.":""}`);
       score=Math.round(Math.min(1,f/ws.count)*100); }
     else warn.push("Pas de capteur de puissance : les répétitions courtes ne peuvent pas être vérifiées. Juge sur le RPE et la FC en fin de répétition."); }
+  // Test FC seuil 30 min : noté sur la durée tenue, la régularité de la FC (20 dernières minutes) et le niveau d'effort, pas sur la puissance
+  let p3score=null;
+  if(id==="P3"&&an.curve){ const hc=an.curve.map(r=>r[1]), n=hc.length, ok=i=>hc[i]!=null;
+    if(n>=15){ let best=-1, bs=0; const W=Math.min(30,n);
+      for(let s0=0;s0+W<=n;s0++){ let t=0,c=0; for(let i=s0;i<s0+W;i++) if(ok(i)){t+=hc[i];c++;} if(c>=W*.9&&t/c>best){best=t/c;bs=s0;} }
+      if(best>0){ const a0=bs+W-Math.min(20,W), seg=hc.slice(a0,bs+W).filter(x=>x!=null), h=Math.floor(seg.length/2), m1=mean(seg.slice(0,h)), m2=mean(seg.slice(h)), lthr=Math.round(mean(seg)), drift=Math.abs(m2-m1);
+        const peak=Math.max(+sx.hrMax||0,+sx.hrPk||0,(an.hrBest&&an.hrBest[60])||0)||Math.max(...seg), ratio=lthr/Math.max(peak,+S.settings.fcmax||0,1);
+        const pd=Math.min(1,W/30)*40, pr=drift<=4?35:drift>=12?0:35*(12-drift)/8, pe=ratio>=.88?25:ratio<=.75?0:25*(ratio-.75)/.13;
+        p3score=Math.round(pd+pr+pe);
+        (W>=30?good:warn).push(W>=30?`Durée : 30 min d'effort continu repérées (de la minute ${bs} à la minute ${bs+30}).`:`Seulement ${W} min d'effort continu repérées sur les 30 prévues.`);
+        (drift<=5?good:warn).push(`Régularité sur les 20 dernières minutes : FC moyenne ${Math.round(m1)} bpm sur la 1re moitié, ${Math.round(m2)} bpm sur la 2e (écart ${Math.round(drift)} bpm)${drift<=5?" : allure bien régulière.":" : effort pas assez régulier, départ trop vite ou trop doux."}`);
+        (ratio>=.88?good:warn).push(`FC seuil mesurée : ${lthr} bpm (FC moyenne des 20 dernières minutes), soit ${Math.round(ratio*100)} % de la FC la plus haute vue (${Math.max(peak,+S.settings.fcmax||0)} bpm)${ratio>=.88?"":" : effort un peu léger pour un vrai test, le seuil est peut-être sous-estimé"}.`);
+        if(!(S.tests||[]).some(t=>t.date===sx.date&&t.lthr)) next.push("Pense à enregistrer ce résultat dans « Tests » (FC moyenne des 20 dernières minutes : "+lthr+" bpm) pour recaler tes zones."); } } }
   if(["E1","E2","E4","E5","D1","E3"].includes(id)){
     if(an.dec!=null){ (an.dec<=5?good:warn).push(`Découplage aérobie (rapport puissance/FC entre 1re et 2e moitié) : ${fx(an.dec,1)} %.${an.dec<=5?" Endurance de base solide sur cette durée.":" Au-delà de 5 % : endurance de base encore limitée sur cette durée, ou alimentation, hydratation, chaleur."}`);
       if(an.dec>5) next.push("Sur les sorties longues : mange dès la première heure (60-90 g de glucides par heure) et garde la Z2 basse en début de sortie."); }
@@ -2710,6 +2723,7 @@ function sessionReview(sx){
   if(!sx.an&&sx.hz&&id==="E3"){ const over=sx.hz.slice(3).reduce((a,b)=>a+b,0); (over>10?warn:good).push(`${fmtMin(over)} au-dessus de 88 % de ta FC max${over>10?" : les sprints doivent rester courts, le reste en Z2":""}.`); }
   if(!sx.an&&sx.hr20&&sx.hrPk) good.push(`FC moyenne ${sx.hr||"—"} bpm, max ${sx.hrMax||sx.hrPk} bpm, meilleure moyenne sur 20 min ${sx.hr20} bpm.`);
   if(!sx.an) warn.push(sx.src==="fichier"||(sx.srcs||[]).includes("fichier")?"Analyse partielle : ce fichier a été importé avant l’arrivée de l’analyse détaillée. Redépose-le dans Suivi : la sortie sera complétée (pas de doublon) et analysée en entier.":"Analyse limitée : séance sans données seconde par seconde. Importe son fichier .fit (ou .tcx) pour l’analyse complète.");
+  if(p3score!=null) score=p3score;
   if(score==null&&sx.an){ const nw=warn.length-estW; score=nw?(nw>=2?55:75):95; }
   return {good,warn,next,score};
 }
