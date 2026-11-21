@@ -2247,7 +2247,7 @@ async function dataImport(f){ const m=document.getElementById("dataMsg");
   }catch(e){ m.textContent="Ce fichier n’est pas une copie de données Écoute le Coach."; } }
 setTimeout(()=>{ if(!(window.claude&&typeof window.claude.use==="function")) document.documentElement.classList.add("standalone"); },1500);
 // nouvelle version publiée : le navigateur garde la page en cache ~10 min ; on vérifie et on propose de recharger
-const BUILD="20261120103212";
+const BUILD="20261121134213";
 async function checkUpdate(){ if(window.claude&&typeof window.claude.use==="function") return; if(!/^https?:/.test(location.protocol)) return;
   try{ const t=await (await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"})).text(); const m=t.match(/const BUILD="([^"]+)"/);
     if(m&&m[1]!==BUILD&&!document.getElementById("updBar")){ const d=document.createElement("div"); d.id="updBar"; d.className="updbar";
@@ -2392,6 +2392,8 @@ function addImported(rec){
   const plan=buildWeek(mondayOf(rec.date),null,{asPlanned:true}); const pd=plan.days[diff(mondayOf(rec.date),rec.date)]; const pl=LIB[pd.main.id];
   const inf=LIB[rec.id];
   if(pl&&inf&&pl.sport===inf.sport&&!!pl.key===!!inf.key&&pd.main.id!=="R0") {rec.planned=pd.main.id; if(pl.key||["E2","E3","E4","E1"].includes(rec.id)) rec.id=pd.main.id;}
+  // endurance prévue mais séance clé devinée (zones, effet d'entraînement) : une sortie de groupe ou vallonnée y ressemble vite. On garde l'endurance prévue ; seule une preuve nette (efforts qui collent à la séance, ou tours du compteur) la fera changer.
+  else if(pl&&inf&&pl.sport==="velo"&&inf.sport==="velo"&&["E1","E2","E3","E4","E5"].includes(pd.main.id)&&inf.key&&rec.id!=="RACE") {rec.planned=pd.main.id; rec.id=pd.main.id;}
   if(rec._ser){ try{rec.an=analyzeSeries(rec,rec._ser); if(rec.an.id&&rec.an.id!==rec.id) rec.id=rec.an.id; applyTE(rec);}catch(e){} delete rec._ser; }
   S.sessions.push(rec); return true;
 }
@@ -2472,8 +2474,8 @@ function workSet(id,variant){
   if(!LIB[id]||!["velo"].includes(LIB[id].sport)) return null;
   let steps; try{steps=wkSteps(id,variant);}catch(e){return null;}
   const flat=[], walk=a=>a.forEach(x=>{ if(x.rep){for(let i=0;i<x.rep;i++) walk(x.steps);} else flat.push(x); }); walk(steps);
-  const g={}; flat.forEach(x=>{ if(x.int!=="active") return; const spr=x.lo==null; if(!spr&&(x.lo<85||x.d>1500||x.d<20)) return; if(spr&&x.d>60) return;
-    const k=x.d+"|"+x.lo+"|"+x.hi; (g[k]=g[k]||{n:x.n,d:x.d,lo:x.lo,hi:x.hi,count:0,spr}).count++; });
+  const g={}; let tt=0; flat.forEach(x=>{ const t0=tt; tt+=x.d||0; if(x.int!=="active") return; const spr=x.lo==null; if(!spr&&(x.lo<85||x.d>1500||x.d<20)) return; if(spr&&x.d>60) return;
+    const k=x.d+"|"+x.lo+"|"+x.hi, o=(g[k]=g[k]||{n:x.n,d:x.d,lo:x.lo,hi:x.hi,count:0,spr,gapMax:0,last:null,t0}); o.count++; if(o.last!=null) o.gapMax=Math.max(o.gapMax,t0-o.last); o.last=t0; o.span=t0+x.d-o.t0; });
   const L=Object.values(g); if(!L.length) return null;
   L.forEach(x=>x.w=x.count*x.d*(x.spr?160:x.lo)); L.sort((a,b)=>b.w-a.w); return L[0];
 }
@@ -2500,14 +2502,20 @@ function analyzeSeries(rec,ser){
   const trySetV=(id,v)=>{ const ws=workSet(id,v); if(!ws) return null;
     const wsL=workSet(id,v==="longue"?"courte":"longue"), maxN=Math.max(ws.count,wsL&&wsL.d===ws.d?wsL.count:0)+2;
     const minW=ws.spr?ftp*1.3:ftp*ws.lo/100*.85, reps=detectReps(p,hr,ws.spr?Math.min(ws.d,10):ws.d,minW,maxN,ws.spr?null:ftp*ws.lo/100*.8);
-    const inR=reps.filter(r=>{const q=r.w/ftp*100;return ws.spr||(q>=ws.lo-2&&q<=ws.hi+3);}).length, hi=reps.filter(r=>!ws.spr&&r.w/ftp*100>ws.hi+3).length;
-    const fit=Math.min(reps.length,ws.count)/ws.count*(reps.length?(inR+.7*hi)/reps.length:0)*(ws.spr?.8:1);
+    const inR=reps.filter(r=>{const q=r.w/ftp*100;return ws.spr||(q>=ws.lo-2&&q<=ws.hi+3);}).length, sub=ws.hi<=112, hi=reps.filter(r=>!ws.spr&&r.w/ftp*100>ws.hi+3&&(!sub||r.w/ftp*100<=ws.hi+12)).length, far=reps.filter(r=>!ws.spr&&sub&&r.w/ftp*100>ws.hi+12).length;
+    // une vraie séance regroupe ses efforts : étalés sur toute la sortie (relances de groupe), ils ne forment pas la séance
+    let reg=1; const m=Math.min(ws.count,reps.length);
+    if(!ws.spr&&m>=4&&ws.span){ let mn=1e9; for(let k=0;k+m<=reps.length;k++) mn=Math.min(mn,reps[k+m-1].i+ws.d-reps[k].i); const st2=["E1","E2","E3","E4","E5"].includes(id); if(mn>ws.span*(st2?1.3:1.6)+(st2?240:420)) reg=.3; }
+    // un effort réel tient la cible presque toute sa durée : une « moyenne » portée par un pic puis du roulage (sortie de groupe, relances) ne compte pas
+    let cov=1; if(!ws.spr&&reps.length){ const thr=ftp*ws.lo/100*.92; cov=mean(reps.map(r=>{let c=0; for(let j=r.i;j<r.i+ws.d;j++) if(p[j]>=thr) c++; return c/ws.d;})); }
+    const fit=Math.min(reps.length,ws.count)/ws.count*(reps.length?(inR+.7*hi+.25*far)/reps.length:0)*(ws.spr?.8:1)*Math.min(1,cov/.8)*reg;
     return {id,v,fit,set:{n:ws.n,d:ws.d,lo:ws.lo,hi:ws.hi,spr:ws.spr,plan:ws.count,reps:reps.map(r=>({w:r.w,hr:r.hr,hrMax:r.hrMax,t:r.t}))}}; };
   // la séance réellement faite : celle de la bibliothèque dont le bloc principal colle le mieux à la sortie (la séance prévue est favorisée à égalité)
   let id=rec.planned||rec.id, best=null;
   if(hasP&&rec.id!=="RACE"){ const cands=Object.values(LIB).filter(x=>x.sport==="velo"&&(x.key||["E3","E5"].includes(x.id))&&(!["P1","P2","P3"].includes(x.id)||x.id===id)).map(x=>x.id);
     for(const c of cands){ const t=trySet(c); if(!t) continue; t.score=t.fit+(c===id?.15:0)+(t.set.d*t.set.plan>=600?.05:0); if(!best||t.score>best.score) best=t; }
-    if(best&&best.fit>=.55){ if(best.id!==id) an.other=id; id=best.id; an.set=best.set; }
+    const enduPlan=["E1","E2","E3","E4","E5"].includes(id), need=enduPlan&&LIB[best&&best.id]&&LIB[best.id].key?.8:.55;
+    if(best&&best.fit>=need){ if(best.id!==id) an.other=id; id=best.id; an.set=best.set; }
     else if(LIB[id]&&LIB[id].key){ if(rec.planned===id) an.notKey=id; id=rec.dur>=150?"E4":"E2"; } }
   an.id=id; an.variant=best&&best.id===id?best.v:varOf(id);
   // endurance : découplage aérobie (Pa:HR) hors 10 premières minutes
