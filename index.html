@@ -2529,6 +2529,7 @@ function renderEvidence(){try{renderEvidenceRun();}catch(e){}
     ["Course à pied","Aucun essai sur la performance d’un cycliste.","Pas de preuve","—","Endurance facile, plafonnée, jamais la veille d’une séance clé."],
     ["Suivi de la charge","Ratio aigu/chronique invalidé comme prédicteur ; CTL/TSB descriptifs ; monotonie élevée associée aux maladies banales ; entraînement guidé par la VFC (ln rMSSD sur 7 jours, zone ± 0,5 écart-type) : autant de progrès avec moins de séances dures.","Faible à modéré","Impellizzeri 2020, 2021 ; Foster 1998 ; Javaloyes 2019 ; Manresa-Rocamora 2021 ; Düking 2021","Pas de ratio aigu/chronique dans l’appli ; VFC sur 7 jours, FC de repos, sommeil, monotonie et RPE comme garde-fous. Le plan s’ajuste : fatigue sur 7 jours → une séance clé de moins et −15 % de volume ; reprise après 10 jours sans séance → 1 clé, 60 % du volume habituel."],
     ["Training Effect Garmin","Indicateurs propriétaires Firstbeat (Garmin) fondés sur l’EPOC estimé à partir de la FC. Validation indépendante limitée ; utiles pour comparer tes séances entre elles, pas comme mesure absolue.","Faible","Livre blanc Firstbeat (non évalué par des pairs)","Utilisé en complément : une séance avec TE anaérobie ≥ 2,5, TE aérobie ≥ 4 ou un effet principal seuil, VO2max, anaérobie ou sprint compte comme séance dure (règle des 48 h). Le bilan compare l’effet mesuré à la séance prévue. Le RPE saisi sur le compteur remplace le RPE estimé. Sans Training Effect Garmin, l’appli l’estime avec la méthode publiée par Firstbeat : intensité en % de VO2max par la réserve cardiaque (Swain et Leutholtz 1997) ou la puissance ; EPOC calculé seconde par seconde et calé sur les valeurs types du livre blanc EPOC de Firstbeat ; TE aérobie selon le pic d’EPOC et ta classe d’activité (seuils de la classe 8 : TE 2 = 22, TE 3 = 67, TE 4 = 155 ml/kg) ; TE anaérobie selon les intervalles repérés sur la FC (critères du brevet Firstbeat) et les sprints courts vus au capteur, calé sur les 11 séances d’exemple du livre blanc « Anaerobic Training Effect ». Écart sur ces exemples : environ 0,6 point en aérobie, 0,2 en anaérobie ; compter ±0,5 point. Remplacé dès que Garmin fournit sa valeur."],
+    ["Charge par intensité","Répartir la charge en aérobie faible, aérobie élevée et anaérobie. Grande majorité du temps à basse intensité ; pyramidal en base, un peu plus polarisé en spécifique. Les plages affichées sont des repères modélisés, pas des seuils validés.","Faible à modéré","Silva Oliveira 2024 ; Mateo-March 2026 ; Bosquet 2007 ; Foster 2001 (RPE de séance)","Graphique à 3 barres sur 28 jours dans Suivi. Charge = durée × RPE, répartie par zones de puissance ou de FC (sinon par type de séance). Plage = répartition visée pour la phase × ta charge des 4 semaines précédentes (−10 % à +20 %). Musculation non comptée. Ce n’est pas le calcul de Garmin."],
     ["Progression du volume","Aucun seuil de progression n’est validé (la règle des 10 % n’a pas réduit les blessures chez des coureurs débutants, Buist 2008) ; les hausses brutales (> 30 % en 2 semaines) sont associées à plus de blessures en course à pied (Nielsen 2014). Données quasi absentes en cyclisme.","Faible","Buist 2008 ; Nielsen 2014","Choix prudent de l’appli, pas un seuil prouvé : le volume prévu ne dépasse pas ton volume réel des 4 dernières semaines + 15 % par semaine (plancher 3 h), en plus de ton volume max."],
     ["Nutrition à l’effort","Jusqu’à 90 g/h de glucides mixtes au-delà de 2 h 30 ; au-delà de 90 g/h, pas de bénéfice démontré. Risque de REDs.","Fort (principe), modéré (doses)","Jeukendrup 2014 ; Thomas 2016 ; Podlogar 2022 ; Mountjoy 2023","80-90 g/h en course, entraînés sur les sorties longues ; 10-12 g/kg/j pendant 36-48 h avant un objectif."],
     ["Sommeil","Souvent insuffisant chez les sportifs ; besoin individuel.","Consensus d’experts","Walsh 2021","Alerte sous 6 h ; priorité au sommeil sur l’intensité."],
@@ -4900,6 +4901,130 @@ applyLite(); run();
 /* palette de commandes */
 document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeMenu(true); });
 }catch(e){ console.warn("v3 init",e); }})();
+</script>
+
+<style id="lfcss">
+/* ===== Charge par intensité (4 semaines) : aérobie faible / aérobie élevée / anaérobie ===== */
+.lf{--lf-ana:#a78bfa;--lf-high:#fb923c;--lf-low:#4fd1e0}
+.lf-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.lf-head .d{font:600 13px "Inter",sans-serif;color:var(--muted)}
+.lf-verdict{text-align:center;margin:14px auto 18px;max-width:46ch}
+.lf-verdict b{display:block;font:800 24px/1.15 "Inter",sans-serif;letter-spacing:-.025em}
+.lf-verdict p{margin:8px 0 0;color:var(--muted);font-size:14px;line-height:1.5}
+.lf-rows{display:flex;flex-direction:column;gap:16px}
+.lf-row{display:grid;grid-template-columns:118px 46px minmax(0,1fr);align-items:center;gap:10px}
+.lf-n{font:600 14px "Inter",sans-serif;color:var(--ink)}
+.lf-v{font:700 15px "Inter",sans-serif;text-align:right;font-variant-numeric:tabular-nums}
+.lf-track{position:relative;height:22px}
+.lf-bar{position:absolute;left:0;top:5px;height:12px;width:0;border-radius:999px;background:var(--c);transition:width .9s cubic-bezier(.22,1,.36,1)}
+.lf-opt{position:absolute;top:2px;height:18px;border:1.5px dashed color-mix(in srgb,var(--ink) 55%,transparent);border-radius:999px;text-decoration:none;box-sizing:border-box}
+.lf-row.in .lf-bar{width:var(--w)}
+.lf-row .st{display:none}
+.lf-legend{display:flex;justify-content:center;align-items:center;gap:8px;margin-top:16px;font-size:13px;color:var(--muted)}
+.lf-legend u{display:inline-block;width:30px;height:12px;border:1.5px dashed color-mix(in srgb,var(--ink) 55%,transparent);border-radius:999px;text-decoration:none}
+.lf-tgt{margin:14px 0 0;font-size:13px;color:var(--muted);text-align:center}
+.lf-how{margin-top:12px;font-size:13px;color:var(--muted)}
+.lf-how summary{cursor:pointer;font-weight:600;color:var(--accent-2)}
+.lf-how p{margin:8px 0 0;line-height:1.55}
+.lf-empty{padding:18px 4px 6px;color:var(--muted);font-size:14px;line-height:1.55}
+@media (max-width:520px){.lf-row{grid-template-columns:96px 40px minmax(0,1fr);gap:8px}.lf-n{font-size:13px}.lf-verdict b{font-size:21px}}
+@media (prefers-reduced-motion:reduce){.lf-bar{transition:none}}
+</style>
+<script id="lfjs">
+(function(){try{
+const $=(s,r=document)=>r.querySelector(s);
+const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+const NAMES=["Aérobie faible","Aérobie élevée","Anaérobie"], COL=["var(--lf-low)","var(--lf-high)","var(--lf-ana)"];
+/* coût relatif d'une minute (échelle RPE moyenne de chaque catégorie) : faible 2,5 · élevée 6,5 · anaérobie 9,5 */
+const WT=[2.5,6.5,9.5];
+/* répartition cible du TEMPS [faible, élevée, anaérobie] par phase : ≈ 80 % de basse intensité ; pyramidal en base, un peu plus polarisé en spécifique ;
+   affûtage : intensité maintenue (Bosquet 2007) ; les efforts anaérobies pèsent peu, surtout en course à pied */
+const TID={
+ velo:{base:[.82,.16,.02],construction:[.80,.17,.03],specifique:[.77,.18,.05],competition:[.78,.17,.05],affutage:[.78,.17,.05],transition:[.92,.08,0]},
+ course:{base:[.84,.15,.01],construction:[.82,.16,.02],specifique:[.79,.18,.03],competition:[.80,.17,.03],affutage:[.80,.17,.03],transition:[.93,.07,0]}};
+const REL=[.15,.25,.40];            // tolérance relative autour de la part cible (la part anaérobie est la plus étroite)
+const VOL=[.9,1.2];                 // volume : de −10 % à +20 % par rapport aux 4 semaines précédentes
+const loadShares=(tbl,ph)=>{const t=tbl[ph]||tbl.base,l=t.map((x,i)=>x*WT[i]),T=l[0]+l[1]+l[2];return l.map(x=>x/T);};
+/* part de la charge d'une séance dans chaque catégorie, quand il n'y a ni zones ni fichier : d'après le type de séance */
+const CAT={recup:[1,0,0],endurance:[.96,.04,0],long:[.93,.07,0],durabilite:[.65,.35,0],tempo:[.30,.70,0],seuil:[.30,.70,0],vo2:[.30,.60,.10],court:[.30,.55,.15],anaerobie:[.25,.25,.50],sprint:[.65,.20,.15],course_prep:[.55,.35,.10],test:[.33,.57,.10],
+ c_long:[.95,.05,0],c_spec:[.35,.65,0],c_seuil:[.30,.70,0],c_vma:[.30,.60,.10],c_cotes:[.35,.40,.25],c_test:[.30,.60,.10],course:[1,0,0]};
+const ID={E3:[.88,.04,.08],E5:[.75,.25,0],S2:[.25,.65,.10],A1:[.25,.25,.50],P2:[.35,.55,.10],P3:[.30,.70,0],P4:[.30,.70,0],C8:[.30,.45,.25],C2:[.85,.05,.10],RACE:[.25,.55,.20]};
+const BEN=[null,[1,0,0],[.96,.04,0],[.40,.60,0],[.30,.70,0],[.30,.60,.10],[.30,.35,.35],[.45,.20,.35]];
+const byRpe=r=>r<=3?[1,0,0]:r<=4?[.9,.1,0]:r<=5?[.6,.4,0]:r<=6?[.4,.6,0]:r<=7?[.3,.65,.05]:[.3,.5,.2];
+function splitOf(s){
+  const w5=[2,3,5,7,9], w7=[2,3,5,6,8,9,10];
+  const zh=(s.an&&s.an.zh&&s.an.zh.some(x=>x>0))?s.an.zh.map(x=>x/60):((s.hz&&s.hz.some(x=>x>0))?s.hz:null);
+  if(s.zmin&&s.zmin.length===7&&s.zmin.some(x=>x>0)){ // puissance : zones 1-2 faible, 3-5 élevée, 6-7 anaérobie
+    const t=s.zmin.map((x,i)=>x*w7[i]),T=t.reduce((a,b)=>a+b,0); return [t[0]+t[1],t[2]+t[3]+t[4],t[5]+t[6]].map(x=>x/T); }
+  if(zh&&zh.length===5){ // FC : zones 1-2 faible, 3-5 élevée ; l'anaérobie, invisible à la FC, vient du Training Effect anaérobie
+    const t=zh.map((x,i)=>x*w5[i]),T=t.reduce((a,b)=>a+b,0), f=[t[0]+t[1],t[2]+t[3]+t[4],0].map(x=>x/T), te=+s.teAn;
+    if(te>=1){ const a=Math.min(.36,.04+.08*(te-1)), take=Math.min(a,f[1]); f[1]-=take; f[2]=take; } return f; }
+  const b=(typeof benefitRank==="function")?benefitRank(s):0; if(b>0&&BEN[b]) return BEN[b];
+  const L=(typeof LIB!=="undefined"&&LIB[s.id])||{};
+  return ID[s.id]||CAT[L.cat]||byRpe(s.rpe===""||s.rpe==null?3:+s.rpe);
+}
+const PH_FR={base:"base",construction:"construction",specifique:"spécifique",competition:"compétition",affutage:"affûtage",transition:"transition"};
+function model(){
+  if(!S.sessions||!S.sessions.length) return {state:"none"};
+  const end=TODAY,start=addDays(end,-27), first=S.sessions.map(s=>s.date).filter(Boolean).sort()[0], days=diff(first,end)+1;
+  if(days<7) return {state:"young",days};
+  const all=S.sessions.filter(s=>s.date&&["velo","course"].includes(sessSport(s)));
+  const sum=(a,b)=>{const t=[0,0,0];all.filter(s=>s.date>=a&&s.date<=b).forEach(s=>{const L=(+s.dur||0)*(s.rpe===""||s.rpe==null?3:+s.rpe),f=splitOf(s);for(let i=0;i<3;i++)t[i]+=L*f[i];});return t;};
+  const cur=sum(start,end), tot=cur[0]+cur[1]+cur[2]; if(tot<=0) return {state:"none"};
+  const sp=(typeof sportProfile==="function"&&sportProfile()==="course")?"course":"velo", tbl=TID[sp];
+  const sh=[0,0,0]; for(let k=0;k<28;k++){ const q=loadShares(tbl,phaseFor(addDays(start,k))); for(let i=0;i<3;i++) sh[i]+=q[i]/28; }
+  // volume de référence : les 4 semaines précédentes (si l'historique les couvre au moins à moitié), sinon la charge actuelle (la plage ne juge alors que la répartition)
+  const pStart=addDays(start,-28), pEnd=addDays(start,-1), haveHist=first<=addDays(start,-14), covered=Math.min(28,diff(first>pStart?first:pStart,pEnd)+1);
+  const prev=haveHist?sum(pStart,pEnd):[0,0,0], prevTot=prev[0]+prev[1]+prev[2], volKnown=haveHist&&prevTot>0;
+  const ref=volKnown?prevTot*28/covered:tot;
+  const lo=[0,0,0].map((_,i)=>ref*sh[i]*(1-REL[i])*(volKnown?VOL[0]:1)), hi=[0,0,0].map((_,i)=>ref*sh[i]*(1+REL[i])*(volKnown?VOL[1]:1));
+  const st=cur.map((x,i)=>x<lo[i]?-1:x>hi[i]?1:0), gap=cur.map((x,i)=>x<lo[i]?lo[i]-x:x>hi[i]?x-hi[i]:0); // écart absolu : l’anaérobie, très petite, ne passe pas devant l’aérobie élevée
+  return {state:"ok",start,end,cur,lo,hi,st,gap,sh,sp,volKnown,phase:phaseFor(end),tot};
+}
+function verdict(m){
+  const arg=(a,f)=>a.reduce((b,x,i)=>f(x,a[b])?i:b,0), N=m.st, sp=m.sp;
+  if(N.every(x=>x<0)) return ["Sous les objectifs",m.volKnown?"Ta charge est plus basse que sur les 4 semaines précédentes, dans les trois catégories. Augmente d’abord la durée ou la fréquence, avant l’intensité.":"Ta charge est basse dans les trois catégories pour ta phase. Augmente d’abord la durée ou la fréquence, avant l’intensité."];
+  if(N.every(x=>x>0)) return ["Au-dessus des objectifs","Ta charge dépasse la plage dans les trois catégories. Surveille sommeil, FC de repos et fatigue ; les semaines allégées du plan servent à ça."];
+  if(N.every(x=>x===0)) return ["Équilibrée","Ta charge est bien répartie entre les trois catégories pour ta phase ("+PH_FR[m.phase]+"). Continue ainsi."];
+  const below=[0,1,2].filter(i=>N[i]<0);
+  if(below.length){ const i=below.reduce((b,x)=>m.gap[x]>m.gap[b]?x:b,below[0]);
+    const tip=[sp==="course"?"Ajoute ou allonge un footing facile : tu dois pouvoir parler en courant.":"Ajoute ou allonge une sortie d’endurance (zone 2) : tu dois pouvoir parler.",
+      sp==="course"?"Il manque du travail au seuil ou à allure spécifique : un tempo, un seuil ou des intervalles longs par semaine suffisent.":"Il manque du travail autour du seuil ou de la PMA : une séance de tempo, de seuil ou d’intervalles longs par semaine suffit.",
+      sp==="course"?"Quelques accélérations ou côtes courtes, rares et en forme, suffisent.":"Quelques efforts très courts et très intenses (sprints, 30/30 à fond), rares et en forme, suffisent."][i];
+    return ["Manque d’"+NAMES[i].toLowerCase(),tip]; }
+  const above=[0,1,2].filter(i=>N[i]>0), i=above.reduce((b,x)=>m.gap[x]>m.gap[b]?x:b,above[0]);
+  const tip=["Ta charge est surtout facile : c’est une bonne fondation. Tu peux ajouter progressivement du seuil ou de la PMA.","Beaucoup d’intensité moyenne à forte. Les études placent environ 80 % du temps à basse intensité : remplace une séance soutenue par de l’endurance.","Beaucoup d’efforts très intenses. Rééquilibre avec davantage d’endurance, qui porte le volume et la récupération."][i];
+  return ["Focus "+NAMES[i].toLowerCase(),tip];
+}
+const fmtD=d=>parse(d).toLocaleDateString("fr-FR",{day:"numeric",month:"short"});
+let lastSig="";
+function render(){
+  const host=$("#loadChart"); if(!host) return; const stack=host.closest(".card")&&host.closest(".card").parentNode; if(!stack) return;
+  let card=$("#lfCard"); if(!card){ card=document.createElement("div"); card.className="card lf"; card.id="lfCard"; host.closest(".card").after(card); }
+  const m=model(); const sig=JSON.stringify(m.state==="ok"?[m.start,m.cur.map(Math.round),m.st,m.sp,m.phase,m.volKnown]:[m.state,m.days]);
+  if(sig===lastSig&&card.childElementCount) return; lastSig=sig;
+  if(m.state!=="ok"){ card.innerHTML=`<div class="lf-head"><h2>Charge par intensité</h2></div><p class="lf-empty">${m.state==="young"?`Il faut au moins 7 jours d’historique pour estimer ta charge par intensité (encore ${7-m.days} jour${7-m.days>1?"s":""}). Enregistre tes séances dans Suivi, de préférence avec leur fichier : les zones de puissance ou de FC rendent la répartition plus juste.`:"Aucune séance de vélo ou de course sur les 4 dernières semaines. Dès qu’il y en aura, ta charge sera répartie ici entre aérobie faible, aérobie élevée et anaérobie."}</p>`; return; }
+  const [vt,msg]=verdict(m), disp=x=>Math.round(x/10), mx=Math.max(...m.hi,...m.cur)*1.06, pc=x=>(x/mx*100).toFixed(2);
+  const order=[2,1,0];
+  const rows=order.map(i=>{ const stl=m.st[i]<0?"sous la plage":m.st[i]>0?"au-dessus de la plage":"dans la plage";
+    return `<div class="lf-row" role="img" aria-label="${NAMES[i]} : ${disp(m.cur[i])}, ${stl}"><span class="lf-n">${NAMES[i]}</span><span class="lf-v" data-v="${disp(m.cur[i])}">${disp(m.cur[i])}</span><div class="lf-track"><i class="lf-bar" style="--w:${pc(m.cur[i])}%;--c:${COL[i]}"></i><u class="lf-opt" style="left:${pc(m.lo[i])}%;width:${(pc(m.hi[i])-pc(m.lo[i])).toFixed(2)}%"></u></div></div>`; }).join("");
+  const T=m.sh.map(x=>Math.round(x*100));
+  card.innerHTML=`<div class="lf-head"><h2>Charge par intensité</h2><span class="d">${fmtD(m.start)} – ${fmtD(m.end)}</span></div>
+   <div class="lf-verdict"><b>${vt}</b><p>${msg}</p></div><div class="lf-rows">${rows}</div>
+   <div class="lf-legend"><u></u>Plage optimale</div>
+   <p class="lf-tgt">Répartition de la charge visée en phase ${PH_FR[m.phase]} : ${T[0]} % aérobie faible · ${T[1]} % aérobie élevée · ${T[2]} % anaérobie.${m.volKnown?"":" Plage calculée sur ton volume actuel : elle ne juge que la répartition, pas le volume."}</p>
+   <details class="lf-how"><summary>Comment c’est calculé</summary><p>Chaque séance a une charge (durée × RPE, méthode de Foster), répartie entre trois catégories : d’après le temps passé dans chaque zone de puissance ou de FC, chaque minute étant pondérée par son coût (une minute intense pèse plus qu’une minute facile) ; sans fichier, d’après le type de séance. Aérobie faible : zones 1-2. Aérobie élevée : zones 3 à 5 (tempo, seuil, PMA). Anaérobie : au-delà, ou efforts courts repérés par le Training Effect anaérobie. La plage optimale applique la répartition visée pour ta phase (environ 80 % du temps à basse intensité, pyramidale en base, un peu plus polarisée en spécifique) à ta charge des 4 semaines précédentes, de −10 % à +20 %. Valeurs en points (min × RPE ÷ 10). Ce sont des repères modélisés, pas des seuils validés, et pas le calcul de Garmin (non public). La musculation n’est pas comptée.</p></details>`;
+  const rowsEl=[...card.querySelectorAll(".lf-row")], run=()=>rowsEl.forEach((r,i)=>setTimeout(()=>r.classList.add("in"),reduce?0:120*i));
+  if(reduce){ rowsEl.forEach(r=>r.classList.add("in")); return; }
+  const io=new IntersectionObserver(es=>{ if(es.some(e=>e.isIntersecting)){ io.disconnect(); run(); countUp(card); } },{threshold:.2}); io.observe(card);
+}
+function countUp(card){ const els=[...card.querySelectorAll(".lf-v")], T0=performance.now(), D=900;
+  (function f(now){ const p=Math.min(1,(now-T0)/D), e=1-Math.pow(1-p,4); els.forEach(el=>el.textContent=Math.round(+el.dataset.v*e)); if(p<1) requestAnimationFrame(f); })(T0);
+  setTimeout(()=>els.forEach(el=>el.textContent=el.dataset.v),D+200); }
+window.lfModel=model; window.lfSplit=splitOf; window.lfRender=render;
+const orig=window.renderSuivi; if(typeof orig==="function"){ window.renderSuivi=function(){ const r=orig.apply(this,arguments); try{ render(); }catch(e){ console.warn("lf",e); } return r; }; }
+try{ render(); }catch(e){ console.warn("lf",e); }
+}catch(e){ console.warn("lf init",e); }})();
 </script>
 
 </body>
