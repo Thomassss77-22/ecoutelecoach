@@ -1308,6 +1308,12 @@ function isDeload(mon,phase){
   if(phase==="specifique"&&nA&&diff(mon,nA.date)<=28) return false;
   const n=S.settings.meso==="2:1"?3:4; const i=mesoIdx(mon); return ((i%n)+n)%n===n-1;
 }
+// durée utile minimale d'une endurance vélo et durée maximale la veille d'une séance dure, selon le niveau
+const EZMIN={amateur:60,elite:75,pro:90}, EVEMAX={amateur:90,elite:105,pro:120};
+// plus longue course des 30 jours qui précèdent la semaine (faite ou prévue) : la sortie longue ne redescend pas sous 90 % de cette valeur pour tenir un plafond
+function recentLongRun(mon){ const fp=memoFp(); let lr=S.sessions.filter(x=>x.date<TODAY&&x.date>=addDays(mon,-30)&&(LIB[x.id]||{}).sport==="course").reduce((a,x)=>Math.max(a,+x.dur||0),0);
+  for(let k=1;k<=4;k++){ const m=addDays(mon,-7*k); if(m>=mondayOf(TODAY)) lr=Math.max(lr,weekRunMax(m,fp)); } return lr; }
+const c3Floor=(mon,cur,f=.9)=>Math.max(LIB.C3.dS,Math.min(cur,Math.round(recentLongRun(mon)*f/5)*5));
 function weekCap(mon,phase,deload){return S.settings.maxH*60*(deload?.6:1)*PH[phase].vol*tagFactor(mon)}
 
 /* ---------- choix d'une séance clé ---------- */
@@ -1590,10 +1596,10 @@ function buildWeek(mon,availOverride,opt={}){
     if(d.gym&&d.main.id!==d.gym){ const g=LIB[d.gym].dS, ms=(LIB[d.main.id]&&LIB[d.main.id].dS)||0;
       if(d.avail-g>=((LIB[d.main.id]||{}).key?ms:Math.min(ms,45))) av=Math.min(av,d.avail-g);
       else { d.extra=d.extra.filter(x=>x!==d.gym); d.notes=d.notes.filter(n=>!n.startsWith("muscu")); d.gym=null; warns.push(DAYS[d.i]+" : la musculation ne tient pas dans le créneau de "+fmtMin(d.avail)+" avec la séance vélo, elle est retirée ce jour-là."); } }
-    const lk=LIB[d.main.id]; if(lk&&lk.key&&(deload||phase==="affutage")&&lk.dS) av=Math.min(av,lk.dS);
+    const lk=LIB[d.main.id]; if(lk&&lk.key&&((deload&&d.main.id!=="C3")||phase==="affutage")&&lk.dS) av=Math.min(av,lk.dS);
     if(["P2","P3"].includes(d.main.id)) av=Math.min(av,LIB[d.main.id].dS);
     // veille d'une séance dure : sortie facile courte (90 min au plus) pour arriver frais sur l'intensité
-    if(!d.pinned&&["E1","E2","E3"].includes(d.main.id)&&nextKey(d.i)&&days[d.i+1].main.id!=="RACE"&&av>90){ av=90; d.notes.push("veille de séance dure : 1 h 30 au plus, pour arriver frais"); }
+    { const vm=EVEMAX[S.settings.level]||90; if(!d.pinned&&["E1","E2","E3"].includes(d.main.id)&&nextKey(d.i)&&days[d.i+1].main.id!=="RACE"&&av>vm){ av=vm; d.notes.push("veille de séance dure : "+fmtMin(vm)+" au plus, pour arriver frais"); } }
     // en période de courses, la sortie longue reste le seul gros stimulus du week-end : le jour facile collé à elle est limité à 2 h
     if(!d.pinned&&["E1","E2"].includes(d.main.id)&&["specifique","competition","affutage"].includes(phase)&&[d.i-1,d.i+1].some(j=>days[j]&&["E4","E5","D1"].includes(days[j].main.id))&&av>120){ av=120; d.notes.push("à côté de la sortie longue : 2 h au plus en période de courses"); }
     const f=fitDur(d.main.id,av); d.dur=f.dur; d.v=f.v;
@@ -1616,10 +1622,10 @@ function buildWeek(mon,availOverride,opt={}){
         return; }
       if(d.dur>lim){d.dur=lim;d.notes.push(lr?"limitée à "+fmtMin(lim)+" : pas plus de 10 % au-delà de ta plus longue course "+(lrP>lr0?"prévue ou faite sur les 30 jours précédents":"des 30 derniers jours")+" ("+fmtMin(lr)+"), le risque de blessure augmente nettement au-delà (Frandsen 2025)":"limitée à "+fmtMin(lim)+" : aucune course à pied enregistrée sur 30 jours, on repart prudemment");}}); }
   // volume de course : au plus +15 % sur la plus chargée des 2 semaines précédentes (au plus 85 % en semaine allégée), pour que la course ne grimpe pas plus vite que la charge totale
-  if(RW&&!opt.phase&&mon>mondayOf(TODAY)){ const fp2=memoFp(), ref=Math.max(weekRunSum(addDays(mon,-7),fp2),weekRunSum(addDays(mon,-14),fp2));
+  if(RW&&!opt.phase&&mon>mondayOf(TODAY)){ const fp2=memoFp(), ref=deload?weekRunSum(addDays(mon,-7),fp2):Math.max(weekRunSum(addDays(mon,-7),fp2),weekRunSum(addDays(mon,-14),fp2));
     if(ref>=60){ const lim=Math.round(ref*(deload?.85:1.15)), isR=d=>!d.past&&(LIB[d.main.id]||{}).sport==="course"; let rs=days.reduce((a,d)=>a+(isR(d)?d.dur:0),0);
       if(rs>lim){ const why="volume de course limité à "+fmtMin(lim)+" cette semaine ("+(deload?"semaine allégée : 85 %":"+15 %")+" de "+fmtMin(ref)+")";
-        for(const d of days.filter(d=>isR(d)&&!d.pinned&&["C1","C2","C3"].includes(d.main.id)).sort((a,b)=>((a.main.id==="C3")-(b.main.id==="C3"))||(b.dur-a.dur))){ if(rs<=lim) break; const min=d.main.id==="C3"?Math.max(60,LIB.C3.dS):LIB[d.main.id].dS, cut=Math.min(d.dur-min,Math.ceil((rs-lim)/5)*5); if(cut>0){ d.dur-=cut; rs-=cut; d.notes.push(why); } }
+        for(const d of days.filter(d=>isR(d)&&!d.pinned&&["C1","C2","C3"].includes(d.main.id)).sort((a,b)=>((a.main.id==="C3")-(b.main.id==="C3"))||(b.dur-a.dur))){ if(rs<=lim) break; const min=d.main.id==="C3"?c3Floor(mon,d.dur,deload?.65:.9):LIB[d.main.id].dS, cut=Math.min(d.dur-min,Math.ceil((rs-lim)/5)*5); if(cut>0){ d.dur-=cut; rs-=cut; d.notes.push(why); } }
         for(const d of days.filter(d=>isR(d)&&!d.pinned&&["C1","C2"].includes(d.main.id)).sort((a,b)=>a.dur-b.dur)){ if(rs<=lim||days.filter(isR).length<=3) break; rs-=d.dur; d.notes=[why+" : footing retiré"]; d.main={id:"R0"}; d.dur=0; } } } }
   // semaine allégée de course : on garde la fréquence et on raccourcit footings et sortie longue d'environ 30 %
   if(RW&&deload&&!opt.phase) days.forEach(d=>{ if(d.past||d.pinned||!["C1","C2","C3"].includes(d.main.id)) return; const nd=Math.max(LIB[d.main.id].dS,Math.round(d.dur*.7/5)*5); if(nd<d.dur){ d.dur=nd; d.notes.push("semaine allégée : durée réduite d’environ 30 %, même nombre de séances"); } });
@@ -1648,10 +1654,21 @@ function buildWeek(mon,availOverride,opt={}){
     if(RW&&!pureRun){ const bikes=days.filter(d=>["E1","E2","E3"].includes(d.main.id)&&!d.pinned&&!d.past);
       for(const d of bikes.sort((a,b)=>b.dur-a.dur)){ if(total<=cap) break; const cut=Math.min(d.dur-LIB[d.main.id].dS,Math.ceil((total-cap)/5)*5); if(cut>0){d.dur-=cut;total-=cut;d.notes.push("raccourcie pour respecter le volume max");} }
       for(const d of bikes.filter(d=>!d.gym).sort((a,b)=>a.dur-b.dur)){ if(total<=cap) break; total-=d.dur; d.notes=["vélo facile retiré pour respecter le volume max : la course passe avant"]; d.main={id:"R0"}; d.dur=0; } }
-    for(const d of flex.sort((a,b)=>(bk(a)-bk(b))||(b.dur-a.dur))){ if(total<=cap) break; const min=phase==="affutage"?Math.min(40,LIB[d.main.id].dS):LIB[d.main.id].dS; const cut=Math.min(d.dur-min,Math.ceil((total-cap)/5)*5); if(cut>0){d.dur-=cut;total-=cut;d.notes.push("raccourcie pour respecter le volume max");} }
+    // semaine vélo (hors affûtage) : mieux vaut moins de sorties mais assez longues que trois endurances d'une heure.
+    // 1) on raccourcit les endurances les plus longues jusqu'à une durée utile selon le niveau, 2) on retire les jours faciles les plus courts,
+    // 3) on raccourcit la sortie longue (jusqu'à sa durée courte) ; ensuite seulement, les règles générales ci-dessous.
+    if(!RW&&phase!=="affutage"){ const F=EZMIN[S.settings.level]||60, ez=days.filter(d=>["E2","E3"].includes(d.main.id)&&!d.pinned&&!d.past);
+      for(const d of ez.sort((a,b)=>b.dur-a.dur)){ if(total<=cap) break; const cut=Math.min(d.dur-Math.max(F,LIB[d.main.id].dS),Math.ceil((total-cap)/5)*5); if(cut>0){d.dur-=cut;total-=cut;d.notes.push("raccourcie pour respecter le volume max");} }
+      for(const d of days.filter(d=>["E1","E2","E3"].includes(d.main.id)&&!d.gym&&!d.pinned&&!d.past).sort((a,b)=>a.dur-b.dur)){ if(total<=cap) break; total-=d.dur; d.notes=["transformée en repos pour respecter le volume max : mieux vaut moins de sorties, chacune assez longue pour être utile"]; d.main={id:"R0"}; d.dur=0; }
+      // un jour retiré libère parfois plus que nécessaire : on rend le reste aux endurances gardées, dans leur créneau
+      for(const d of ez.filter(d=>["E2","E3"].includes(d.main.id)).sort((a,b)=>(b.avail-b.dur)-(a.avail-a.dur))){ const room=Math.floor((cap-total)/5)*5; if(room<10) break; const lim=Math.min(d.main.cap?Math.min(d.avail,d.main.cap):d.avail,LIB[d.main.id].dL,(d.notes.some(n=>n.startsWith("veille"))?(EVEMAX[S.settings.level]||90):999)); const add=Math.min(room,lim-d.dur); if(add>=10){ d.dur+=add; total+=add; } }
+      for(const d of days.filter(d=>["E4","E5"].includes(d.main.id)&&!d.pinned&&!d.past)){ if(total<=cap) break; const cut=Math.min(d.dur-LIB[d.main.id].dS,Math.ceil((total-cap)/5)*5); if(cut>0){d.dur-=cut;total-=cut;d.notes.push("sortie longue raccourcie pour respecter le volume max");} } }
+    for(const d of flex.filter(d=>!(RW&&d.main.id==="C3")).sort((a,b)=>(bk(a)-bk(b))||(b.dur-a.dur))){ if(total<=cap) break; const min=phase==="affutage"?Math.min(40,LIB[d.main.id].dS):LIB[d.main.id].dS; const cut=Math.min(d.dur-min,Math.ceil((total-cap)/5)*5); if(cut>0){d.dur-=cut;total-=cut;d.notes.push("raccourcie pour respecter le volume max");} }
     for(const d of days.filter(d=>["E1","E2","E3","C1","C2"].includes(d.main.id)&&!d.gym&&!d.pinned).sort((a,b)=>(bk(a)-bk(b))||(a.dur-b.dur))){
-      if(total<=cap) break; total-=d.dur; d.notes=["transformée en repos pour respecter le volume max"]; d.main={id:"R0"}; d.dur=0;
+      if(total<=cap) break; if(RW&&(LIB[d.main.id]||{}).sport==="course"&&days.filter(x=>(LIB[x.main.id]||{}).sport==="course").length<=3) continue; total-=d.dur; d.notes=["transformée en repos pour respecter le volume max"]; d.main={id:"R0"}; d.dur=0;
     }
+    // semaine course : la sortie longue est raccourcie en dernier, et pas sous 90 % de ta plus longue course récente (on maintient, on ne recule pas)
+    if(RW) for(const d of days.filter(d=>d.main.id==="C3"&&!d.pinned&&!d.past)){ if(total<=cap) break; const min=phase==="affutage"?Math.min(40,LIB.C3.dS):c3Floor(mon,d.dur,deload?.65:.9), cut=Math.min(d.dur-min,Math.ceil((total-cap)/5)*5); if(cut>0){d.dur-=cut;total-=cut;d.notes.push("raccourcie pour respecter le volume max");} }
     const doneMin=days.filter(d=>d.past).reduce((a,d)=>a+d.dur,0);
     if(total>cap&&doneMin>=cap*.7) days.filter(d=>!d.past&&!d.pinned&&["E4","E5","D1"].includes(d.main.id)).forEach(d=>{const nd=Math.min(d.dur,Math.max(60,Math.round((cap-doneMin)/15)*15)); if(nd<120){total-=d.dur-nd;d.main={id:"E2"};d.dur=nd;d.notes.push("sortie longue remplacée : tu as déjà fait l’essentiel du volume de la semaine");}});
     if(total>cap){ const minL=LC&&LC.reprise?90:120;
