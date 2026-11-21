@@ -4425,6 +4425,109 @@ new MutationObserver(()=>{clearTimeout(t);t=setTimeout(run,60);}).observe(docume
 addEventListener("resize",indicators);run();
 }catch(err){console.warn("v2",err)}})();
 </script>
+<style id="onbcss">
+.onb{position:fixed;inset:0;z-index:250;display:none;align-items:center;justify-content:center;padding:16px;background:radial-gradient(60vmax 40vmax at 15% 10%,rgba(106,76,255,.45),transparent 60%),radial-gradient(50vmax 40vmax at 90% 95%,rgba(255,77,141,.35),transparent 60%),color-mix(in srgb,var(--bg) 92%,#000)}
+.onb.on{display:flex;animation:fade .4s}
+.onbc{width:min(640px,100%);max-height:94vh;overflow:auto;background:var(--surface);border:1px solid var(--line2);border-radius:28px;box-shadow:var(--sh3);padding:28px 30px 24px;display:flex;flex-direction:column;gap:18px;animation:pop .6s var(--ease)}
+.onbtop{display:flex;align-items:center;gap:14px}
+.onbbar{flex:1;height:6px;border-radius:6px;background:var(--line);overflow:hidden}
+.onbbar i{display:block;height:100%;width:0;background:var(--grad);border-radius:6px;transition:width .5s var(--ease)}
+.onbskip{background:none;border:0;color:var(--muted);font:600 13px "Inter",sans-serif;cursor:pointer}
+.onbskip:hover{color:var(--accent)}
+.onbstep{display:flex;flex-direction:column;gap:14px;animation:v2in .45s var(--ease)}
+.onbstep h2{font-size:clamp(24px,4.4vw,32px);letter-spacing:-.04em}
+.onbstep p.sub{color:var(--muted);font-size:15.5px}
+.onbstep label{display:flex;flex-direction:column;gap:6px;font-weight:650;font-size:14px}
+.onbgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:560px){.onbgrid{grid-template-columns:1fr}.onbc{padding:22px 18px}}
+.onbopts{display:grid;gap:10px}
+.onbopt{display:flex;align-items:center;gap:14px;text-align:left;padding:15px 18px;border-radius:18px;border:1.5px solid var(--line2);background:var(--raised);color:var(--ink);font:650 16px "Inter",sans-serif;cursor:pointer;transition:all .25s var(--ease)}
+.onbopt small{display:block;font-weight:500;color:var(--muted);font-size:13px;margin-top:2px}
+.onbopt:hover{transform:translateY(-2px);border-color:var(--accent);box-shadow:var(--sh2)}
+.onbopt[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 18%,transparent)}
+.onbopt .em{font-size:26px}
+.onbdays{display:grid;gap:8px}
+.onbday{display:grid;grid-template-columns:90px 1fr 110px;align-items:center;gap:10px;padding:8px 12px;border-radius:14px;border:1px solid var(--line);background:var(--raised)}
+.onbday.off{opacity:.55}
+.onbday label{flex-direction:row;align-items:center;gap:8px}
+.onbnav{display:flex;justify-content:space-between;gap:10px;align-items:center}
+.onbmsg{color:var(--bad);font-size:13.5px;font-weight:600;min-height:18px}
+.onbhint{font-weight:500;color:var(--muted);font-size:12.5px}
+.onbrecap{display:grid;gap:8px}
+.onbrecap div{display:flex;justify-content:space-between;gap:12px;padding:10px 14px;border-radius:12px;background:var(--raised);border:1px solid var(--line);font-size:14.5px}
+.onbrecap b{text-align:right}
+</style>
+<script id="onbjs">
+(function(){try{
+const $=(s,r=document)=>r.querySelector(s);
+const esc=t=>String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const D=["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi","Dimanche"];
+const MAXS=[30,45,60,90,120,150,180,240,300,360];
+let A={},step=0,ov=null,steps=[];
+function init(){const s=S.settings;A={name:s.name||"",sport:s.sportProfile||"velo",prio:s.prioSport||"auto",level:s.level||"amateur",acHours:s.acHours===undefined?"":s.acHours,maxH:s.maxH||10,days:JSON.parse(JSON.stringify(s.days)),kg:s.kg||"",fcmax:s.fcmax||"",hasPower:s.hasPower===0?0:1,ftp:s.ftp||"",recDist:s.runRecDist||"10",recTime:s.runRecTime||"",race:"oui",rName:"",rDate:"",rPrio:"A",rSport:"auto",rDist:"",rProfile:"vallonné",source:s.source||"garmin",runOn:s.runOn===0?0:1};}
+const isV=()=>A.sport!=="course", isR=()=>A.sport!=="velo";
+function buildSteps(){steps=[
+ {k:"name",t:"Bienvenue 👋 Comment t’appelles-tu ?",sub:"Pour que ton coach s’adresse à toi.",r:()=>`<label>Prénom<input id="o_name" value="${esc(A.name)}" maxlength="30" autocomplete="given-name" placeholder="Ton prénom"></label>`,v:()=>{A.name=$("#o_name").value.trim();return A.name?"":"Dis-moi comment t’appeler.";}},
+ {k:"sport",t:"Quel sport pratiques-tu ?",sub:"Le plan, les zones et les séances s’adaptent à ton choix.",r:()=>opts("sport",[["velo","🚴","Vélo","Route, courses de 90 à 130 km"],["course","🏃","Course à pied","Du 10 km au marathon"],["mixte","🚴🏃","Les deux","Vélo et CAP au même niveau"]]),v:()=>""},
+ ...(A.sport==="mixte"?[{k:"prio",t:"Lequel passe en priorité ?",sub:"Les séances clés iront à ce sport ; l’autre complète.",r:()=>opts("prio",[["auto","✨","Automatique","Selon ma prochaine course A"],["velo","🚴","Le vélo",""],["course","🏃","La course à pied",""]]),v:()=>""}]:[]),
+ ...(A.sport==="velo"?[{k:"runOn",t:"Un peu de course à pied en complément ?",sub:"Des footings faciles peuvent s’intégrer au plan.",r:()=>opts("runOn",[[1,"👟","Oui, volontiers","Footings légers, jamais au détriment du vélo"],[0,"🚫","Non, uniquement du vélo",""]]),v:()=>""}]:[]),
+ {k:"level",t:"Quel est ton niveau ?",sub:"Il règle la durée maximale des sorties longues.",r:()=>opts("level",[["amateur","🌱","Amateur","Sorties longues jusqu’à 5 h"],["elite","⚡","Élite","Jusqu’à 5 h 30"],["pro","🏆","Pro","Jusqu’à 6 h"]]),v:()=>""},
+ {k:"hours",t:"Combien d’heures par semaine ?",sub:"Tous sports confondus. Le plan ne dépassera jamais ton maximum.",r:()=>`<div class="onbgrid"><label>Ce que tu fais en ce moment (h/semaine)<input id="o_ac" type="number" min="0" max="40" step="0.5" value="${A.acHours}" placeholder="ex. 6"><span class="onbhint">Laisse vide si tu ne sais pas.</span></label><label>Maximum que tu peux tenir (h/semaine)<input id="o_max" type="number" min="1" max="30" step="0.5" value="${A.maxH}"><span class="onbhint">Plafond du plan.</span></label></div>`,v:()=>{const m=+$("#o_max").value,a=$("#o_ac").value;if(!(m>=1))return "Indique un maximum d’heures (au moins 1).";if(a!==""&&+a>m)return "Ton volume actuel dépasse ton maximum : relève le maximum ou baisse le volume.";A.maxH=m;A.acHours=a===""?"":+a;return "";}},
+ {k:"days",t:"Quels jours peux-tu t’entraîner ?",sub:"Et combien de temps au maximum chaque jour. Tu pourras ajuster semaine par semaine.",r:()=>`<div class="onbdays">${A.days.map((d,i)=>`<div class="onbday ${d.on?"":"off"}"><label><input type="checkbox" data-d="${i}" ${d.on?"checked":""}> ${D[i]}</label><span></span><select data-m="${i}" ${d.on?"":"disabled"}>${MAXS.map(m=>`<option value="${m}" ${(d.max||60)===m||(!MAXS.includes(d.max)&&m===60)?"selected":""}>${m>=60?(Math.floor(m/60)+" h"+(m%60?" "+m%60:"")):m+" min"}</option>`).join("")}</select></div>`).join("")}</div>`,
+  b:()=>{document.querySelectorAll("[data-d]").forEach(c=>c.onchange=()=>{const i=+c.dataset.d;A.days[i].on=c.checked?1:0;if(c.checked&&!A.days[i].max)A.days[i].max=60;render();});document.querySelectorAll("[data-m]").forEach(s=>s.onchange=()=>{A.days[+s.dataset.m].max=+s.value;});},v:()=>A.days.some(d=>d.on)?"":"Choisis au moins un jour."},
+ {k:"body",t:"Quelques repères physiques",sub:"Pour calculer tes zones et ta nutrition. Valeurs approximatives acceptées.",r:()=>`<div class="onbgrid"><label>Poids (kg)<input id="o_kg" type="number" min="35" max="150" step="0.5" value="${A.kg}"></label><label>FC max (bpm)<input id="o_fc" type="number" min="140" max="225" value="${A.fcmax}"><span class="onbhint">Ne la connais pas ? 220 − âge, à affiner plus tard.</span></label></div>`,v:()=>{const k=+$("#o_kg").value,f=+$("#o_fc").value;if(!(k>=35&&k<=150))return "Poids entre 35 et 150 kg.";if(!(f>=140&&f<=225))return "FC max entre 140 et 225 bpm.";A.kg=k;A.fcmax=f;return "";}},
+ ...(isV()?[{k:"power",t:"As-tu un capteur de puissance ?",sub:"Sans capteur, les séances se règlent à la fréquence cardiaque.",r:()=>opts("hasPower",[[1,"⚡","Oui","Home-trainer, pédales ou pédalier à watts"],[0,"❤️","Non","Zones à la fréquence cardiaque"]])+(A.hasPower?`<label>FTP, ta puissance seuil (watts)<input id="o_ftp" type="number" min="80" max="500" value="${A.ftp}"><span class="onbhint">Estimation permise : tu pourras la corriger après un test.</span></label>`:""),b:()=>{document.querySelectorAll('[data-o="hasPower"]').forEach(b=>b.addEventListener("click",()=>setTimeout(render,0)));},v:()=>{if(A.hasPower){const f=+$("#o_ftp").value;if(!(f>=80&&f<=500))return "FTP entre 80 et 500 W.";A.ftp=f;}return "";}}]:[]),
+ ...(isR()?[{k:"rec",t:"Ton meilleur chrono récent en course à pied",sub:"Il sert à estimer ta VMA et tes allures. Facultatif.",r:()=>`<div class="onbgrid"><label>Distance<select id="o_rd">${[["5","5 km"],["10","10 km"],["21.1","Semi"],["42.2","Marathon"]].map(([v,l])=>`<option value="${v}" ${String(A.recDist)===v?"selected":""}>${l}</option>`).join("")}</select></label><label>Temps<input id="o_rt" value="${esc(A.recTime)}" placeholder="44:30 ou 1:43:00"></label></div>`,v:()=>{A.recDist=$("#o_rd").value;const t=$("#o_rt").value.trim();if(t&&!parseDur(t))return "Temps non reconnu : écris par exemple 44:30 ou 1:43:00.";A.recTime=t;return "";}}]:[]),
+ {k:"race",t:"As-tu une course en ligne de mire ?",sub:"Tout le plan se calcule à rebours depuis ton objectif.",r:()=>opts("race",[["oui","🎯","Oui, j’ai un objectif",""],["non","🌤️","Pas pour l’instant","Je construis d’abord ma base"]])+(A.race==="oui"?`<div class="onbgrid"><label>Nom<input id="o_rn" value="${esc(A.rName)}" placeholder="ex. Marathon de Toulouse"></label><label>Date<input id="o_rdt" type="date" min="${TODAY}" value="${A.rDate}"></label><label>Sport<select id="o_rs">${A.sport==="mixte"?`<option value="velo" ${(A.rSport==="velo"||(A.rSport==="auto"&&A.prio!=="course"))?"selected":""}>Vélo</option><option value="course" ${(A.rSport==="course"||(A.rSport==="auto"&&A.prio==="course"))?"selected":""}>Course à pied</option>`:`<option value="auto">${A.sport==="course"?"Course à pied":"Vélo"}</option>`}</select></label><label>Distance (km)<input id="o_rdist" type="number" min="1" max="300" step="0.1" value="${A.rDist}" placeholder="ex. 42,2"></label><label>Priorité<select id="o_rp">${[["A","A : l’objectif de la saison"],["B","B : importante"],["C","C : préparation"]].map(([p,l])=>`<option value="${p}" ${A.rPrio===p?"selected":""}>${l}</option>`).join("")}</select></label><label>Profil<select id="o_rpf">${["plat","vallonné","montagne","circuit"].map(p=>`<option ${A.rProfile===p?"selected":""}>${p}</option>`).join("")}</select></label></div>`:""),
+  b:()=>{document.querySelectorAll('[data-o="race"]').forEach(b=>b.addEventListener("click",()=>setTimeout(render,0)));},v:()=>{if(A.race!=="oui")return "";const n=$("#o_rn").value.trim(),d=$("#o_rdt").value;if(!n)return "Donne un nom à ta course.";if(!d||d<TODAY)return "Choisis une date à venir.";A.rName=n;A.rDate=d;A.rSport=$("#o_rs").value;A.rDist=$("#o_rdist").value;A.rPrio=$("#o_rp").value;A.rProfile=$("#o_rpf").value;return "";}},
+ {k:"source",t:"D’où viendront tes séances ?",sub:"Pour récupérer automatiquement ton activité réelle.",r:()=>opts("source",[["garmin","⌚","Garmin","Via le connecteur Fitness AI"],["strava","🟧","Strava","Abonnement requis"]]),v:()=>""},
+ {k:"recap",t:"Tout est prêt, "+"[NAME]"+" !",sub:"Voici ce que je configure. Tout reste modifiable dans Réglages.",r:()=>{const rows=[["Sport",{velo:"Vélo",course:"Course à pied",mixte:"Vélo et course"}[A.sport]],["Niveau",A.level],["Volume max",A.maxH+" h / semaine"],["Jours dispo",A.days.filter(d=>d.on).length+" jours"],["Objectif",A.race==="oui"?esc(A.rName)+" · "+A.rDate:"Aucune course"]];return `<div class="onbrecap">${rows.map(r=>`<div><span>${r[0]}</span><b>${r[1]}</b></div>`).join("")}</div>`},v:()=>""}
+];}
+function opts(key,list){return `<div class="onbopts">${list.map(o=>`<button type="button" class="onbopt" data-o="${key}" data-val="${o[0]}" aria-pressed="${String(A[key])===String(o[0])}"><span class="em">${o[1]}</span><span>${o[2]}${o[3]?`<small>${o[3]}</small>`:""}</span></button>`).join("")}</div>`;}
+function render(){const st=steps[step],c=$("#onbBody");
+ c.innerHTML=`<div class="onbstep"><h2>${esc(st.t.replace("[NAME]",A.name))}</h2><p class="sub">${esc(st.sub)}</p>${st.r()}</div><div class="onbmsg" id="onbMsg" role="alert"></div>`;
+ $("#onbBar").style.width=Math.round((step)/(steps.length-1)*100)+"%";
+ $("#onbBack").style.visibility=step?"visible":"hidden";$("#onbNext").textContent=step===steps.length-1?"C’est parti 🚀":"Continuer";
+ c.querySelectorAll(".onbopt").forEach(b=>b.onclick=()=>{const k=b.dataset.o;let v=b.dataset.val;if(["hasPower","runOn"].includes(k))v=+v;A[k]=v;c.querySelectorAll(`[data-o="${k}"]`).forEach(x=>x.setAttribute("aria-pressed",String(x.dataset.val)===String(v)));if(k==="sport"||k==="source")buildSteps();});
+ if(st.b)st.b();const f=c.querySelector("input:not([type=checkbox]),select");if(f&&step<3&&window.innerWidth>700)setTimeout(()=>f.focus(),60);}
+function next(){const st=steps[step],m=st.v();if(m){$("#onbMsg").textContent=m;return;}
+ if(step===steps.length-1)return finish();
+ buildSteps();step=Math.min(step+1,steps.length-1);// recalcule la liste selon le sport choisi
+ render();}
+function back(){if(step>0){step--;render();}}
+function finish(){const s=S.settings;
+ s.name=A.name;s.sportProfile=A.sport;s.prioSport=A.sport==="mixte"?A.prio:"auto";s.level=A.level;s.maxH=A.maxH;if(A.acHours!=="")s.acHours=A.acHours;s.days=A.days.map(d=>({on:d.on?1:0,max:d.on?(d.max||60):0}));
+ s.kg=A.kg;s.fcmax=A.fcmax;s.source=A.source;
+ if(A.sport==="velo")s.runOn=A.runOn;if(A.sport!=="velo")s.runOn=1;
+ if(isV()){s.hasPower=A.hasPower;s.wkTarget=A.hasPower?"power":"hr";if(A.hasPower)s.ftp=A.ftp;}
+ if(isR()){s.runRecDist=A.recDist;s.runRecTime=A.recTime;if(A.recTime&&!s.runRecDate)s.runRecDate=TODAY;}
+ s.races=(s.races||[]).filter(r=>!/^Exemple/.test(r.name));
+ if(A.race==="oui"){const sp=A.rSport==="auto"?(A.sport==="course"?"course":"velo"):A.rSport;const r={date:A.rDate,name:A.rName,prio:A.rPrio,profile:A.rProfile,sport:sp};if(A.rDist)r.dist=A.rDist;s.races.push(r);}
+ s.demo=false;s.onboarded=true;save();close();try{renderAll();}catch(e){}
+ if(window.v2toast)v2toast("Bienvenue "+A.name+", ton plan est prêt");}
+function skip(){S.settings.onboarded=true;save();close();}
+function close(){ov.classList.remove("on");}
+function open(){if(!ov){ov=document.createElement("div");ov.className="onb";ov.setAttribute("role","dialog");ov.setAttribute("aria-modal","true");ov.setAttribute("aria-label","Configuration initiale");
+ ov.innerHTML=`<div class="onbc"><div class="onbtop"><div class="onbbar"><i id="onbBar"></i></div><button class="onbskip" type="button" id="onbSkip">Passer</button></div><div id="onbBody"></div><div class="onbnav"><button class="btn ghost" type="button" id="onbBack">← Retour</button><button class="btn" type="button" id="onbNext">Continuer</button></div></div>`;document.body.appendChild(ov);
+ $("#onbNext").onclick=next;$("#onbBack").onclick=back;$("#onbSkip").onclick=skip;
+ ov.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.tagName!=="BUTTON"){e.preventDefault();next();}});}
+ init();step=0;buildSteps();ov.classList.add("on");render();}
+window.v2Onboarding=open;
+// déclenchement à la première connexion
+let ok=0,timer=null;
+function check(){const lg=$("#login"),ss=$("#saveState");
+ const ready=lg&&lg.hidden&&ss&&!/chargement/i.test(ss.textContent)&&typeof S!=="undefined"&&S.settings&&S.settings.demo&&!S.settings.onboarded&&!(S.sessions||[]).length&&!(ov&&ov.classList.contains("on"));
+ if(!ready){ok=0;return;} if(++ok>=3){ok=0;open();}}
+timer=setInterval(check,500);
+// accès manuel : bouton dans Réglages
+function addBtn(){const d=$("#demoBtn");if(d&&!$("#onbRedo")){const b=document.createElement("button");b.type="button";b.className="btn ghost small";b.id="onbRedo";b.textContent="Refaire le questionnaire de départ";b.onclick=open;d.parentNode.insertBefore(b,d);}}
+new MutationObserver(addBtn).observe(document.body,{childList:true,subtree:true});addBtn();
+// salutation personnalisée
+function greet(){const h=$("#todayOut .hero .meta");if(h&&S.settings.name&&!$(".v2-greet",h)){const s=document.createElement("span");s.className="v2-greet";s.style.cssText="font-weight:800;color:var(--accent)";s.textContent="Salut "+S.settings.name+" 👋";h.insertBefore(s,h.firstChild);}}
+new MutationObserver(()=>setTimeout(greet,80)).observe(document.body,{childList:true,subtree:true});
+}catch(err){console.warn("onb",err)}})();
+</script>
+
 
 </body>
 </html>
