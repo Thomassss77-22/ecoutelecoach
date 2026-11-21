@@ -1092,6 +1092,14 @@ const CATL={recup:"Récupération",endurance:"Endurance",long:"Sortie longue",te
 let LIB={};
 // allure de course pour une distance (km/h) : record (Riegel) en priorité, sinon repère en % de VMA
 const RUN_PV={5:95,10:90,21.0975:84,42.195:78};
+// allure correspondant à un % de VMA : « 4:14-4:28 /km (85-90 % VMA, 14,5-15,3 km/h) » ; sans VMA, on dit comment l'obtenir
+const kmhFr=x=>String(Math.round(x*10)/10).replace(".",",");
+const mmss=sec=>{sec=Math.round(sec);return Math.floor(sec/60)+":"+String(sec%60).padStart(2,"0");};
+function vmaPace(a,b){ const V=runProf().vma; if(!V) return a+"-"+b+" % VMA (l’allure s’affiche quand ta VMA est connue : test demi-Cooper ou Réglages)";
+  return fmtPace(V*b/100).replace(" /km","")+"-"+fmtPace(V*a/100)+" ("+a+"-"+b+" % VMA, "+kmhFr(V*a/100)+"-"+kmhFr(V*b/100)+" km/h)"; }
+// temps de passage sur une distance (m) entre deux % de VMA, et distance couverte en t secondes
+function vmaSplit(m,a,b){ const V=runProf().vma; return V?m.toLocaleString("fr-FR")+" m en "+mmss(m/(V*b/100/3.6))+" à "+mmss(m/(V*a/100/3.6)):""; }
+function vmaDist(t,a,b){ const V=runProf().vma; return V?Math.round(V*a/100/3.6*t/5)*5+" à "+Math.round(V*b/100/3.6*t/5)*5+" m en "+t+" s":""; }
 function runRaceKmh(d){const o=runProf(); if(o.rec) return d/riegel(o.rec.d,o.rec.t,d)*3600; return o.vma?o.vma*RUN_PV[d]/100:null;}
 // % VMA → équivalent % FTP, pour les couleurs et graphiques communs aux deux sports
 function vmaToF(p){const P=[[50,45],[60,55],[75,75],[85,92],[92,105],[100,118],[110,140]];if(p<=P[0][0])return P[0][1];for(let i=1;i<P.length;i++){if(p<=P[i][0]){const[a,b]=P[i-1],[c,d]=P[i];return Math.round(b+(p-a)/(c-a)*(d-b));}}return 140;}
@@ -1181,16 +1189,16 @@ function buildLib(){
       obj:"Mesurer ta FC au seuil (LTHR) pour caler les zones quand tu roules sans capteur de puissance.",int:"30 min au maximum que tu peux tenir de façon régulière, seul, sans abri (RPE 9)",
       court:"Échauffement 15 min dont 3 accélérations de 30 s, puis 30 min le plus fort possible de façon régulière (plat, faux-plat montant ou home trainer). Appuie sur Lap à 10 min : FC seuil = FC moyenne des 20 dernières minutes. Note aussi la FC la plus haute vue. Retour au calme 15 min.",
       long:"Même contenu (protocole de terrain de Friel)."},
-    {id:"P2",nom:"Test : 5 min + 20 min (profil de puissance)",cat:"test",sport:"velo",key:true,phases:["base","construction","specifique"],dS:75,dL:180,
+    {id:"P2",nom:"Test PMA et FTP : 5 min + 20 min",cat:"test",sport:"velo",key:true,phases:["base","construction","specifique"],dS:75,dL:180,
       obj:"Recaler la FTP et les zones toutes les 6-8 semaines ; mesurer la durabilité.",int:"Efforts maximaux",
       court:"Échauffement 20 min, 3 × 10 s sprint, 5 min maximal, 10 min Z1, 20 min maximal. FTP ≈ 95 % de la puissance sur 20 min (convention de terrain, imprécise chez certains). Pas de version de 45 min : un test raccourci fausse les zones.",
       long:"Version durabilité : refaire le 5 min maximal après 2 h 30 en Z2 (≈ 2 000 kJ) et comparer à la valeur à frais. Repère indicatif, pas de norme validée : une baisse nettement plus forte que celle mesurée chez des cyclistes entraînés (environ 3 % sur 20 min, 10 % sur 6 min après ~4 h) signale une durabilité à travailler."},
     ...runLib(),
     {id:"C1",nom:"Footing",cat:"course",sport:"course",key:false,phases:PHASES,dS:25,dL:60,
-      obj:"Endurance générale et charge osseuse, sans fatigue spécifique.",int:"FC < "+Math.round(runProf().fcmax*.78)+" bpm (78 % de ta FC max de course) · RPE 2-3",
+      obj:"Endurance générale et charge osseuse, sans fatigue spécifique.",int:"FC < "+Math.round(runProf().fcmax*.78)+" bpm (78 % de ta FC max de course) · repère d’allure "+vmaPace(60,70)+" · RPE 2-3",
       court:"25-35 min, terrain souple.",long:"45-60 min. Augmentation progressive du volume de course (repère de prudence : environ +10 % par semaine, règle de terrain non démontrée)."},
     {id:"C2",nom:"Footing + lignes droites",cat:"course",sport:"course",key:false,phases:PHASES,dS:30,dL:50,
-      obj:"Footing avec un rappel de foulée et d’élasticité.",int:"Footing FC < "+Math.round(runProf().fcmax*.78)+" bpm (78 % de ta FC max de course) + 6 × 15 s rapides relâchés",
+      obj:"Footing avec un rappel de foulée et d’élasticité.",int:"Footing FC < "+Math.round(runProf().fcmax*.78)+" bpm (78 % de ta FC max de course), repère "+vmaPace(60,70)+" + 6 × 15 s rapides relâchés",
       court:"30 min dont 6 × 15 s rapides relâchés, récup 1 min marche.",long:"45-50 min, même contenu."},
     {id:"M1",nom:"Musculation : adaptation",cat:"muscu",sport:"muscu",key:false,phases:["base","transition"],dS:40,dL:60,
       obj:"Préparer tendons et technique avant la charge lourde (2-3 semaines).",int:"60-70 % du max sur une répétition · 2 répétitions en réserve",
@@ -1215,9 +1223,9 @@ function buildLib(){
 /* ---------- bibliothèque course à pied ---------- */
 function runLib(){
   const o=runProf(),V=o.vma,FC=o.fcmax;
-  const pv=(a,b)=>V?fmtPace(V*b/100).replace(" /km","")+"-"+fmtPace(V*a/100)+" ("+a+"-"+b+" % VMA)":a+"-"+b+" % VMA";
+  const pv=(a,b)=>vmaPace(a,b);
   const hrr=(a,b)=>Math.round(FC*a/100)+"-"+Math.round(FC*b/100)+" bpm";
-  const rp=d=>{const k=runRaceKmh(d);return k?fmtPace(k):"allure visée";};
+  const rp=d=>{const k=runRaceKmh(d);return k?fmtPace(k)+" ("+kmhFr(k)+" km/h)":"allure visée : renseigne ta VMA ou un record dans Réglages";};
   const PH=["base","construction","specifique","competition"];
   return [
     {id:"C3",nom:"Sortie longue",cat:"c_long",sport:"course",key:true,phases:PHASES,dS:60,dL:150,
@@ -1233,13 +1241,13 @@ function runLib(){
       obj:"Plus de temps au seuil qu’en continu pour la même fatigue, grâce aux récupérations courtes (logique du seuil norvégien, sans lactatomètre).",int:pv(86,91)+" · FC "+hrr(85,90)+" · RPE 6-7 · récupération courte",
       court:"15 min d’échauffement, 5 × 6 min récup 1 min trot, 10 min de retour.",long:"15 min d’échauffement, 4 × 10 min récup 1 min 30 trot, 10 min de retour."},
     {id:"C7",nom:"VMA longue 4 × 4 min",cat:"c_vma",sport:"course",key:true,phases:["base","construction","specifique","affutage","competition"],dS:50,dL:60,
-      obj:"Développer la VO2max : le 4 × 4 min fait plus progresser la VO2max que l’endurance continue ou le seuil (Helgerud 2007).",int:pv(92,100)+" · FC "+hrr(90,95)+" en fin de répétition · RPE 8",
+      obj:"Développer la VO2max : le 4 × 4 min fait plus progresser la VO2max que l’endurance continue ou le seuil (Helgerud 2007).",int:pv(92,100)+(V?" · "+vmaSplit(1000,92,100):"")+" · FC "+hrr(90,95)+" en fin de répétition · RPE 8",
       court:"20 min d’échauffement avec 3 accélérations, 4 × 4 min récup 3 min trot, 10 min de retour.",long:"20 min d’échauffement, 5 × 4 min ou 6 × 1 000 m récup 3 min trot, 10 min de retour."},
     {id:"C8",nom:"VMA courte 30/30",cat:"c_vma",sport:"course",key:true,phases:["base","construction","affutage","competition"],dS:45,dL:55,
-      obj:"Temps passé près de la VO2max avec peu de fatigue musculaire ; travaille aussi la vitesse de foulée.",int:pv(100,105)+" sur 30 s / trot 30 s · RPE 8-9 · la FC n’est pas un repère sur 30 s",
+      obj:"Temps passé près de la VO2max avec peu de fatigue musculaire ; travaille aussi la vitesse de foulée.",int:pv(100,105)+(V?", soit "+vmaDist(30,100,105):"")+" / trot 30 s · RPE 8-9 · la FC n’est pas un repère sur 30 s",
       court:"20 min d’échauffement, 2 × 8 × (30 s / 30 s) récup 3 min, 10 min de retour.",long:"20 min d’échauffement, 3 × 10 × (30 s / 30 s) récup 3 min, 10 min de retour."},
     {id:"C9",nom:"Allure 10 km",cat:"c_spec",sport:"course",key:true,phases:["specifique","affutage","competition"],dS:55,dL:70,
-      obj:"Apprendre et tenir l’allure exacte de l’objectif 10 km.",int:"Allure 10 km "+rp(10)+" · RPE 7-8",
+      obj:"Apprendre et tenir l’allure exacte de l’objectif 10 km.",int:"Allure 10 km "+rp(10)+(runRaceKmh(10)?" · 1 000 m en "+mmss(3600/runRaceKmh(10)):"")+" · RPE 7-8",
       court:"20 min d’échauffement, 6 × 1 000 m à l’allure 10 km récup 1 min 30 trot, 10 min de retour.",long:"20 min d’échauffement, 3 × 3 km à l’allure 10 km récup 2 min trot, 10 min de retour."},
     {id:"C10",nom:"Allure semi-marathon",cat:"c_spec",sport:"course",key:true,phases:["specifique","affutage","competition"],dS:60,dL:85,
       obj:"Tenir l’allure du semi le plus longtemps possible (approche « spécifique » à la Canova, pratique d’élite).",int:"Allure semi "+rp(21.0975)+" · RPE 6-7",
@@ -1494,6 +1502,7 @@ function buildWeek(mon,availOverride,opt={}){
   if(!opt.phase&&!shock&&pastKeys>keys0) warns.push("Tu as déjà fait "+pastKeys+" séance(s) intense(s) cette semaine pour "+keys0+" prévue(s) : le reste de la semaine passe en endurance facile."); if(due&&keys<1&&days.some(d=>!d.past)) keys=1;
   const isKey=d=>d&&(d.pastKey||(d.main&&(d.main.id==="RACE"||(LIB[d.main.id]&&LIB[d.main.id].key))));
   const free=d=>!d.main&&d.avail>0;
+  const vmaDue=!opt.phase&&!shock&&vmaTestWeek()===mon&&!P_.some(d=>(d.done||[]).some(x=>x.id==="C13"))&&!PN.some(d=>d.pinned&&d.main&&d.main.id==="C13");
   const nbOk=i=>shock||[i-1,i+1].every(j=>j<0||j>6||!isKey(days[j]));
   const nextKey=i=>i<6&&isKey(days[i+1]);
   const usedCats=[];
@@ -1519,7 +1528,7 @@ function buildWeek(mon,availOverride,opt={}){
   for(let k=0;k<keys;k++){
     const minK=RW?(deload?40:45):(deload?45:60);
     let d=null, rid=null;
-    if(RW){ for(const c of runKeyCands(phase,goal,widx+k,usedCats)){ const need=Math.max(minK,LIB[c].dS||0); d=order.map(i=>days[i]).find(x=>free(x)&&x.avail>=need&&nbOk(x.i)); if(d){rid=c;break;} } }
+    if(RW){ for(const c of (vmaDue&&k===0?["C13"]:[]).concat(runKeyCands(phase,goal,widx+k,usedCats))){ const need=Math.max(minK,LIB[c].dS||0); d=order.map(i=>days[i]).find(x=>free(x)&&x.avail>=need&&nbOk(x.i)); if(d){rid=c;break;} } }
     else d=order.map(i=>days[i]).find(d=>free(d)&&d.avail>=minK&&nbOk(d.i));
     if(!d&&RW){warns.push("Séance clé de course n°"+(k+1)+" non placée : aucun jour libre assez long pour sa structure complète (échauffement, répétitions, retour au calme) avec 48 h d’écart avec les autres séances clés. Elle est abandonnée, pas tronquée.");continue;}
     if(!d){warns.push("Séance clé n°"+(k+1)+" non placée : pas de jour d’au moins "+fmtMin(minK)+" avec 48 h d’écart avec les autres séances clés. Elle est abandonnée, pas doublée.");continue;}
@@ -1567,6 +1576,12 @@ function buildWeek(mon,availOverride,opt={}){
       else if(!["base","transition"].includes(phase)){d.main.cap=40;d.notes.push("footing limité à 40 min : en période de qualité, l’impact de la course ne doit pas entamer les séances vélo");}}
     else if(mixte&&phase!=="affutage") warns.push("Footing n°"+(r+1)+" non placé : aucun jour libre d’au moins 25 min qui ne suive pas la musculation ou une autre course.");
   }
+  // test VMA (course en complément) : il remplace un footing loin des séances clés, sinon il prend un jour libre
+  if(RW&&vmaDue) days.filter(d=>d.main&&d.main.id==="C13").forEach(d=>d.notes.push("ta VMA n’est pas renseignée : ce test la mesure, et toutes tes allures de course en découlent"));
+  if(!RW&&vmaDue){ const ok=d=>!d.pinned&&!d.past&&d.avail>=45&&nbOk(d.i)&&!nextKey(d.i);
+    const runs=days.filter(d=>d.main&&["C1","C2"].includes(d.main.id)&&!d.past), d=runs.find(ok);
+    if(!runs.length){} else if(d){ d.main={id:"C13"}; d.notes.push("ta VMA n’est pas renseignée : ce test la mesure, et toutes tes allures de course en découlent"); }
+    else warns.push("Test VMA à prévoir : aucun jour d’au moins 45 min loin des séances clés cette semaine. Fais un demi-Cooper quand tu peux, ou renseigne ta VMA dans Réglages."); }
   // reste
   // sprints : sur un jour facile loin des séances dures (ni la veille ni le lendemain si possible), pour les faire frais
   const e3c=RW?[]:days.filter(d=>!d.main&&d.avail>=45&&!nextKey(d.i)&&(P.sprints&&!deload&&!tag&&!days.some(x=>(x.main&&["SP2","A1","A2"].includes(x.main.id))||(x.main&&x.main.id==="E3")||(x.past&&(x.done||[]).some(s=>["E3","SP2"].includes(s.id)||(s.an&&s.an.id==="E3"))))));
@@ -4282,6 +4297,14 @@ function testWeeks(upto){
   return res;
 }
 const testId=()=>S.settings.hasPower===0?"P3":"P2";
+// test VMA : tant que la VMA n'est pas renseignée, un demi-Cooper la première semaine qui s'y prête (base, construction ou spécifique, pas de voyage, examens ou maladie, pas dans les 10 jours avant une course A ou B)
+function vmaTestWeek(){
+  if(+S.settings.vma>0||!runActive()) return null;
+  if(S.sessions.some(x=>x.id==="C13"&&diff(x.date,TODAY)<=56)) return null; // test fait récemment : il reste à reporter la VMA dans Réglages
+  for(let w=mondayOf(addDays(TODAY,3)),i=0;i<12;i++,w=addDays(w,7)){ const ph=autoPhase(addDays(w,3)); if(!["base","construction","specifique"].includes(ph)||tagOf(w)) continue;
+    if((S.settings.races||[]).some(r=>r.prio!=="C"&&r.date>=w&&diff(addDays(w,6),r.date)<=10)) continue; return w; }
+  return null;
+}
 function saveTest(t){
   S.tests=S.tests||[]; S.tests.push(t); S.tests.sort((a,b)=>a.date<b.date?-1:1);
   const st=S.settings;
