@@ -991,6 +991,18 @@ section.view.on{animation:v2in .55s var(--ease)}
   </section>
 
   <!-- PREUVES -->
+  <section class="view" id="v-progres">
+    <div class="pagehead"><h1>Progrès</h1><p class="muted">Ta série, tes points, tes records et tes badges. On gagne des points en suivant le plan, repos compris : l’excès ne rapporte rien.</p></div>
+    <div id="pgTop"></div>
+    <div class="pggrid">
+      <div class="card" id="pgDefis"></div>
+      <div class="card" id="pgWeek"></div>
+    </div>
+    <div class="card" id="pgBoard"></div>
+    <div class="card" id="pgRecords"></div>
+    <div class="card" id="pgBadges"></div>
+    <details class="card" id="pgRules"><summary><h2 style="display:inline">Comment gagner des points</h2></summary><div id="pgRulesBody"></div></details>
+  </section>
   <section class="view" id="v-preuves">
     <div class="pagehead"><h1>Preuves et règles</h1><p class="muted">Ce sur quoi repose chaque règle de l’appli, et avec quel niveau de preuve.</p></div>
     <div class="stack">
@@ -5688,6 +5700,347 @@ function run(){ try{snapPlan();}catch(e){} try{raceBox();}catch(e){console.warn(
 ["renderToday","renderAllNow","renderAll"].forEach(n=>{ const f=window[n]; if(typeof f==="function"&&!f.v5){ const w=function(){ const r=f.apply(this,arguments); try{run();}catch(e){} return r; }; w.v5=true; window[n]=w; } });
 run(); setTimeout(run,400);
 }catch(err){console.warn("v5",err)}})();
+</script>
+
+<style id="v6css">
+/* ===== v6 : série de semaines, points, records, badges, défis, classement ===== */
+.pggrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:16px 0}
+#v-progres>.card{margin-bottom:16px}
+.pgtop{display:grid;grid-template-columns:minmax(0,1.3fr) repeat(3,minmax(0,1fr));gap:12px}
+.pgstreak{background:var(--ink);color:var(--bg);border-radius:14px;padding:18px 20px;display:flex;flex-direction:column;justify-content:space-between;min-height:150px}
+.pgstreak .k{font-size:13px;font-weight:600;opacity:.75}
+.pgstreak .n{font-stretch:62%;font-weight:880;font-size:72px;line-height:.9;font-variant-numeric:tabular-nums}
+.pgstreak .n small{font-size:20px;font-stretch:85%;font-weight:650;margin-left:6px;opacity:.8}
+.pgweeks{display:flex;gap:4px;margin-top:10px}
+.pgweeks i{flex:1;height:10px;border-radius:3px;background:color-mix(in srgb,var(--bg) 22%,transparent)}
+.pgweeks i.ok{background:var(--accent)} .pgweeks i.neu{background:color-mix(in srgb,var(--bg) 45%,transparent)} .pgweeks i.cur{outline:2px dashed color-mix(in srgb,var(--bg) 70%,transparent);outline-offset:1px}
+.pgstat{background:var(--raised);border-radius:12px;padding:16px}
+.pgstat .k{font-size:13px;color:var(--muted);font-weight:600}
+.pgstat .v{font-stretch:70%;font-weight:820;font-size:38px;line-height:1.05;font-variant-numeric:tabular-nums}
+.pgstat .s{font-size:13px;color:var(--muted)}
+.pgdefi{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:12px 0;border-top:1px solid var(--line)}
+.pgdefi:first-of-type{border-top:0}
+.pgdefi b{font-weight:650}
+.pgdefi .pts{font-stretch:75%;font-weight:800;color:var(--accent);font-variant-numeric:tabular-nums}
+.pgdefi.done .pts{color:var(--good)}
+.pgbar{grid-column:1/-1;height:6px;border-radius:3px;background:var(--raised);overflow:hidden}
+.pgbar i{display:block;height:100%;background:var(--accent);border-radius:3px}
+.pgdefi.done .pgbar i{background:var(--good)}
+.pglog{width:100%;border-collapse:collapse;font-size:14px}
+.pglog td{padding:6px 0;border-top:1px solid var(--line)}
+.pglog td.n{text-align:right;font-variant-numeric:tabular-nums;font-weight:700;white-space:nowrap}
+.pgbadges{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.pgbadge{border-radius:12px;padding:14px 12px;background:var(--raised);text-align:center;position:relative}
+.pgbadge .ic{width:46px;height:46px;border-radius:50%;margin:0 auto 8px;display:grid;place-items:center;background:var(--line);color:var(--muted)}
+.pgbadge .ic svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.pgbadge b{display:block;font-size:14px;line-height:1.2}
+.pgbadge small{display:block;font-size:12px;color:var(--muted);margin-top:3px;line-height:1.3}
+.pgbadge.on .ic{background:var(--accent);color:var(--accent-ink)}
+.pgbadge:not(.on){opacity:.62}
+.pgrec{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+.pgrec .r{background:var(--raised);border-radius:12px;padding:14px}
+.pgrec .r .k{font-size:13px;color:var(--muted);font-weight:600}
+.pgrec .r .v{font-stretch:72%;font-weight:820;font-size:30px;line-height:1.05;font-variant-numeric:tabular-nums}
+.pgrec .r .d{font-size:12.5px;color:var(--muted)}
+.pgrec .r.new{background:var(--accent-soft)}
+.pgboard table{width:100%}
+.pgboard tr.me td{font-weight:750;background:var(--accent-soft)}
+.pgboard td.rk{width:42px;font-stretch:75%;font-weight:800;font-variant-numeric:tabular-nums}
+.pgform{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:10px;align-items:end;margin:10px 0 4px}
+.pgform label{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:600}
+.pgsegb{display:inline-flex;gap:4px;background:var(--raised);padding:3px;border-radius:9px;margin:6px 0 10px}
+.pgsegb button{border:0;background:none;font:600 13.5px var(--f);padding:6px 12px;border-radius:7px;color:var(--muted);cursor:pointer}
+.pgsegb button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+/* bandeau sur Aujourd'hui */
+.v6strip{display:flex;align-items:center;gap:18px;flex-wrap:wrap;border:0;border-top:1px solid var(--line);background:none;border-radius:0;padding:14px 0 0;margin-top:4px;cursor:pointer;text-align:left;font:inherit;color:var(--ink);width:100%;grid-column:1/-1}
+.v6strip:hover .go{text-decoration:underline}
+.v6strip .it{display:flex;align-items:baseline;gap:6px}
+.v6strip .it b{font-stretch:70%;font-weight:830;font-size:26px;font-variant-numeric:tabular-nums}
+.v6strip .it span{font-size:13px;color:var(--muted);font-weight:600}
+.v6strip .go{margin-left:auto;font-size:13.5px;font-weight:650;color:var(--accent)}
+.v6rec{display:flex;gap:12px;align-items:center;background:var(--accent-soft);border-radius:10px;padding:12px 14px;margin-top:4px}
+.v6rec .ic{flex:none;width:36px;height:36px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center}
+.v6rec .ic svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2}
+.v6rec b{display:block}
+.v6back{background:var(--raised);border-left:3px solid var(--accent);border-radius:10px;padding:12px 14px}
+@keyframes v6pop{0%{transform:scale(.6);opacity:0}60%{transform:scale(1.08);opacity:1}100%{transform:scale(1)}}
+.v6rec.anim .ic{animation:v6pop .6s var(--ease) both}
+@media (max-width:900px){ .pggrid{grid-template-columns:1fr} .pgtop{grid-template-columns:1fr 1fr} .pgstreak{grid-column:1/-1} .pgtop>.pgstat:last-child{grid-column:1/-1} .pgform{grid-template-columns:1fr} .v6strip{gap:12px} .v6strip .go{margin-left:0} }
+@media (prefers-reduced-motion:reduce){ .v6rec.anim .ic{animation:none} }
+</style>
+<script id="v6js">
+/* ===== v6 : gamification calée sur le plan (repos compris) ===== */
+(function(){try{
+const $=(s,r=document)=>r.querySelector(s);
+const ICO={
+  flame:'<path d="M12 3c1 3 4 4.5 4 8.5a4 4 0 0 1-8 0c0-1.6.7-2.8 1.6-3.8C10 10 11 9 12 3z"/><path d="M12 21a2.5 2.5 0 0 0 2.5-2.5c0-1.5-1-2-2.5-3.5-1.5 1.5-2.5 2-2.5 3.5A2.5 2.5 0 0 0 12 21z"/>',
+  bolt:'<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>', road:'<path d="M8 21l3-18M16 21l-3-18M12 7v2M12 13v2"/>', mount:'<path d="M2 20l7-12 4 6 3-4 6 10z"/>',
+  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', star:'<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>',
+  heart:'<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>', flag:'<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>', shoe:'<path d="M3 16h16a2 2 0 0 1 2 2v1H3zM4 16l1-8 4 1 2 3 5 2 3 2"/>',
+  check:'<path d="M5 12l4 4 10-10"/>', moon:'<path d="M20 14A8 8 0 1 1 10 4a6 6 0 0 0 10 10z"/>', target:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>', trophy:'<path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H4v1a4 4 0 0 0 4 4M16 6h4v1a4 4 0 0 1-4 4M12 13v4M8 21h8M9 17h6"/>'
+};
+const svg=k=>`<svg viewBox="0 0 24 24" aria-hidden="true">${ICO[k]||ICO.star}</svg>`;
+const DAYMS=86400000;
+const km=s=>+(s.km||(s.an&&s.an.sum&&s.an.sum.km)||0);
+const gain=s=>+(s.gainSum||(s.an&&s.an.sum&&s.an.sum.gain)||0);
+const isRed=d=>{ const c=S.checkins&&S.checkins[d]; if(!c) return false; try{ return readiness(c,d).lvl==="bad"; }catch(e){ return false; } };
+const hard=s=>{ try{ return isKeyLog(s)||+s.rpe>=7; }catch(e){ return +s.rpe>=7; } };
+const fr=n=>Number(n).toLocaleString("fr-FR");
+const dfr=d=>parse(d).toLocaleDateString("fr-FR",{day:"numeric",month:"short"});
+
+/* ---------- records : détectés dans tes données, seulement s'ils battent un vrai précédent ---------- */
+const REC_DEF=[
+  {k:"v_dur",sp:"velo",lab:"Plus longue sortie vélo",get:s=>+s.dur||0,fmt:v=>fmtMin(v)},
+  {k:"v_km",sp:"velo",lab:"Plus longue distance vélo",get:km,fmt:v=>fr(Math.round(v))+" km"},
+  {k:"v_gain",sp:"velo",lab:"Plus de dénivelé en une sortie",get:gain,fmt:v=>fr(Math.round(v))+" m D+"},
+  {k:"v_p300",sp:"velo",lab:"Meilleure puissance 5 min",get:s=>s.mmp&&s.mmp[300]||0,fmt:v=>Math.round(v)+" W"},
+  {k:"v_p1200",sp:"velo",lab:"Meilleure puissance 20 min",get:s=>s.mmp&&s.mmp[1200]||0,fmt:v=>Math.round(v)+" W"},
+  {k:"v_p60",sp:"velo",lab:"Meilleure puissance 1 min",get:s=>s.mmp&&s.mmp[60]||0,fmt:v=>Math.round(v)+" W"},
+  {k:"c_dur",sp:"course",lab:"Plus longue course à pied",get:s=>+s.dur||0,fmt:v=>fmtMin(v)},
+  {k:"c_km",sp:"course",lab:"Plus longue distance à pied",get:km,fmt:v=>String(Math.round(v*10)/10).replace(".",",")+" km"}
+];
+function records(){
+  const ses=(S.sessions||[]).filter(s=>s.date&&s.date<=TODAY).slice().sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:(a.start||0)-(b.start||0));
+  const best={}, cnt={}, events=[];
+  ses.forEach(s=>{ const sp=sessSport(s); cnt[sp]=(cnt[sp]||0)+1;
+    REC_DEF.forEach(R=>{ if(R.sp!==sp) return; const v=R.get(s); if(!(v>0)) return; const b=best[R.k];
+      if(!b){ best[R.k]={v,date:s.date,n:1}; return; }
+      // un record compte s'il bat l'ancien d'au moins 1 % (2 % pour la distance et la durée) et qu'il y a eu au moins 3 sorties de ce sport avant
+      const marg=/p\d/.test(R.k)?1.01:1.02;
+      if(v>=b.v*marg&&cnt[sp]>3){ events.push({k:R.k,lab:R.lab,v,prev:b.v,date:s.date,fmt:R.fmt}); best[R.k]={v,date:s.date}; }
+      else if(v>b.v) best[R.k]={v,date:s.date}; }); });
+  return {best,events};
+}
+
+/* ---------- semaines : solide, neutre ou manquée ---------- */
+let MEMO={fp:"",weeks:{}};
+function fpNow(){ return memoFp()+"|"+JSON.stringify(S.planLog||{}).length; }
+function weekInfo(mon){
+  const fp=fpNow(); if(MEMO.fp!==fp) MEMO={fp,weeks:{}};
+  if(MEMO.weeks[mon]) return MEMO.weeks[mon];
+  const R=weekReport(mon), end=addDays(mon,6), past=end<TODAY, tag=tagOf(mon);
+  const logs=(S.sessions||[]).filter(s=>s.date>=mon&&s.date<=end);
+  const redIgnored=logs.some(s=>isRed(s.date)&&hard(s));
+  const volOk=R.plannedMin?R.doneMin>=R.plannedMin*.75:R.doneMin>0, keysOk=R.keysDone>=Math.max(0,R.keysPl-1);
+  let state="miss";
+  if(tag==="maladie"||tag==="voyage") state="neutral";
+  else if(volOk&&keysOk&&!redIgnored) state="solid";
+  const cur=mon===mondayOf(TODAY);
+  const out={mon,R,past,cur,tag,state,redIgnored,logs};
+  MEMO.weeks[mon]=out; return out;
+}
+function firstMon(){ const fd=firstDataDate(); return fd?mondayOf(fd):mondayOf(TODAY); }
+function streakAt(mon){ // série en entrant dans la semaine mon (semaines solides consécutives juste avant, les neutres ne cassent pas)
+  let n=0; const f=firstMon();
+  for(let w=addDays(mon,-7);w>=f;w=addDays(w,-7)){ const I=weekInfo(w); if(I.state==="solid") n++; else if(I.state==="neutral") continue; else break; }
+  return n;
+}
+
+/* ---------- points ---------- */
+const PTS={hour:10,key:25,rep:2,repMax:10,asPlanned:10,gym:15,ci:3,rest:5,red:10,comeback:20,record:20,badge:50};
+function weekPoints(mon){
+  const I=weekInfo(mon), R=I.R, items=[]; const add=(date,lab,p)=>{ if(p) items.push({date,lab,p}); };
+  // volume : 10 points par heure, dans la limite de 110 % du prévu
+  const allowed=R.plannedMin?R.plannedMin*1.1:R.doneMin, vm=Math.min(R.doneMin,allowed);
+  add(null,"Volume : "+fmtMin(R.doneMin)+(R.doneMin>allowed?" (compté jusqu’à 110 % du prévu, "+fmtMin(Math.round(allowed))+")":""),Math.round(vm/60*PTS.hour));
+  R.rows.forEach(r=>{ const d=r.d.date; if(d>TODAY) return;
+    const done=r.done;
+    done.forEach(s=>{ const L=LIB[s.id]||{};
+      if(sessSport(s)==="muscu") add(d,"Musculation",PTS.gym);
+      else if(hard(s)&&isKeyLog(s)&&!isRed(d)){ const reps=s.an&&s.an.set&&s.an.set.reps?s.an.set.reps.length:0; add(d,"Séance clé : "+(L.nom||"course")+(reps?" ("+reps+" répétitions)":""),PTS.key+Math.min(PTS.repMax,reps*PTS.rep)); } });
+    if(r.st[1].startsWith("Faite")&&!r.st[1].includes("autre")) add(d,"Séance du plan faite",PTS.asPlanned);
+    if(r.d.main.id==="R0"&&!done.length&&d<TODAY) add(d,"Repos prévu respecté",PTS.rest);
+    if(isRed(d)&&!done.some(hard)) add(d,"Feu rouge écouté",PTS.red);
+    if(S.checkins&&S.checkins[d]&&Object.keys(S.checkins[d]).length) add(d,"Check-in du matin",PTS.ci);
+  });
+  // retour après au moins 3 jours sans séance
+  I.logs.forEach(s=>{ const prev=(S.sessions||[]).filter(x=>x.date<s.date).map(x=>x.date).sort().pop(); if(prev&&diff(prev,s.date)>=4&&!items.some(i=>i.lab==="Retour après une pause"&&i.date===s.date)) add(s.date,"Retour après une pause",PTS.comeback); });
+  // records et badges de la semaine
+  const RC=records(); RC.events.filter(e=>e.date>=mon&&e.date<=addDays(mon,6)).forEach(e=>add(e.date,"Record : "+e.lab.toLowerCase()+" ("+e.fmt(e.v)+")",PTS.record));
+  badges().filter(b=>b.date&&b.date>=mon&&b.date<=addDays(mon,6)).forEach(b=>add(b.date,"Badge : "+b.nom,PTS.badge));
+  // défis
+  defis(mon).filter(x=>x.done).forEach(x=>add(null,"Défi réussi : "+x.nom,x.pts));
+  // série : bonus quand la semaine est solide
+  if(I.state==="solid"&&(I.past||I.cur)){ const n=streakAt(mon)+1; add(null,"Semaine solide ("+n+" d’affilée)",Math.min(50,5*n)); }
+  const total=items.reduce((a,i)=>a+i.p,0);
+  return {total,items,I};
+}
+
+/* ---------- défis de la semaine : tirés du plan, donc toujours atteignables sans excès ---------- */
+function defis(mon){
+  const I=weekInfo(mon), R=I.R, out=[], days=R.rows;
+  const elapsed=mon===mondayOf(TODAY)?diff(mon,TODAY)+1:7;
+  if(R.keysPl) out.push({nom:"Toutes tes séances clés",desc:R.keysPl+" prévue"+(R.keysPl>1?"s":"")+" cette semaine",cur:Math.min(R.keysDone,R.keysPl),max:R.keysPl,pts:40});
+  const nci=days.filter(r=>S.checkins&&S.checkins[r.d.date]&&Object.keys(S.checkins[r.d.date]).length).length;
+  out.push({nom:"Check-in 5 jours sur 7",desc:"le matin, en 30 secondes",cur:Math.min(nci,5),max:5,pts:20});
+  const k=Math.floor(diff("2024-01-01",mon)/7)%3;
+  const lg=days.find(r=>["E4","E5","C3"].includes(r.d.main.id));
+  if(k===0&&lg){ const done=Math.max(0,...lg.done.filter(s=>sessSport(s)!=="muscu").map(s=>+s.dur||0)); const need=Math.round(lg.d.dur*.9/5)*5;
+    out.push({nom:"Sortie longue au complet",desc:fmtMin(need)+" au moins, "+DAYS[lg.d.i].toLowerCase(),cur:Math.min(done,need),max:need,pts:30,fmt:v=>fmtMin(v)}); }
+  else if(k===1&&R.plannedMin){ const lo=R.plannedMin*.9, hi=R.plannedMin*1.1, v=R.doneMin;
+    out.push({nom:"Volume juste",desc:"entre "+fmtMin(Math.round(lo))+" et "+fmtMin(Math.round(hi))+", ni moins ni trop",cur:Math.min(v,lo),max:Math.round(lo),pts:30,fmt:x=>fmtMin(Math.round(x)),ok:v>=lo&&v<=hi}); }
+  else { const easy=I.logs.filter(s=>!hard(s)&&sessSport(s)!=="muscu").length, need=Math.max(2,days.filter(r=>["E1","E2","E3","C1","C2"].includes(r.d.main.id)).length);
+    out.push({nom:"Les sorties faciles restent faciles",desc:need+" sorties d’endurance sans les transformer en séance dure",cur:Math.min(easy,need),max:need,pts:30}); }
+  out.forEach(x=>{ x.done=x.ok!=null?x.ok:x.cur>=x.max; if(x.ok!=null&&!x.ok) x.done=false; });
+  void elapsed; return out;
+}
+
+/* ---------- badges ---------- */
+function badges(){
+  const ses=(S.sessions||[]).filter(s=>s.date<=TODAY).slice().sort((a,b)=>a.date<b.date?-1:1);
+  const firstWhen=(pred)=>{ const s=ses.find(pred); return s?s.date:null; };
+  const cumWhen=(f,lim)=>{ let a=0; for(const s of ses){ a+=f(s); if(a>=lim) return s.date; } return null; };
+  const nthWhen=(pred,n)=>{ let c=0; for(const s of ses){ if(pred(s)&&++c>=n) return s.date; } return null; };
+  const velo=s=>sessSport(s)==="velo", run=s=>sessSport(s)==="course";
+  const RC=records();
+  // séries : date de fin de la semaine où la série atteint n
+  const streakWhen=n=>{ const f=firstMon(); let c=0; for(let w=f;w<mondayOf(TODAY);w=addDays(w,7)){ const st=weekInfo(w).state; if(st==="solid"){ if(++c>=n) return addDays(w,6); } else if(st!=="neutral") c=0; } return null; };
+  const ciDates=Object.keys(S.checkins||{}).filter(d=>d<=TODAY&&Object.keys(S.checkins[d]).length).sort();
+  const reds=ciDates.filter(d=>isRed(d)&&!ses.some(s=>s.date===d&&hard(s)));
+  const L=[
+    ["s4","flame","4 semaines solides","une série d’un mois",()=>streakWhen(4)],
+    ["s8","flame","8 semaines solides","deux mois sans lâcher",()=>streakWhen(8)],
+    ["s16","flame","16 semaines solides","une saison complète",()=>streakWhen(16)],
+    ["km100","road","Premier 100 km","en une sortie",()=>firstWhen(s=>velo(s)&&km(s)>=100)],
+    ["km200","road","200 km","en une sortie",()=>firstWhen(s=>velo(s)&&km(s)>=200)],
+    ["kc1000","road","1 000 km","cumulés à vélo",()=>cumWhen(s=>velo(s)?km(s):0,1000)],
+    ["kc5000","road","5 000 km","cumulés à vélo",()=>cumWhen(s=>velo(s)?km(s):0,5000)],
+    ["d1500","mount","Grimpeur","1 500 m D+ en une sortie",()=>firstWhen(s=>velo(s)&&gain(s)>=1500)],
+    ["h100","clock","100 heures","d’entraînement cumulées",()=>cumWhen(s=>(+s.dur||0)/60,100)],
+    ["h500","clock","500 heures","d’entraînement cumulées",()=>cumWhen(s=>(+s.dur||0)/60,500)],
+    ["k10","bolt","10 séances clés","réussies",()=>nthWhen(s=>isKeyLog(s),10)],
+    ["k50","bolt","50 séances clés","réussies",()=>nthWhen(s=>isKeyLog(s),50)],
+    ["rec1","star","Premier record","battu dans tes données",()=>RC.events[0]?RC.events[0].date:null],
+    ["rec10","star","10 records","battus",()=>RC.events[9]?RC.events[9].date:null],
+    ["ci30","check","30 check-ins","le matin",()=>ciDates[29]||null],
+    ["red3","heart","À l’écoute","3 feux rouges respectés",()=>reds[2]||null],
+    ["test","target","Testé","un test de PMA, FTP, FC seuil ou VMA",()=>firstWhen(s=>["P2","P3","C13","C14"].includes(s.id))],
+    ["semi","shoe","21 km à pied","en une course",()=>firstWhen(s=>run(s)&&km(s)>=21)],
+    ["race","trophy","En course","une course terminée",()=>firstWhen(s=>s.id==="RACE")]
+  ];
+  return L.map(([id,ic,nom,desc,f])=>{ let date=null; try{ date=f(); }catch(e){} return {id,ic,nom,desc,date}; });
+}
+
+/* ---------- totaux ---------- */
+function seasonPoints(){ const f=firstMon(); let t=0; const w=[]; for(let m=f;m<=mondayOf(TODAY);m=addDays(m,7)){ const p=weekPoints(m).total; t+=p; w.push({m,p}); } return {total:t,weeks:w}; }
+function currentStreak(){ const cur=weekInfo(mondayOf(TODAY)); const n=streakAt(mondayOf(TODAY)); return {n,curSolid:cur.state==="solid"}; }
+
+/* ---------- classement (Supabase, table board) ---------- */
+let BOARD={rows:null,err:null,at:0,scope:"grp"};
+const bset=()=>{ S.settings.board=S.settings.board||{on:false,pseudo:"",grp:""}; return S.settings.board; };
+async function pushBoard(force){
+  const B=bset(); if(!B.on||!B.pseudo||typeof cloudUser==="undefined"||!cloudUser) return;
+  if(!force&&Date.now()-BOARD.at<60000) return; BOARD.at=Date.now();
+  try{ const c=await cloudClient(); const wk=weekPoints(mondayOf(TODAY)).total, se=seasonPoints().total, st=currentStreak().n+(currentStreak().curSolid?1:0), bd=badges().filter(b=>b.date).length;
+    const r=await c.from("board").upsert({user_id:cloudUser.id,pseudo:B.pseudo.slice(0,24),grp:(B.grp||"").trim().toLowerCase().slice(0,32)||null,week:mondayOf(TODAY),pts_week:wk,pts_total:se,streak:st,badges:bd,updated_at:new Date().toISOString()});
+    if(r.error) throw r.error; BOARD.err=null; }catch(e){ BOARD.err=e; }
+}
+async function pullBoard(){
+  if(typeof cloudUser==="undefined"||!cloudUser){ BOARD.rows=null; return; }
+  try{ const c=await cloudClient(); const B=bset(); let q=c.from("board").select("user_id,pseudo,grp,week,pts_week,pts_total,streak,badges").order("pts_week",{ascending:false}).limit(100);
+    if(BOARD.scope==="grp"&&B.grp) q=q.eq("grp",B.grp.trim().toLowerCase());
+    const r=await q; if(r.error) throw r.error; BOARD.rows=r.data||[]; BOARD.err=null; }catch(e){ BOARD.err=e; BOARD.rows=null; }
+  renderBoard();
+}
+function renderBoard(){
+  const el=$("#pgBoard"); if(!el) return; const B=bset(), logged=typeof cloudUser!=="undefined"&&cloudUser;
+  let h=`<h2>Classement</h2><p class="small muted">Points de la semaine en cours. Tu n’apparais que si tu l’actives, sous le pseudo de ton choix. Avec un code de groupe (ton club, tes amis), tu te compares à eux seulement.</p>`;
+  if(!logged){ el.innerHTML=h+`<div class="alert">Le classement demande un compte, pour que chacun ait sa ligne. Crée-le ou connecte-toi dans Réglages : tes points sont déjà comptés ici.</div>`; return; }
+  h+=`<div class="pgform"><label>Pseudo<input id="pgPseudo" maxlength="24" value="${esc(B.pseudo||"")}" placeholder="ex. Roi31"></label><label>Code de groupe (facultatif)<input id="pgGrp" maxlength="32" value="${esc(B.grp||"")}" placeholder="ex. club-toulouse"></label><button class="btn ${B.on?"ghost":""}" type="button" id="pgJoin">${B.on?"Ne plus apparaître":"Apparaître au classement"}</button></div>`;
+  if(B.on) h+=`<div class="pgsegb" role="group" aria-label="Portée du classement"><button type="button" data-sc="grp" aria-pressed="${BOARD.scope==="grp"}" ${B.grp?"":"disabled"}>Mon groupe</button><button type="button" data-sc="all" aria-pressed="${BOARD.scope==="all"||!B.grp}">Tout le monde</button></div>`;
+  const e=BOARD.err; const missing=e&&(/board/.test(String(e.message||""))||e.code==="42P01"||e.code==="PGRST205");
+  if(missing) h+=`<div class="alert warn">Le classement n’est pas encore activé sur le serveur : la table <b>board</b> manque dans Supabase. Le fichier <b>supabase/board.sql</b> du dépôt la crée en une fois (éditeur SQL de Supabase).</div>`;
+  else if(e) h+=`<div class="alert warn">Classement indisponible pour l’instant : ${esc(String(e.message||e))}</div>`;
+  else if(BOARD.rows){ const wk=mondayOf(TODAY), rows=BOARD.rows.map(r=>Object.assign({},r,{pw:r.week===wk?r.pts_week:0})).sort((a,b)=>b.pw-a.pw||b.pts_total-a.pts_total);
+    h+=rows.length?`<div class="tablewrap pgboard"><table><thead><tr><th>Rang</th><th>Pseudo</th><th class="num">Semaine</th><th class="num">Saison</th><th class="num">Série</th><th class="num">Badges</th></tr></thead><tbody>${rows.map((r,i)=>`<tr class="${r.user_id===cloudUser.id?"me":""}"><td class="rk">${i+1}</td><td>${esc(r.pseudo)}</td><td class="num">${fr(r.pw)}</td><td class="num">${fr(r.pts_total)}</td><td class="num">${r.streak} sem.</td><td class="num">${r.badges}</td></tr>`).join("")}</tbody></table></div>`:`<p class="small muted">Personne pour l’instant${BOARD.scope==="grp"?" dans ce groupe : partage le code à tes amis":""}.</p>`; }
+  else if(B.on) h+=`<p class="small muted">Chargement du classement…</p>`;
+  el.innerHTML=h;
+  const j=$("#pgJoin"); if(j) j.onclick=async()=>{ const p=$("#pgPseudo").value.trim(), g=$("#pgGrp").value.trim(); if(!B.on&&p.length<2){ $("#pgPseudo").focus(); toast("Choisis un pseudo d’au moins 2 caractères."); return; }
+    B.pseudo=p; B.grp=g; B.on=!B.on; save();
+    if(B.on){ await pushBoard(true); toast("Tu apparais au classement."); }
+    else { try{ const c=await cloudClient(); await c.from("board").delete().eq("user_id",cloudUser.id); toast("Tu n’apparais plus au classement."); }catch(e){} }
+    pullBoard(); };
+  ["pgPseudo","pgGrp"].forEach(id=>{ const i=$("#"+id); if(i) i.onchange=()=>{ B.pseudo=$("#pgPseudo").value.trim(); B.grp=$("#pgGrp").value.trim(); save(); if(B.on){ pushBoard(true).then(pullBoard); } }; });
+  el.querySelectorAll("[data-sc]").forEach(b=>b.onclick=()=>{ BOARD.scope=b.dataset.sc; pullBoard(); });
+}
+
+/* ---------- vue Progrès ---------- */
+function renderProgres(){
+  const top=$("#pgTop"); if(!top) return;
+  const mon=mondayOf(TODAY), WP=weekPoints(mon), SP=seasonPoints(), ST=currentStreak(), BD=badges(), RC=records();
+  const nb=BD.filter(b=>b.date).length;
+  // 12 dernières semaines
+  const ws=[...Array(12)].map((_,i)=>addDays(mon,-7*(11-i))).filter(w=>w>=firstMon()||w===mon);
+  const cells=ws.map(w=>{ const I=weekInfo(w); return `<i class="${w===mon?(I.state==="solid"?"ok cur":"cur"):I.state==="solid"?"ok":I.state==="neutral"?"neu":""}" title="Semaine du ${dfr(w)} : ${w===mon?"en cours":I.state==="solid"?"solide":I.state==="neutral"?"neutre (maladie ou voyage)":"incomplète"}"></i>`; }).join("");
+  const n=ST.n+(ST.curSolid?1:0);
+  top.innerHTML=`<div class="pgtop">
+    <div class="pgstreak" role="img" aria-label="Série de ${n} semaines solides"><div><div class="k">Série de semaines solides</div><div class="n">${n}<small>semaine${n>1?"s":""}</small></div></div>
+      <div><div class="pgweeks" aria-hidden="true">${cells}</div><div class="k" style="margin-top:8px">${ST.curSolid?"Cette semaine compte déjà.":"Cette semaine : 75 % du volume prévu et tes séances clés, sans forcer un jour rouge."} Le repos prévu et les semaines de maladie ne cassent rien.</div></div></div>
+    <div class="pgstat"><div class="k">Points cette semaine</div><div class="v">${fr(WP.total)}</div><div class="s">${WP.items.length} gain${WP.items.length>1?"s":""}</div></div>
+    <div class="pgstat"><div class="k">Points depuis le début</div><div class="v">${fr(SP.total)}</div><div class="s">depuis le ${dfr(firstMon())}</div></div>
+    <div class="pgstat"><div class="k">Badges</div><div class="v">${nb}<span style="font-size:20px;color:var(--muted)"> / ${BD.length}</span></div><div class="s">${RC.events.length} record${RC.events.length>1?"s":""} battu${RC.events.length>1?"s":""}</div></div></div>`;
+  // défis
+  const D=defis(mon);
+  $("#pgDefis").innerHTML=`<h2>Défis de la semaine</h2><p class="small muted">Tirés de ton plan : on les réussit en le suivant, pas en en faisant plus.</p>`+D.map(x=>{ const pct=x.max?Math.round(Math.min(1,x.cur/x.max)*100):0, f=x.fmt||(v=>v);
+    return `<div class="pgdefi ${x.done?"done":""}"><div><b>${esc(x.nom)}</b><div class="small muted">${esc(x.desc)}</div></div><div class="pts">${x.done?"réussi · ":""}+${x.pts}</div><div class="pgbar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}" aria-label="${esc(x.nom)}"><i style="width:${pct}%"></i></div><div class="small muted">${f(x.cur)} sur ${f(x.max)}</div></div>`; }).join("");
+  // points de la semaine
+  const it=WP.items.slice().sort((a,b)=>(a.date||"9")<(b.date||"9")?-1:1);
+  $("#pgWeek").innerHTML=`<h2>Tes points cette semaine</h2>`+(it.length?`<table class="pglog"><tbody>${it.map(i=>`<tr><td>${i.date?`<span class="small muted">${DAYS[diff(mon,i.date)].slice(0,3)}.</span> `:""}${esc(i.lab)}</td><td class="n">+${i.p}</td></tr>`).join("")}<tr><td><b>Total</b></td><td class="n">${fr(WP.total)}</td></tr></tbody></table>`:`<p class="small muted">Rien encore : ta première séance ou ton check-in de demain matin ouvrent le compteur.</p>`);
+  // records
+  const recent=RC.events.slice(-1)[0];
+  const cards=REC_DEF.filter(R=>RC.best[R.k]).map(R=>{ const b=RC.best[R.k], ev=RC.events.filter(e=>e.k===R.k).slice(-1)[0], isNew=ev&&diff(ev.date,TODAY)<=7;
+    return `<div class="r ${isNew?"new":""}"><div class="k">${esc(R.lab)}</div><div class="v">${R.fmt(b.v)}</div><div class="d">${dfr(b.date)}${ev&&ev.date===b.date?" · +"+R.fmt(b.v-ev.prev).replace(/^(\d)/,"$1"):""}${isNew?" · nouveau":""}</div></div>`; }).join("");
+  $("#pgRecords").innerHTML=`<h2>Tes records</h2><p class="small muted">Détectés automatiquement dans tes sorties importées. Un record compte quand il bat le précédent d’au moins 1 à 2 %, après au moins 3 sorties du même sport.</p>`+(cards?`<div class="pgrec">${cards}</div>`:`<p class="small muted">Importe quelques sorties (Garmin ou fichiers) : tes meilleures valeurs apparaîtront ici.</p>`)+(recent?`<p class="small" style="margin-top:10px">Dernier record : ${esc(recent.lab.toLowerCase())}, ${recent.fmt(recent.v)} le ${dfr(recent.date)} (avant : ${recent.fmt(recent.prev)}).</p>`:"");
+  // badges
+  $("#pgBadges").innerHTML=`<h2>Badges</h2><div class="pgbadges">${BD.map(b=>`<div class="pgbadge ${b.date?"on":""}"><div class="ic">${svg(b.ic)}</div><b>${esc(b.nom)}</b><small>${esc(b.desc)}</small><small>${b.date?"obtenu le "+dfr(b.date):"à débloquer"}</small></div>`).join("")}</div>`;
+  // règles
+  $("#pgRulesBody").innerHTML=`<table class="pglog"><tbody>
+    <tr><td>Chaque heure d’entraînement (vélo, course, muscu), jusqu’à 110 % du volume prévu de la semaine</td><td class="n">+${PTS.hour}</td></tr>
+    <tr><td>Séance clé réussie (hors jour rouge), plus 2 par répétition détectée jusqu’à +10</td><td class="n">+${PTS.key}</td></tr>
+    <tr><td>Séance du plan faite comme prévu</td><td class="n">+${PTS.asPlanned}</td></tr>
+    <tr><td>Séance de musculation</td><td class="n">+${PTS.gym}</td></tr>
+    <tr><td>Check-in du matin</td><td class="n">+${PTS.ci}</td></tr>
+    <tr><td>Repos prévu respecté</td><td class="n">+${PTS.rest}</td></tr>
+    <tr><td>Feu rouge écouté (pas de séance dure ce jour-là)</td><td class="n">+${PTS.red}</td></tr>
+    <tr><td>Retour après au moins 3 jours sans séance</td><td class="n">+${PTS.comeback}</td></tr>
+    <tr><td>Record battu</td><td class="n">+${PTS.record}</td></tr>
+    <tr><td>Badge obtenu</td><td class="n">+${PTS.badge}</td></tr>
+    <tr><td>Défi de la semaine réussi</td><td class="n">+20 à +40</td></tr>
+    <tr><td>Semaine solide : 5 points par semaine de série, jusqu’à +50</td><td class="n">+5 à +50</td></tr>
+  </tbody></table><p class="small muted" style="margin-top:10px">Pas de points en moins : une semaine ratée arrête seulement la série. Les heures au-delà de 110 % du plan et les séances dures un jour rouge ne rapportent rien, parce qu’elles n’aident pas à progresser.</p>`;
+  renderBoard(); if(BOARD.rows===null&&!BOARD.err&&bset().on) pullBoard(); pushBoard(false);
+}
+
+/* ---------- Aujourd'hui : bandeau, record du jour, retour ---------- */
+function renderTodayV6(){
+  const out=$("#todayOut"); if(!out) return; const hero=out.querySelector(".hero"); if(!hero) return;
+  const mon=mondayOf(TODAY), WP=weekPoints(mon), ST=currentStreak(), D=defis(mon), n=ST.n+(ST.curSolid?1:0);
+  let s=$("#v6strip"); if(!s){ s=document.createElement("button"); s.type="button"; s.id="v6strip"; s.className="v6strip"; s.onclick=()=>{ location.hash="progres"; show("progres"); }; }
+  if(s.parentNode!==hero) hero.appendChild(s);
+  s.setAttribute("aria-label","Progrès : série de "+n+" semaines, "+WP.total+" points cette semaine, "+D.filter(x=>x.done).length+" défis réussis sur "+D.length);
+  s.innerHTML=`<span class="it"><b>${n}</b><span>sem. de série</span></span><span class="it"><b>${fr(WP.total)}</b><span>points cette semaine</span></span><span class="it"><b>${D.filter(x=>x.done).length}/${D.length}</b><span>défis</span></span><span class="go">Voir mes progrès</span>`;
+  // record battu dans les 2 derniers jours : on le célèbre une fois, puis il reste affiché sans animation
+  const RC=records(), ev=RC.events.filter(e=>diff(e.date,TODAY)<=1);
+  hero.querySelectorAll(".v6rec,.v6back").forEach(x=>x.remove());
+  if(ev.length){ S.seenRec=S.seenRec||{}; const key=ev.map(e=>e.k+e.date).join(","), fresh=!S.seenRec[key];
+    const box=document.createElement("div"); box.className="v6rec"+(fresh?" anim":""); box.innerHTML=`<span class="ic">${svg("star")}</span><div><b>${ev.length>1?ev.length+" nouveaux records":"Nouveau record"}</b>${ev.map(e=>esc(e.lab)+" : "+e.fmt(e.v)+" (avant "+e.fmt(e.prev)+")").join("<br>")}<div class="small muted">+${PTS.record*ev.length} points</div></div>`;
+    hero.appendChild(box); if(fresh){ S.seenRec[key]=1; save(); } }
+  // retour après une pause : la reprise est valorisée, pas la pause reprochée
+  const last=(S.sessions||[]).filter(x=>x.date<=TODAY).map(x=>x.date).sort().pop(), todayDone=(S.sessions||[]).some(x=>x.date===TODAY);
+  const plan=(()=>{ try{ const W=buildWeek(mon); return W.days.find(d=>d.date===TODAY); }catch(e){ return null; } })();
+  if(last&&!todayDone&&diff(last,TODAY)>=4&&plan&&plan.main&&plan.main.id!=="R0"&&!isRed(TODAY)){ const b=document.createElement("div"); b.className="v6back"; b.innerHTML=`<b>Content de te revoir.</b> Dernière séance le ${dfr(last)} : reprendre compte plus que n’avoir jamais coupé. La séance du jour te rapporte +${PTS.comeback} points de retour.`; const m=hero.querySelector(".meta"); (m&&m.nextSibling)?hero.insertBefore(b,m.nextSibling):hero.appendChild(b); }
+}
+
+/* ---------- branchements ---------- */
+if(typeof VIEWS!=="undefined"&&!VIEWS.includes("progres")) VIEWS.push("progres");
+const nav=$("#tabs"), suivi=nav&&nav.querySelector('button[data-v="suivi"]');
+if(suivi&&!nav.querySelector('button[data-v="progres"]')){ const b=document.createElement("button"); b.setAttribute("role","tab"); b.dataset.v="progres"; b.innerHTML=`<svg viewBox="0 0 24 24">${ICO.trophy}</svg><span>Progrès</span>`; suivi.after(b); b.onclick=()=>{ location.hash="progres"; show("progres"); }; }
+const wrapR=(n,fn)=>{ const f=window[n]; if(typeof f!=="function"||f.v6) return; const w=function(){ const r=f.apply(this,arguments); try{ fn(); }catch(e){ console.warn("v6 "+n,e); } return r; }; w.v6=true; window[n]=w; };
+wrapR("renderToday",renderTodayV6); wrapR("renderAllNow",()=>{ renderTodayV6(); renderProgres(); });
+const oldShow=window.show; if(typeof oldShow==="function"&&!oldShow.v6){ const w=function(v){ const r=oldShow.apply(this,arguments); if(v==="progres") try{ renderProgres(); }catch(e){ console.warn("v6",e); } return r; }; w.v6=true; window.show=w; }
+window.v6={weekPoints,records,badges,defis,seasonPoints,currentStreak,weekInfo};
+try{ renderTodayV6(); renderProgres(); if(location.hash==="#progres") show("progres"); }catch(e){ console.warn("v6 init",e); }
+}catch(err){console.warn("v6",err)}})();
 </script>
 
 </body>
