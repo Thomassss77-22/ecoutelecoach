@@ -3842,12 +3842,12 @@ function weekReport(mon){
   const rows=W.days.map(d=>{const all=logs.filter(s=>s.date===d.date), pl=d.main.id, past=d.date<TODAY, today=d.date===TODAY;
     const isG=s=>sessSport(s)==="muscu", plG=(LIB[pl]||{}).sport==="muscu", done=plG?all:all.filter(s=>!isG(s)), gymDone=all.some(isG);
     let st;
-    if(pl==="R0") st=done.length?["warn","Séance ajoutée sur un jour de repos"]:(past||today?["good","Repos respecté"]:["", "À venir"]);
+    if(pl==="R0") st=done.length?["","Séance en plus sur un jour de repos"]:(past||today?["good","Repos respecté"]:["", "À venir"]);
     else if(!done.length) st=past?["bad",gymDone?"Manquée (muscu faite)":"Manquée"]:["","À venir"];
     else if(done.some(s=>s.id===pl||s.planned===pl)) st=["good","Faite"];
-    else { const pk=(LIB[pl]||{}).key||pl==="RACE", dk=done.some(isKeyLog); st=pk&&!dk?["warn",Math.max(0,...done.map(s=>+s.rpe||0))<=4?"Remplacée par une séance facile":"Remplacée par une autre séance (la séance clé prévue n’est pas faite)"]:!pk&&dk?["warn","Séance dure à la place d’une facile"]:["good","Faite (autre séance)"]; }
+    else { const pk=(LIB[pl]||{}).key||pl==="RACE", dk=done.some(isKeyLog); st=pk&&!dk?["","Autre séance faite à la place"]:!pk&&dk?["warn","Séance dure à la place d’une facile"]:["good","Faite (autre séance)"]; }
     const te=done.length&&pl!=="R0"&&pl!=="RACE"?teCheck(pl,done.find(x=>x.teA!=null||x.teAn!=null||x.benefit)||done[0]):null;
-    if(d.gym&&!plG&&(past||today||gymDone)) st=[st[0]==="good"&&!gymDone&&past?"warn":st[0],st[1]+(gymDone?" · muscu faite":past?" · muscu manquée":"")];
+    if(d.gym&&!plG&&(past||today||gymDone)) st=[st[0],st[1]+(gymDone?" + muscu":past?", sans la muscu":"")];
     return {d,done:all,st,te};});
   const plannedMin=W.total, doneMin=logs.reduce((a,s)=>a+(+s.dur||0),0), cur=mon===mondayOf(TODAY), elapsed=cur?diff(mon,TODAY)+1:7;
   const plannedTD=cur?W.days.filter(d=>d.date<=TODAY).reduce((a,d)=>a+(d.main.id==="RACE"?0:(d.dur||0))+(d.gym?(+d.gymDur||0):0),0):plannedMin;
