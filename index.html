@@ -1774,6 +1774,7 @@ function buildWeek(mon,availOverride,opt={}){
   if(RW&&!opt.phase&&phase!=="competition"){ const R=days.filter(d=>!d.past&&(LIB[d.main.id]||{}).sport==="course"), done=days.filter(d=>d.past&&d.pastRun).length, Qd=R.filter(d=>!d.pinned&&(LIB[d.main.id]||{}).key&&!["C3","C4","C15","C13","C14"].includes(d.main.id));
     const qAll=R.filter(d=>(LIB[d.main.id]||{}).key&&!["C3"].includes(d.main.id)).length+days.filter(d=>d.past&&d.pastKey).length;
     if(R.length+done<=3&&qAll>=2&&Qd.length){ const d=Qd[Qd.length-1], lgD=Math.max(0,...R.filter(x=>["C3","C4","C15"].includes(x.main.id)).map(x=>x.dur)), nd=Math.min(d.dur,LIB.C1.dL,d.avail,lgD?Math.max(LIB.C1.dS,lgD-15):99); total-=d.dur-nd; d.main={id:"C1"}; d.dur=Math.max(LIB.C1.dS,Math.round(nd/5)*5); d.notes=["footing facile à la place d’une 2e séance de qualité : avec 3 sorties cette semaine, une seule séance de qualité en plus de la sortie longue"]; } }
+  days.forEach(d=>{ if(d.past||d.pinned||!d.dur||!d.main) return; const r=alignDur(d.main.id,d.v,d.dur); if(r.dur!==d.dur){ total+=r.dur-d.dur; d.dur=r.dur; } d.v=r.v; });
   total+=raceMin;
   // acclimatation à la chaleur (Racinais 2015) : séances faciles au chaud dans les 14 jours avant une course chaude
   days.forEach(d=>{const hr=races.find(r=>raceHot(r)&&diff(d.date,r.date)>=3&&diff(d.date,r.date)<=14);
@@ -2075,6 +2076,7 @@ function decideToday(ci){
   if(["C3","C4","C15"].includes(cand)&&f.dur>=75) limits.push("Glucides : 30-60 g/h au-delà de 75 min"+(cand==="C4"?", 60-90 g/h pour un marathon : répète ici ton ravitaillement de course":"")+" ; boire selon la soif.");
   if(["E4","E5","D1","SP2"].includes(cand)) limits.push("Glucides : 60-"+st.cho+" g/h dès la 1re heure ; boire selon la soif, 500-750 ml/h.");
   if(level==="good"&&R.lvl==="warn") level="warn";
+  { const al=alignDur(cand,f.v,f.dur); f={dur:al.dur,v:al.v}; }
   return out(cand,{level,title:s.nom||cand,dur:f.dur,variant:f.v,note});
 }
 
@@ -2086,7 +2088,7 @@ function fillCI(){const c=S.checkins[TODAY]||{};const plan=buildWeek(mondayOf(TO
 // profil d'effort : chaque étape de la séance, largeur = durée, hauteur et couleur = intensité (zones)
 function zoneColor(pct){ return pct==null?"var(--z7)":pct<56?"var(--z1)":pct<76?"var(--z2)":pct<91?"var(--z3)":pct<106?"var(--z4)":pct<121?"var(--z5)":pct<151?"var(--z6)":"var(--z7)"; }
 function svgWorkout(id,variant,dur){
-  let st; try{st=wkSteps(id,variant,(["E1","E2","E4","E5","C1","C2","C3"].includes(id)?dur:null));}catch(e){return "";} if(!st||!st.length) return "";
+  let st; try{st=planSteps(id,variant,dur);}catch(e){return "";} if(!st||!st.length) return "";
   const f=[],w=a=>a.forEach(x=>{if(x.rep){for(let i=0;i<x.rep;i++)w(x.steps);}else f.push(x);}); w(st);
   const tot=f.reduce((a,x)=>a+(x.d||0),0); if(!tot) return "";
   const W=1000,H=120,base=H, minW=2.5; let x=0;
@@ -2099,7 +2101,7 @@ function svgWorkout(id,variant,dur){
     <div class="legend" style="margin-top:6px"><span><span class="zbar" style="background:none;border-top:2px dashed var(--line2);height:0;vertical-align:3px"></span>${LIB[id]&&LIB[id].sport==="course"?"":"100 % FTP"}</span>${[["z1","récup"],["z2","endurance"],["z3","tempo"],["z4","seuil"],["z5","PMA"],["z6","anaérobie"],["z7","sprint"]].filter(z=>f.some(s=>zoneColor(s.lo==null?null:pct(s))==="var(--"+z[0]+")")).map(z=>`<span><span class="zbar" style="background:var(--${z[0]})"></span>${z[1]}</span>`).join("")}</div></div>`;
 }
 function svgMini(id,variant,dur){
-  let st; try{st=wkSteps(id,variant,(["E1","E2","E4","E5","C1","C2","C3"].includes(id)?dur:null));}catch(e){return "";} if(!st||!st.length) return "";
+  let st; try{st=planSteps(id,variant,dur);}catch(e){return "";} if(!st||!st.length) return "";
   const f=[],w=a=>a.forEach(x=>{if(x.rep){for(let i=0;i<x.rep;i++)w(x.steps);}else f.push(x);}); w(st); const tot=f.reduce((a,x)=>a+(x.d||0),0); if(!tot) return "";
   let x=0; const H=26; const bars=f.map(s=>{const p=s.lo==null?175:(s.lo+s.hi)/2, wd=Math.max(1.5,s.d/tot*200), h=Math.max(4,Math.min(1,(p-30)/150)*H); const r=`<rect x="${x.toFixed(1)}" y="${(H-h).toFixed(1)}" width="${Math.max(.8,wd-.6).toFixed(1)}" height="${h.toFixed(1)}" rx="1" fill="${zoneColor(s.lo==null?null:p)}"/>`; x+=s.d/tot*200; return r;}).join("");
   return `<svg viewBox="0 0 200 ${H}" preserveAspectRatio="none" style="display:block;width:100%;max-width:220px;height:26px;margin:6px 0 2px" aria-hidden="true">${bars}</svg>`;
@@ -2141,8 +2143,8 @@ function renderToday(){
   if(cis){ cis.textContent=ciDone?"Rempli":"À remplir"; cis.className="state chip "+(ciDone?"good":"warn"); }
   if(cic&&!cic.dataset.touched){ cic.open=!ciDone&&window.innerWidth>900; cic.ontoggle=()=>{cic.dataset.touched="1";}; }
   renderFree(r,ci);
-  const qs=document.getElementById("qSend"); if(qs) qs.onclick=()=>askSendGarmin(r.id,r.variant,(["E1","E2","E4","E5","C1","C2","C3"].includes(r.id)?r.dur:null),TODAY,"qGarminMsg");
-  const qg=document.getElementById("qGarmin"); if(qg) qg.onclick=()=>offerZip([workoutFile(r.id,r.variant,(["E1","E2","E4","E5","C1","C2","C3"].includes(r.id)?r.dur:null),TODAY.replace(/-/g,""),r.dur)],"seance_"+TODAY+".zip","qGarminMsg");
+  const qs=document.getElementById("qSend"); if(qs) qs.onclick=()=>askSendGarmin(r.id,r.variant,r.dur,TODAY,"qGarminMsg");
+  const qg=document.getElementById("qGarmin"); if(qg) qg.onclick=()=>offerZip([workoutFile(r.id,r.variant,r.dur,TODAY.replace(/-/g,""),r.dur)],"seance_"+TODAY+".zip","qGarminMsg");
   const ql=document.getElementById("qLog"); if(ql) ql.onclick=()=>{
     const dur=+document.getElementById("qDur").value||0, rpe=document.getElementById("qRpe").value;
     if(!dur&&r.id!=="R0"){alertMsg("Indique la durée.");return;}
@@ -2257,9 +2259,9 @@ function renderWeek(){
   const sb=document.getElementById("wkShock"); const okPh=["base","construction","specifique"].includes(W.phase);
   sb.querySelector(".tt").textContent=W.shock?"Bloc de choc activé":"Bloc de choc"; sb.querySelector("small").textContent=W.shock?"Touche pour revenir à une semaine normale":"5 séances dures en 7 jours, pour un stage ou des vacances"; sb.setAttribute("aria-pressed",String(!!W.shock)); sb.disabled=!okPh&&!W.shock;
   sb.onclick=()=>{S.shock=S.shock||{}; if(S.shock[mon]) delete S.shock[mon]; else S.shock[mon]=true; save(); renderAll();};
-  document.getElementById("wkSend").onclick=()=>openSend(W.days.filter(d=>d.date>=TODAY&&d.main.id!=="RACE"&&d.main.id!=="R0").map(d=>({id:d.main.id,variant:d.v,dur:(["E1","E2","E4","E5","C1","C2","C3"].includes(d.main.id)?d.dur:null),date:d.date})),"wkSendMsg");
+  document.getElementById("wkSend").onclick=()=>openSend(W.days.filter(d=>d.date>=TODAY&&d.main.id!=="RACE"&&d.main.id!=="R0").map(d=>({id:d.main.id,variant:d.v,dur:d.dur,date:d.date})),"wkSendMsg");
   document.getElementById("wkIcs").onclick=()=>icsExport("wkGarminMsg");
-  document.getElementById("wkGarmin").onclick=()=>offerZip(W.days.flatMap(d=>{const lab=d.date.replace(/-/g,"").slice(4)+"_"+DAYS[d.i].slice(0,3);const arr=[];if(d.main.id!=="RACE"&&d.main.id!=="R0")arr.push(workoutFile(d.main.id,d.v,(["E1","E2","E4","E5","C1","C2","C3"].includes(d.main.id)?d.dur:null),lab,d.dur));d.extra.forEach(x=>arr.push(workoutFile(x,"courte",null,lab)));return arr;}),"semaine_"+mon+".zip","wkGarminMsg");
+  document.getElementById("wkGarmin").onclick=()=>offerZip(W.days.flatMap(d=>{const lab=d.date.replace(/-/g,"").slice(4)+"_"+DAYS[d.i].slice(0,3);const arr=[];if(d.main.id!=="RACE"&&d.main.id!=="R0")arr.push(workoutFile(d.main.id,d.v,d.dur,lab,d.dur));d.extra.forEach(x=>arr.push(workoutFile(x,"courte",null,lab)));return arr;}),"semaine_"+mon+".zip","wkGarminMsg");
   const rs=document.getElementById("wkReset"); if(rs) rs.onclick=()=>{delete S.weekEdits[mon];save();renderAll();};
   document.querySelectorAll("[data-unadd]").forEach(el=>el.onclick=()=>{ const [date,id]=el.dataset.unadd.split("|"); editWeek(mon,DAYS[diff(mon,date)]+" : "+((LIB[id]||{}).nom||id)+" retiré",()=>{ const q=Object.assign({},S.pins[date]||{}), a=[...(q.add||[])], k=a.indexOf(id); if(k>=0) a.splice(k,1); q.add=a; S.pins[date]=q; }); renderAll(); });
   document.querySelectorAll("[data-edit]").forEach(el=>el.onclick=()=>openSheet(mon,+el.dataset.edit));
@@ -4119,6 +4121,19 @@ function lapOpen(steps){ if(!steps||S.settings.lapStart===0) return steps; const
   for(let k=lastRep;k>firstRep;k--){ if(!out[k].rep) continue; const prev=out[k-1];
     if(prev.rep) out.splice(k,0,tag({n:"Récup",d:0,lo:45,hi:60,int:"rest"})); else if(!prev.open) tag(prev); }
   return out; }
+// structure ajustée à la durée prévue : si le créneau est plus court que la version courte, échauffement, retour au calme et endurance sont ramenés à leur minimum, puis une répétition de moins à la fois
+function planSteps(id,v,dur){ const st=wkSteps(id,v,dur); if(!st||!dur) return st; const target=dur*60+60; if(sumSteps(st)<=target) return st;
+  const out=JSON.parse(JSON.stringify(st)), mins={warmup:600,cooldown:300};
+  for(const x of out){ if(sumSteps(out)<=target) break; if(!x.rep&&x.d&&(mins[x.int]||(x.int==="active"&&/Endurance|Z2/.test(x.n||"")))){ const mn=mins[x.int]||300, cut=Math.min(x.d-mn,sumSteps(out)-target); if(cut>0) x.d-=cut; } }
+  for(let guard=0;guard<40&&sumSteps(out)>target;guard++){ const blocks=out.filter(x=>x.rep&&x.rep>1).sort((a,b)=>b.rep*sumSteps(b.steps)-a.rep*sumSteps(a.steps)); if(!blocks.length) break; const b=blocks.find(x=>x.rep>2)||blocks[0]; b.rep--; }
+  return out; }
+// durée affichée = durée de la structure réelle de la séance (échauffement, répétitions, retour au calme) : la version longue n'est gardée que si elle tient dans la durée prévue
+function alignDur(id,v,dur){ const L=LIB[id]; if(!L||!dur||["R0","RACE"].includes(id)||L.sport==="muscu"||L.sport==="repos") return {v,dur};
+  const sm=x=>{ try{ const st=planSteps(id,x,dur); return st?Math.round(sumSteps(st)/60):0; }catch(e){ return 0; } };
+  let vv=v||"courte", m=sm(vv); if(!m) return {v,dur};
+  const raw=x=>{ try{ const st=wkSteps(id,x,dur); return st?Math.round(sumSteps(st)/60):0; }catch(e){ return 0; } };
+  if(vv==="longue"&&raw("longue")>dur+2){ const c=sm("courte"); if(c) { vv="courte"; m=c; } }
+  return {v:vv,dur:Math.abs(m-dur)>=3?Math.min(dur,Math.round(m/5)*5):dur}; }
 function sumSteps(st){return st.reduce((a,s)=>a+(s.rep?s.rep*sumSteps(s.steps):(s.d||0)),0)}
 
 /* Encodeur FIT (profil Garmin : file_id, workout, workout_step) */
@@ -4203,7 +4218,7 @@ function fitSteps(steps,minutes){ const target=Math.round(minutes*60); let diff=
   return out; }
 function workoutFile(id,variant,dur,dateLabel,fitMin){
   const s=LIB[id]; if(!s||s.sport==="repos") return null;
-  let steps=wkSteps(id,variant,dur); if(!steps) return null;
+  let steps=planSteps(id,variant,dur); if(!steps) return null;
   if(fitMin&&s.sport==="velo") steps=fitSteps(steps,fitMin);
   const mode=S.settings.wkTarget||"power";
   const name=(s.nom.replace("Musculation : ","Muscu ").replace(" (protocole Rønnestad)","").replace("Endurance fondamentale","Endurance"))+(variant==="longue"?" L":"");
@@ -4335,7 +4350,7 @@ async function syncGarmin(manual,fromOverride){
 }
 /* Envoi d'une séance au calendrier Garmin Connect (offre Basic du connecteur) */
 function garminSteps(id,variant,dur){
-  const steps=lapOpen(wkSteps(id,variant,dur)); if(!steps) return null; const st=S.settings, mode=st.wkTarget||"power", sport=LIB[id].sport;
+  const steps=lapOpen(planSteps(id,variant,dur)); if(!steps) return null; const st=S.settings, mode=st.wkTarget||"power", sport=LIB[id].sport;
   const im={warmup:"warmup",active:"active",rest:"recovery",cooldown:"cooldown"};
   const one=s=>{const o={intensity:im[s.int]||"active",notes:s.n.slice(0,500)}; if(s.d&&!s.open) o.seconds=s.d;
     if(sport==="velo"&&s.lo!=null){ if(mode==="hr"){const h=pctToHr(s.lo,s.hi); if(h) o.target={type:"heart_rate",low:h[0],high:h[1]};} else o.target={type:"power",low:Math.round(st.ftp*s.lo/100),high:Math.round(st.ftp*s.hi/100)}; }
