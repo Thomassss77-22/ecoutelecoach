@@ -952,6 +952,7 @@ section.view.on{animation:v2in .55s var(--ease)}
             <option value="competition">Forcer : compétition</option><option value="transition">Forcer : transition</option></select></label>
           <label>Course à pied<select id="st_runOn"><option value="1">Oui, en complément</option><option value="0">Non</option></select></label>
           <label>Séances de course max / semaine<input id="st_runMax" type="number" min="0" max="7"><span class="small muted only-run">Coureur : toutes séances comprises (clés, sortie longue, footings), 3 à 6 selon ton niveau.</span></label>
+          <label>Plus longue sortie de course ces 4 dernières semaines (min)<input id="st_runLong" type="number" min="0" max="300" step="5"><span class="small muted">Point de départ de la sortie longue si tes sorties ne sont pas importées. Vaut 30 jours, ensuite seules tes séances enregistrées comptent.</span></label>
           <label>Glucides visés en course (g/h, 90 conseillé ; pros 100-120 avec intestin entraîné)<input id="st_cho" type="number" min="30" max="120" step="5"></label>
         </form>
     </div></div>
@@ -1343,7 +1344,9 @@ function isDeload(mon,phase){
 // durée utile minimale d'une endurance vélo et durée maximale la veille d'une séance dure, selon le niveau
 const EZMIN={amateur:60,elite:75,pro:90}, EVEMAX={amateur:90,elite:105,pro:120};
 // plus longue course des 30 jours qui précèdent la semaine (faite ou prévue) : la sortie longue ne redescend pas sous 90 % de cette valeur pour tenir un plafond
-function recentLongRun(mon){ const fp=memoFp(); let lr=S.sessions.filter(x=>x.date<TODAY&&x.date>=addDays(mon,-30)&&sessSport(x)==="course").reduce((a,x)=>Math.max(a,+x.dur||0),0);
+// plus longue sortie déclarée (onboarding ou Réglages), valable 30 jours après sa saisie
+function declLong(ref){ const st=S.settings; return +st.runLong>0&&st.runLongAt&&st.runLongAt>=addDays(ref,-30)?+st.runLong:0; }
+function recentLongRun(mon){ const fp=memoFp(); let lr=declLong(mon); lr=Math.max(lr,S.sessions.filter(x=>x.date<TODAY&&x.date>=addDays(mon,-30)&&sessSport(x)==="course").reduce((a,x)=>Math.max(a,+x.dur||0),0));
   for(let k=1;k<=4;k++){ const m=addDays(mon,-7*k); if(m>=mondayOf(TODAY)) lr=Math.max(lr,weekRunMax(m,fp)); } return lr; }
 const c3Floor=(mon,cur,f=.9)=>Math.max(LIB.C3.dS,Math.min(cur,Math.round(recentLongRun(mon)*f/5)*5));
 function weekCap(mon,phase,deload){return S.settings.maxH*60*(deload?.6:1)*PH[phase].vol*tagFactor(mon)}
@@ -1397,7 +1400,7 @@ function runKeyCands(phase,goal,widx,used){
 }
 const runCatOf=id=>Object.keys(CATR).find(c=>CATR[c].includes(id))||(LIB[id]||{}).cat;
 // plus longue sortie de course des 30 derniers jours (en minutes, à défaut de distance) : garde-fou de Frandsen 2025
-function longestRun30(){return S.sessions.filter(x=>x.date<TODAY&&x.date>=addDays(TODAY,-30)&&sessSport(x)==="course").reduce((a,x)=>Math.max(a,+x.dur||0),0);}
+function longestRun30(){return Math.max(declLong(TODAY),S.sessions.filter(x=>x.date<TODAY&&x.date>=addDays(TODAY,-30)&&sessSport(x)==="course").reduce((a,x)=>Math.max(a,+x.dur||0),0));}
 function fitDur(id,avail){
   const s=LIB[id]; if(!s||s.sport==="repos") return {dur:0,v:"—"};
   if(["E1","E2","E3","E4","E5","C1","C3"].includes(id)) return {dur:Math.max(Math.min(avail,s.dL),Math.min(s.dS,avail)),v:avail>=s.dL*.8?"longue":"courte"};
@@ -1676,7 +1679,7 @@ function buildWeek(mon,availOverride,opt={}){
   });
   // garde-fou blessure : une séance de course ne dépasse pas de plus de 10 % la plus longue des 30 derniers jours (Frandsen 2025, en durée faute de distance)
   // semaines futures : la plus longue course est aussi cherchée dans les 4 semaines précédentes du plan, pour que la sortie longue progresse de 10 % au plus d'une semaine à l'autre
-  if(runOnW&&!opt.phase&&mon>=mondayOf(TODAY)){ const lr0=S.sessions.filter(x=>x.date<TODAY&&x.date>=addDays(mon,-30)&&sessSport(x)==="course").reduce((a,x)=>Math.max(a,+x.dur||0),0), fp=mon>mondayOf(TODAY)?memoFp():"", lrP=mon>mondayOf(TODAY)?Math.max(0,...[1,2,3,4].map(j=>addDays(mon,-7*j)).filter(m=>m>=mondayOf(TODAY)).map(m=>weekRunMax(m,fp))):0, lr=Math.max(lr0,lrP);
+  if(runOnW&&!opt.phase&&mon>=mondayOf(TODAY)){ const lr0=Math.max(declLong(mon),S.sessions.filter(x=>x.date<TODAY&&x.date>=addDays(mon,-30)&&sessSport(x)==="course").reduce((a,x)=>Math.max(a,+x.dur||0),0)), fp=mon>mondayOf(TODAY)?memoFp():"", lrP=mon>mondayOf(TODAY)?Math.max(0,...[1,2,3,4].map(j=>addDays(mon,-7*j)).filter(m=>m>=mondayOf(TODAY)).map(m=>weekRunMax(m,fp))):0, lr=Math.max(lr0,lrP);
     // durée utile de la sortie longue selon l'objectif (choix d'ingénierie appuyé sur la pratique : 10 km ≤ 1 h 30, semi ≤ 2 h, marathon ≤ 2 h 30 ; sans objectif de course : 2 h)
     const hasRR=racesSorted().some(r=>r.date>=mon&&raceSport(r)==="course"), lrCap=hasRR?({5:75,10:90,21.0975:120,42.195:150,trail:trailLong(mon)})[goal]||120:120;
     days.filter(d=>!d.past&&!d.pinned&&d.main.id==="C3"&&d.dur>lrCap).forEach(d=>{ d.dur=lrCap; d.notes.push("sortie longue limitée à "+fmtMin(lrCap)+" : au-delà, le gain pour "+(hasRR?"un "+RDL[goal]:"ton niveau")+" est faible et le risque de blessure augmente"); });
@@ -1721,7 +1724,7 @@ function buildWeek(mon,availOverride,opt={}){
     if(ref&&ref*f<cap){ cap=Math.max(120,ref*f); capWhy="affûtage : "+(raceWk?"−55 %":far?"−20 %":"−35 %")+" par rapport à ta dernière semaine de charge ("+fmtMin(Math.round(ref))+"), intensité conservée (Bosquet 2007 : −41 à −60 % sur 2 semaines)"; } }
   if(LC&&LC.reprise&&tag!=="maladie"){const r=Math.max(120,(LC.chronic||cap)*.6); if(r<cap){cap=r;capWhy="reprise : 60 % du volume habituel";}}
   if(LC&&LC.fatigue&&!shock){cap*=.85;capWhy=(capWhy?capWhy+", ":"")+"fatigue : −15 %";}
-  if(LC&&LC.k<=1&&!S.sessions.some(s=>s.date<TODAY)) warns.push("Aucune séance enregistrée : le volume est fondé sur ton volume max, pas sur ton entraînement réel. Importe tes dernières sorties (Suivi et alertes) pour que la progression parte de ton niveau actuel.");
+  if(LC&&LC.k<=1&&!S.sessions.some(s=>s.date<TODAY)) warns.push("Aucune séance enregistrée : le volume est fondé sur ton volume max, pas sur ton entraînement réel. Importe tes dernières sorties (Suivi et alertes) pour que la progression parte de ton niveau actuel."+(RW&&!declLong(mon)?" En course à pied, indique au moins ta plus longue sortie récente dans Réglages : sans elle, la sortie longue part de 1 h et ne monte que de 10 % par semaine.":""));
   cap=Math.round(cap);
   let total=days.reduce((s,d)=>s+d.dur+(d.gymDur||0)+(d.addDur||0),0);
   // semaine de course à pied : la course elle-même n'est pas du volume d'entraînement à plafonner (sinon les footings de la semaine de course sautent)
@@ -2617,9 +2620,9 @@ function renderRunSettings(){
 }
 
 /* ---------- rendu : réglages ---------- */
-const setMap={ftp:"st_ftp",fcmax:"st_fcmax",kg:"st_kg",maxH:"st_maxh",meso:"st_meso",mesoStart:"st_mesoStart",phase:"st_phase",runOn:"st_runOn",runMax:"st_runMax",cho:"st_cho",wkTarget:"st_wkTarget",lapStart:"st_lapStart",acHours:"st_acHours",level:"st_level",hasPower:"st_hasPower",lthr:"st_lthr"};
+const setMap={ftp:"st_ftp",fcmax:"st_fcmax",kg:"st_kg",maxH:"st_maxh",meso:"st_meso",mesoStart:"st_mesoStart",phase:"st_phase",runOn:"st_runOn",runMax:"st_runMax",runLong:"st_runLong",cho:"st_cho",wkTarget:"st_wkTarget",lapStart:"st_lapStart",acHours:"st_acHours",level:"st_level",hasPower:"st_hasPower",lthr:"st_lthr"};
 function renderSettings(){
-  Object.entries(setMap).forEach(([k,id])=>{const el=document.getElementById(id);el.value=S.settings[k];el.onchange=()=>{let v=el.value;if(el.type==="number")v=+v;if(k==="runOn"||k==="lapStart")v=+v; if(k==="acHours")v=el.value===""?"":+el.value;if(k==="mesoStart")v=mondayOf(v);if(k==="hasPower"){v=+v;if(v===0)S.settings.wkTarget="hr";}S.settings[k]=v;if(k==="level")S.settings.maxH={amateur:Math.min(S.settings.maxH,14),elite:18,pro:22}[v]||S.settings.maxH;save();buildLib();renderAll();};});
+  Object.entries(setMap).forEach(([k,id])=>{const el=document.getElementById(id);el.value=S.settings[k];el.onchange=()=>{let v=el.value;if(el.type==="number")v=+v;if(k==="runOn"||k==="lapStart")v=+v; if(k==="acHours")v=el.value===""?"":+el.value;if(k==="runLong")S.settings.runLongAt=TODAY;if(k==="mesoStart")v=mondayOf(v);if(k==="hasPower"){v=+v;if(v===0)S.settings.wkTarget="hr";}S.settings[k]=v;if(k==="level")S.settings.maxH={amateur:Math.min(S.settings.maxH,14),elite:18,pro:22}[v]||S.settings.maxH;save();buildLib();renderAll();};});
   const rs=S.settings.races;
   const today=TODAY, sorted=rs.map((r,i)=>({r,i})).sort((x,y)=>x.r.date<y.r.date?-1:1);
   document.getElementById("raceTable").innerHTML=rs.length?sorted.map(({r,i})=>`<div class="racecard prio${r.prio}${r.date<today?" past":""}">
@@ -4682,7 +4685,7 @@ function buildSteps(){steps=[
   b:()=>{document.querySelectorAll("[data-d]").forEach(c=>c.onchange=()=>{const i=+c.dataset.d;A.days[i].on=c.checked?1:0;if(c.checked&&!A.days[i].max)A.days[i].max=60;render();});document.querySelectorAll("[data-m]").forEach(s=>s.onchange=()=>{A.days[+s.dataset.m].max=+s.value;});},v:()=>A.days.some(d=>d.on)?"":"Choisis au moins un jour."},
  {k:"body",t:"Quelques repères physiques",sub:"Pour calculer tes zones et ta nutrition. Valeurs approximatives acceptées.",r:()=>`<div class="onbgrid"><label>Poids (kg)<input id="o_kg" type="number" min="35" max="150" step="0.5" value="${A.kg}"></label><label>FC max (bpm)<input id="o_fc" type="number" min="140" max="225" value="${A.fcmax}"><span class="onbhint">Ne la connais pas ? 220 − âge, à affiner plus tard.</span></label></div>`,v:()=>{const k=+$("#o_kg").value,f=+$("#o_fc").value;if(!(k>=35&&k<=150))return "Poids entre 35 et 150 kg.";if(!(f>=140&&f<=225))return "FC max entre 140 et 225 bpm.";A.kg=k;A.fcmax=f;return "";}},
  ...(isV()?[{k:"power",t:"As-tu un capteur de puissance ?",sub:"Sans capteur, les séances se règlent à la fréquence cardiaque.",r:()=>opts("hasPower",[[1,"⚡","Oui","Home-trainer, pédales ou pédalier à watts"],[0,"❤️","Non","Zones à la fréquence cardiaque"]])+(A.hasPower?`<label>FTP, ta puissance seuil (watts)<input id="o_ftp" type="number" min="80" max="500" value="${A.ftp}"><span class="onbhint">Estimation permise : tu pourras la corriger après un test.</span></label>`:""),b:()=>{document.querySelectorAll('[data-o="hasPower"]').forEach(b=>b.addEventListener("click",()=>setTimeout(render,0)));},v:()=>{if(A.hasPower){const f=+$("#o_ftp").value;if(!(f>=80&&f<=500))return "FTP entre 80 et 500 W.";A.ftp=f;}return "";}}]:[]),
- ...(isR()?[{k:"rec",t:"Ton meilleur chrono récent en course à pied",sub:"Il sert à estimer ta VMA et tes allures. Facultatif.",r:()=>`<div class="onbgrid"><label>Distance<select id="o_rd">${[["5","5 km"],["10","10 km"],["21.1","Semi"],["42.2","Marathon"]].map(([v,l])=>`<option value="${v}" ${String(A.recDist)===v?"selected":""}>${l}</option>`).join("")}</select></label><label>Temps<input id="o_rt" value="${esc(A.recTime)}" placeholder="44:30 ou 1:43:00"></label></div>`,v:()=>{A.recDist=$("#o_rd").value;const t=$("#o_rt").value.trim();if(t&&!parseDur(t))return "Temps non reconnu : écris par exemple 44:30 ou 1:43:00.";A.recTime=t;return "";}}]:[]),
+ ...(isR()?[{k:"rec",t:"Ton meilleur chrono récent en course à pied",sub:"Il sert à estimer ta VMA et tes allures. Facultatif.",r:()=>`<div class="onbgrid"><label>Distance<select id="o_rd">${[["5","5 km"],["10","10 km"],["21.1","Semi"],["42.2","Marathon"]].map(([v,l])=>`<option value="${v}" ${String(A.recDist)===v?"selected":""}>${l}</option>`).join("")}</select></label><label>Temps<input id="o_rt" value="${esc(A.recTime)}" placeholder="44:30 ou 1:43:00"></label><label>Ta plus longue sortie ces 4 dernières semaines (min)<input id="o_rl" type="number" min="0" max="300" step="5" value="${A.runLong||""}" placeholder="ex. 75"></label></div><p class="small muted">La sortie la plus longue sert de point de départ : le plan la fait progresser d’environ 10 % par semaine. Sans elle, et sans sorties importées, il part de zéro.</p>`,v:()=>{A.recDist=$("#o_rd").value;const t=$("#o_rt").value.trim();if(t&&!parseDur(t))return "Temps non reconnu : écris par exemple 44:30 ou 1:43:00.";A.recTime=t;A.runLong=+$("#o_rl").value||0;return "";}}]:[]),
  {k:"race",t:"As-tu une course en ligne de mire ?",sub:"Tout le plan se calcule à rebours depuis ton objectif.",r:()=>opts("race",[["oui","🎯","Oui, j’ai un objectif",""],["non","🌤️","Pas pour l’instant","Je construis d’abord ma base"]])+(A.race==="oui"?`<div class="onbgrid"><label>Nom<input id="o_rn" value="${esc(A.rName)}" placeholder="ex. Marathon de Toulouse"></label><label>Date<input id="o_rdt" type="date" min="${TODAY}" value="${A.rDate}"></label><label>Sport<select id="o_rs">${A.sport==="mixte"?`<option value="velo" ${(A.rSport==="velo"||(A.rSport==="auto"&&A.prio!=="course"))?"selected":""}>Vélo</option><option value="course" ${(A.rSport==="course"||(A.rSport==="auto"&&A.prio==="course"))?"selected":""}>Course à pied</option>`:`<option value="auto">${A.sport==="course"?"Course à pied":"Vélo"}</option>`}</select></label><label>Distance (km)<input id="o_rdist" type="number" min="1" max="300" step="0.1" value="${A.rDist}" placeholder="ex. 42,2"></label><label>Priorité<select id="o_rp">${[["A","A : l’objectif de la saison"],["B","B : importante"],["C","C : préparation"]].map(([p,l])=>`<option value="${p}" ${A.rPrio===p?"selected":""}>${l}</option>`).join("")}</select></label><label>Profil<select id="o_rpf">${["plat","vallonné","montagne","circuit"].map(p=>`<option ${A.rProfile===p?"selected":""}>${p}</option>`).join("")}</select></label></div>`:""),
   b:()=>{document.querySelectorAll('[data-o="race"]').forEach(b=>b.addEventListener("click",()=>setTimeout(render,0)));},v:()=>{if(A.race!=="oui")return "";const n=$("#o_rn").value.trim(),d=$("#o_rdt").value;if(!n)return "Donne un nom à ta course.";if(!d||d<TODAY)return "Choisis une date à venir.";A.rName=n;A.rDate=d;A.rSport=$("#o_rs").value;A.rDist=$("#o_rdist").value;A.rPrio=$("#o_rp").value;A.rProfile=$("#o_rpf").value;return "";}},
  {k:"source",t:"D’où viendront tes séances ?",sub:"Pour récupérer automatiquement ton activité réelle.",r:()=>opts("source",[["garmin","⌚","Garmin","Via le connecteur Fitness AI"],["strava","🟧","Strava","Abonnement requis"]]),v:()=>""},
@@ -4701,7 +4704,7 @@ function next(){const st=steps[step],m=st.v();if(m){$("#onbMsg").textContent=m;r
  render();}
 function back(){if(step>0){step--;render();}}
 function finish(){const s=S.settings;
- s.name=A.name;s.sportProfile=A.sport;s.prioSport=A.sport==="mixte"?A.prio:"auto";s.level=A.level;s.maxH=A.maxH;if(A.acHours!=="")s.acHours=A.acHours;s.days=A.days.map(d=>({on:d.on?1:0,max:d.on?(d.max||60):0}));
+ if(A.runLong){s.runLong=A.runLong;s.runLongAt=TODAY;}s.name=A.name;s.sportProfile=A.sport;s.prioSport=A.sport==="mixte"?A.prio:"auto";s.level=A.level;s.maxH=A.maxH;if(A.acHours!=="")s.acHours=A.acHours;s.days=A.days.map(d=>({on:d.on?1:0,max:d.on?(d.max||60):0}));
  s.kg=A.kg;s.fcmax=A.fcmax;s.source=A.source;
  if(A.sport==="velo")s.runOn=A.runOn;if(A.sport!=="velo")s.runOn=1;
  if(isV()){s.hasPower=A.hasPower;s.wkTarget=A.hasPower?"power":"hr";if(A.hasPower)s.ftp=A.ftp;}
