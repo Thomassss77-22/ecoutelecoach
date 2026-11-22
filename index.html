@@ -6234,7 +6234,7 @@ async function kudosFor(ids){ if(!ids.length) return {}; const d=await q(c=>c.fr
 let TAB="fil", VIEWED=null, FEEDN=12;
 function setTab(t){ TAB=t; VIEWED=null; renderCm(); }
 function shell(inner){
-  const tabs=[["fil","Fil d’actualité"],["classement","Classement"],["athletes","Athlètes"],["moi","Mon profil"]];
+  const tabs=[["fil","Fil d’actualité"],["classement","Classement"],["athletes","Athlètes"]];
   return `<div class="cmtabs" role="tablist" aria-label="Communauté">${tabs.map(([k,l])=>`<button type="button" role="tab" data-cm="${k}" aria-selected="${TAB===k&&!VIEWED}">${l}</button>`).join("")}</div><div id="cmBody">${inner}</div>`;
 }
 function bind(){ document.querySelectorAll("[data-cm]").forEach(b=>b.onclick=()=>{ location.hash="communaute"; setTab(b.dataset.cm); });
@@ -6404,10 +6404,62 @@ wrapR("renderToday",renderJoin); wrapR("renderAllNow",()=>{ renderJoin(); publis
 // Progrès : le classement vit maintenant dans Communauté
 const pb=$("#pgBoard"); const fixPg=()=>{ const el=$("#pgBoard"); if(el) el.innerHTML=`<h2>Classement</h2><p class="small muted">Le classement de la semaine, ton profil et les séances de tes amis sont dans Communauté.</p><button class="btn small" type="button" id="pgToCm">Ouvrir la Communauté</button>`; const b=$("#pgToCm"); if(b) b.onclick=()=>{ TAB="classement"; location.hash="communaute"; show("communaute"); }; };
 const oldPg=window.show; void oldPg; const mo=new MutationObserver(()=>{ const el=$("#pgBoard"); if(el&&!el.querySelector("#pgToCm")) fixPg(); }); if(pb) mo.observe(pb,{childList:true}); fixPg();
-window.v7={publish,profileStats,renderCm};
+window.v7={publish,profileStats,renderCm,setTab:t=>{TAB=t;VIEWED=null;},tab:()=>TAB,viewed:()=>VIEWED};
 try{ renderJoin(); const m=location.hash.match(/^#communaute(?:\/@([a-z0-9_.-]+))?$/); if(m){ if(m[1]) VIEWED=m[1]; show("communaute"); } }catch(e){ console.warn("v7 init",e); }
 }catch(err){console.warn("v7",err)}})();
 </script>
 
+<style id="v8css">
+/* ===== v8 : navigation resserrée en 5 entrées (comme Strava : Accueil, Plan, Activités, Communauté, Vous) ===== */
+#tabs>button[data-v],#tabs>.sheet,#tabs>.more,#tabs>.sep{display:none!important}
+#tabs>button[data-g]{display:flex}
+#v-communaute.ismoi .cmtabs{display:none}
+.prof .cnt{flex-wrap:wrap;gap:10px 22px}
+@media (max-width:900px){ .prof .cnt{gap:8px 16px} .prof .cnt b{font-size:19px} .prof .cnt span{white-space:nowrap} }
+.grp{display:flex;gap:2px;margin:0 0 18px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
+.grp button{flex:none;border:0;background:none;font:700 15.5px var(--f);color:var(--muted);padding:10px 14px 12px;border-bottom:3px solid transparent;margin-bottom:-1px;cursor:pointer;white-space:nowrap}
+.grp button:hover{color:var(--ink)}
+.grp button[aria-current="page"]{color:var(--ink);border-bottom-color:var(--accent)}
+@media (max-width:900px){ .grp{margin:-4px 0 14px;padding:0} .grp button{padding:10px 12px 11px;font-size:15px} }
+</style>
+<script id="v8js">
+(function(){try{
+const G=[
+ {k:"accueil",l:"Accueil",ic:'<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>',v:[["aujourdhui","Aujourd’hui"]]},
+ {k:"plan",l:"Plan",ic:'<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/>',v:[["semaine","Semaine"],["mois","Mois"],["saison","Saison"],["seances","Séances types"]]},
+ {k:"activites",l:"Activités",ic:'<path d="M3 12h4l2-6 4 12 2-6h6"/>',v:[["suivi","Suivi"],["bilan","Bilan"]]},
+ {k:"social",l:"Communauté",s:"Social",ic:'<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.5"/><path d="M15.5 14.2c3 .2 5.5 2.6 5.5 5.8"/>',v:[["communaute","Communauté"]]},
+ {k:"vous",l:"Vous",ic:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/>',v:[["moi","Mon profil"],["progres","Progrès"],["reglages","Réglages"],["preuves","Aide et sources"]]}];
+const last={}; let cur="aujourdhui";
+const isMoi=()=>cur==="communaute"&&window.v7&&window.v7.tab()==="moi"&&!window.v7.viewed();
+const grpOf=v=>v==="communaute"&&isMoi()?G[4]:G.find(g=>g.v.some(x=>x[0]===v))||G[0];
+const go=v=>{ if(v==="moi"){ window.v7&&window.v7.setTab("moi"); location.hash="communaute"; show("communaute"); return; }
+  if(v==="communaute"&&window.v7&&window.v7.tab()==="moi") window.v7.setTab("fil");
+  location.hash=v; show(v); };
+const nav=document.getElementById("tabs");
+G.forEach(g=>{ const b=document.createElement("button"); b.type="button"; b.dataset.g=g.k; b.setAttribute("role","tab");
+  b.innerHTML=`<svg viewBox="0 0 24 24">${g.ic}</svg><span>${g.s?`<span class="gl">${g.l}</span><span class="gs">${g.s}</span>`:g.l}</span>`;
+  b.onclick=()=>go(last[g.k]||g.v[0][0]); nav.appendChild(b); });
+const st=document.createElement("style"); st.textContent=".gs{display:none}@media (max-width:900px){.gl{display:none}.gs{display:inline}}"; document.head.appendChild(st);
+function paint(){
+  const g=grpOf(cur), key=isMoi()?"moi":cur; last[g.k]=key;
+  nav.querySelectorAll("button[data-g]").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.g===g.k)));
+  document.querySelectorAll(".grp").forEach(e=>e.remove());
+  const ph=document.querySelector("#v-communaute .pagehead"); if(ph){ const m=isMoi(); document.getElementById("v-communaute").classList.toggle("ismoi",m); ph.querySelector("h1").textContent=m?"Mon profil":"Communauté"; const p=ph.querySelector("p"); if(p) p.hidden=m; }
+  if(g.v.length<2) return;
+  const sec=document.getElementById("v-"+cur); if(!sec) return;
+  const bar=document.createElement("nav"); bar.className="grp"; bar.setAttribute("aria-label",g.l);
+  bar.innerHTML=g.v.map(([v,l])=>`<button type="button" data-gv="${v}" ${v===key?'aria-current="page"':""}>${l}</button>`).join("");
+  bar.querySelectorAll("button").forEach(b=>b.onclick=()=>go(b.dataset.gv));
+  sec.insertBefore(bar,sec.firstChild);
+}
+const old=window.show; const w=function(v){ const r=old.apply(this,arguments); cur=(document.querySelector("section.view.on")||{}).id?.slice(2)||v; paint(); return r; }; window.show=w;
+// le lien « Créer mon profil » et les retours de profil repeignent aussi l'onglet
+const oldCm=window.v7&&window.v7.renderCm; if(oldCm){ const rc=window.v7.renderCm; window.v7.renderCm=function(){ const r=rc.apply(this,arguments); paint(); return r; }; }
+document.addEventListener("click",e=>{ if(e.target.closest("[data-cm],#v7go,#pgToCm")) setTimeout(paint,0); });
+cur=(document.querySelector("section.view.on")||{}).id?.slice(2)||"aujourdhui"; paint();
+window.v8={go,G};
+}catch(err){console.warn("v8",err)}})();
+</script>
 </body>
 </html>
