@@ -1659,7 +1659,7 @@ function buildWeek(mon,availOverride,opt={}){
     // en période de courses, la sortie longue reste le seul gros stimulus du week-end : le jour facile collé à elle est limité à 2 h
     if(!d.pinned&&["E1","E2"].includes(d.main.id)&&["specifique","competition","affutage"].includes(phase)&&[d.i-1,d.i+1].some(j=>days[j]&&["E4","E5","D1"].includes(days[j].main.id))&&av>120){ av=120; d.notes.push("à côté de la sortie longue : 2 h au plus en période de courses"); }
     const f=fitDur(d.main.id,av); d.dur=f.dur; d.v=f.v;
-    if(lk&&lk.key&&phase==="affutage") d.notes.push("affûtage : version courte, intensité maintenue");
+    if(lk&&lk.key&&phase==="affutage"&&d.main.id!=="C3") d.notes.push("affûtage : version courte, intensité maintenue");
     if(f.tight) d.notes.push("créneau court : version réduite");
     d.gymDur=d.gym&&d.main.id!==d.gym?LIB[d.gym].dS:0;
     d.addDur=(d.pinAdd||[]).reduce((a,x)=>a+(LIB[x].dS||0),0);
@@ -1730,7 +1730,7 @@ function buildWeek(mon,availOverride,opt={}){
       if(total<=cap) break; if(RW&&(LIB[d.main.id]||{}).sport==="course"&&days.filter(x=>(LIB[x.main.id]||{}).sport==="course").length<=3) continue; total-=d.dur; d.notes=["transformée en repos pour respecter le volume max"]; d.main={id:"R0"}; d.dur=0;
     }
     // semaine course : la sortie longue est raccourcie en dernier, et pas sous 90 % de ta plus longue course récente (on maintient, on ne recule pas)
-    if(RW) for(const d of days.filter(d=>d.main.id==="C3"&&!d.pinned&&!d.past)){ if(total<=cap) break; const min=phase==="affutage"?Math.min(40,LIB.C3.dS):c3Floor(mon,d.dur,deload?.65:.9), cut=Math.min(d.dur-min,Math.ceil((total-cap)/5)*5); if(cut>0){d.dur-=cut;total-=cut;d.notes.push("raccourcie pour respecter le volume max");} }
+    if(RW) for(const d of days.filter(d=>d.main.id==="C3"&&!d.pinned&&!d.past)){ if(total<=cap) break; const min=phase==="affutage"?LIB.C3.dS:c3Floor(mon,d.dur,deload?.65:.9), cut=Math.min(d.dur-min,Math.ceil((total-cap)/5)*5); if(cut>0){d.dur-=cut;total-=cut;d.notes.push("raccourcie pour respecter le volume max");} }
     const doneMin=days.filter(d=>d.past).reduce((a,d)=>a+d.dur,0);
     if(total>cap&&doneMin>=cap*.7) days.filter(d=>!d.past&&!d.pinned&&["E4","E5","D1"].includes(d.main.id)).forEach(d=>{const nd=Math.min(d.dur,Math.max(60,Math.round((cap-doneMin)/15)*15)); if(nd<120){total-=d.dur-nd;d.main={id:"E2"};d.dur=nd;d.notes.push("sortie longue remplacée : tu as déjà fait l’essentiel du volume de la semaine");}});
     if(total>cap){ const minL=LC&&LC.reprise?90:120;
@@ -1741,6 +1741,9 @@ function buildWeek(mon,availOverride,opt={}){
         d.gym=null; d.notes.push("muscu retirée pour respecter le plafond de la semaine"); } }
     if(total>cap) warns.push(RW?"Même raccourci, le plan dépasse le plafond ("+fmtMin(total)+" pour "+fmtMin(cap)+") : séances clés, sortie longue et une muscu sont gardées. Si tu sens la fatigue, raccourcis la sortie longue plutôt que les séances clés.":"Même raccourci, le plan dépasse le plafond ("+fmtMin(total)+" pour "+fmtMin(cap)+") : séances clés, sortie longue de "+fmtMin(LC&&LC.reprise?90:120)+" et une muscu sont gardées. Si tu sens la fatigue, remplace la sortie longue par 1 h 30 d’endurance.");
   }
+  // une « sortie longue » de moins d'1 h n'en est pas une : elle s'affiche comme un footing (base de course encore courte, ou affûtage)
+  days.filter(d=>!d.past&&!d.pinned&&d.main.id==="C3"&&d.dur<LIB.C3.dS).forEach(d=>{ d.main={id:"C1"}; d.dur=Math.min(d.dur,LIB.C1.dL);
+    d.notes=d.notes.filter(n=>!/sortie longue|affûtage : version courte/.test(n)).concat([phase==="affutage"?"affûtage : footing à la place de la sortie longue":"footing à la place de la sortie longue : ta plus longue course récente est encore courte, la sortie longue (1 h et plus) arrive quand la progression de 10 % par semaine le permet"]); });
   // semaine course : si, au final, 3 sorties ou moins restent avec 2 séances de qualité en plus de la sortie longue, la seconde devient un footing facile
   if(RW&&!opt.phase&&phase!=="competition"){ const R=days.filter(d=>!d.past&&(LIB[d.main.id]||{}).sport==="course"), done=days.filter(d=>d.past&&d.pastRun).length, Qd=R.filter(d=>!d.pinned&&(LIB[d.main.id]||{}).key&&!["C3","C4","C15","C13","C14"].includes(d.main.id));
     const qAll=R.filter(d=>(LIB[d.main.id]||{}).key&&!["C3"].includes(d.main.id)).length+days.filter(d=>d.past&&d.pastKey).length;
@@ -1989,7 +1992,7 @@ function decideToday(ci){
   // après un marathon : 7 jours sans course à pied, quel que soit le chemin qui a mené à cette séance
   if((LIB[cand]||{}).sport==="course"&&st.races.some(r=>raceSport(r)==="course"&&runDistOf(r)===42.195&&r.prio!=="C"&&diff(r.date,TODAY)>=1&&diff(r.date,TODAY)<=7)){
     trace.push("Moins de 7 jours après un marathon : pas de course à pied, les tissus ont besoin de temps pour récupérer."); cand=!pureRun&&time>=30?"E1":"R0"; }
-  if(["C3","C4","C15"].includes(cand)&&time<50){trace.push("Sortie longue de course prévue mais moins de 50 min disponibles : footing à la place, sans intensité pour compenser.");cand="C1";}
+  if(["C3","C4","C15"].includes(cand)&&time<60){trace.push("Sortie longue de course prévue mais moins d’1 h disponible : footing à la place, sans intensité pour compenser.");cand="C1";}
   // jambes lourdes : la course (impacts, excentrique) passe en vélo très facile quand c'est possible
   if((LIB[cand]||{}).sport==="course"&&+ci.sore>=4){
     if(!pureRun&&ci.equip!=="none"){trace.push("Jambes lourdes ou courbatures marquées (≥ 4/5) : la course est remplacée par du vélo très facile, sans impact. Les dommages musculaires dégradent la séance suivante jusqu’à 48 h (Twist et Eston 2009 ; Marcora et Bosio 2007).");cand="E1";}
@@ -2028,7 +2031,8 @@ function decideToday(ci){
     if(FIXED&&f.dur>lim){
       if(lim<Lc.dS){ const to=["C4","C15"].includes(cand)?"C3":"C1"; trace.push(Lc.nom+" ("+fmtMin(Lc.dS)+" au minimum) dépasse de plus de 10 % ta plus longue course "+(lr?"des 30 derniers jours ("+fmtMin(lr)+")":"(aucune course enregistrée sur 30 jours)")+" : "+(to==="C3"?"sortie longue":"footing")+" de "+fmtMin(lim)+" à la place."); note+=(note?" ":"")+"La séance reviendra quand ta plus longue course aura progressé."; cand=to; f={dur:lim,v:"courte"}; }
       else { trace.push("Plus de 10 % au-delà de ta plus longue course des 30 derniers jours : version courte."); f={dur:Lc.dS,v:"courte"}; } }
-    else if(f.dur>lim){ trace.push("Durée ramenée à "+fmtMin(lim)+" : pas plus de 10 % au-delà de ta plus longue course des 30 derniers jours."); f={dur:lim,v:f.v}; } }
+    else if(f.dur>lim){ trace.push("Durée ramenée à "+fmtMin(lim)+" : pas plus de 10 % au-delà de ta plus longue course des 30 derniers jours."); f={dur:lim,v:f.v}; }
+    if(cand==="C3"&&f.dur<LIB.C3.dS){ trace.push("Moins d’1 h : c’est un footing, pas une sortie longue."); cand="C1"; f={dur:Math.min(f.dur,LIB.C1.dL),v:"courte"}; } }
 
   // 10. limites du jour
   const s=LIB[cand]||{};
