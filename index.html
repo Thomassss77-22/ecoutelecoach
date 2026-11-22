@@ -3824,8 +3824,21 @@ function nutriHTML(n){ if(!n) return "<p class='small muted'>Pas de besoin parti
 const fx=(n,d)=>Number(n).toFixed(d).replace(".",",");
 function firstDataDate(){const ds=S.sessions.map(s=>s.date).concat(Object.keys(S.checkins)).sort();return ds[0]||null;}
 let bilOffset=0;
+// plan du jour tel qu'il était affiché : chaque jour garde la dernière version vue avant qu'il ne passe (le Bilan s'en sert)
+function snapPlan(){
+  const mon=mondayOf(TODAY); let W; try{ W=buildWeek(mon); }catch(e){ return; }
+  S.planLog=S.planLog||{}; let ch=false;
+  W.days.forEach(d=>{ if(d.date<TODAY||d.past) return; const v={id:d.main.id,dur:d.dur||0,gym:d.gym||null,gymDur:d.gym?(+d.gymDur||0):0};
+    if(JSON.stringify(S.planLog[d.date])!==JSON.stringify(v)){ S.planLog[d.date]=v; ch=true; } });
+  const old=addDays(TODAY,-180); Object.keys(S.planLog).forEach(k=>{ if(k<old){ delete S.planLog[k]; ch=true; } });
+  if(ch) save();
+}
 function weekReport(mon){
   const W=buildWeek(mon,null,{asPlanned:true}), end=addDays(mon,6), logs=S.sessions.filter(s=>s.date>=mon&&s.date<=end);
+  // jours dont on a gardé le plan réellement affiché : il remplace la reconstruction (qui recalcule la semaine avec les réglages d'aujourd'hui)
+  const PL=S.planLog||{}; let snap=false;
+  W.days.forEach(d=>{ const p=PL[d.date]; if(!p||(d.main&&d.main.id==="RACE")||(p.id!=="RACE"&&!LIB[p.id])) return; if(p.id!=="RACE") d.main={id:p.id}; d.dur=p.dur; d.gym=p.gym; d.gymDur=p.gymDur; snap=true; });
+  if(snap){ W.total=W.days.reduce((a,d)=>a+(d.main.id==="RACE"?0:(d.dur||0))+(d.gym?(+d.gymDur||0):0),0); W.keysPlanned=W.days.filter(d=>d.main.id==="RACE"||(LIB[d.main.id]||{}).key).length; }
   const rows=W.days.map(d=>{const all=logs.filter(s=>s.date===d.date), pl=d.main.id, past=d.date<TODAY, today=d.date===TODAY;
     const isG=s=>sessSport(s)==="muscu", plG=(LIB[pl]||{}).sport==="muscu", done=plG?all:all.filter(s=>!isG(s)), gymDone=all.some(isG);
     let st;
@@ -3867,6 +3880,7 @@ function weekAdvice(R,mon){
 }
 function renderBilan(){
   const el=document.getElementById("bilanOut"); if(!el) return;
+  try{snapPlan();}catch(e){}
   const mon=addDays(mondayOf(TODAY),bilOffset*7); const R=weekReport(mon); const adv=weekAdvice(R,mon);
   const next=addDays(mon,7), nPh=phaseFor(next);
   document.getElementById("bilTitle").textContent=(bilOffset===0?"Bilan de la semaine en cours, du ":"Bilan de la semaine du ")+parse(mon).toLocaleDateString("fr-FR",{day:"numeric",month:"long"});
@@ -5670,7 +5684,7 @@ addEventListener("resize",placeMode);
 function hideTips(){ document.querySelectorAll(".v2tip.on,#v4tip.on").forEach(t=>t.classList.remove("on")); }
 addEventListener("scroll",hideTips,{passive:true});
 document.addEventListener("click",e=>{ if(e.target.closest&&e.target.closest("#tabs button")) hideTips(); },true);
-function run(){ try{raceBox();}catch(e){console.warn("v5 race",e)} try{heroNext();}catch(e){console.warn("v5 next",e)} try{heroSport();}catch(e){} try{placeMode();}catch(e){} animateProfile(); }
+function run(){ try{snapPlan();}catch(e){} try{raceBox();}catch(e){console.warn("v5 race",e)} try{heroNext();}catch(e){console.warn("v5 next",e)} try{heroSport();}catch(e){} try{placeMode();}catch(e){} animateProfile(); }
 ["renderToday","renderAllNow","renderAll"].forEach(n=>{ const f=window[n]; if(typeof f==="function"&&!f.v5){ const w=function(){ const r=f.apply(this,arguments); try{run();}catch(e){} return r; }; w.v5=true; window[n]=w; } });
 run(); setTimeout(run,400);
 }catch(err){console.warn("v5",err)}})();
