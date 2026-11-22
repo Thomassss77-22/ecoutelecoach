@@ -1218,7 +1218,7 @@ function buildLib(){
       obj:"Préparer tendons et technique avant la charge lourde (2-3 semaines).",int:"60-70 % du max sur une répétition · 2 répétitions en réserve",
       court:"Goblet squat, fentes, hip thrust, soulevé de terre roumain : 2 × 12-15. Gainage 3 × 40 s.",long:"Même contenu en 3 séries + mollets et tirage dos."},
     {id:"M2",nom:"Musculation : force lourde",cat:"muscu",sport:"muscu",key:false,phases:["base","construction"],dS:45,dL:60,
-      obj:"Force maximale : efficacité de pédalage, puissance anaérobie, durabilité.",int:"80-90 % du max · 4-6 répétitions · 1-2 en réserve",
+      obj:"Force maximale : "+(S.settings.sportProfile==="course"?"économie de course, puissance de foulée":"efficacité de pédalage, puissance anaérobie")+", durabilité.",int:"80-90 % du max · 4-6 répétitions · 1-2 en réserve",
       court:"Échauffement 10 min, demi-squat ou presse 4 × 4-6, fente bulgare 3 × 6/jambe, soulevé de terre roumain 3 × 6, gainage.",
       long:"Même contenu + 3 × 3 squat jumps (en fin de bloc, pas avant) + mollets 3 × 10. Montée en charge progressive sur 2-3 semaines."},
     {id:"M3",nom:"Musculation : entretien",cat:"muscu",sport:"muscu",key:false,phases:["specifique","competition","affutage"],dS:30,dL:40,
@@ -1521,7 +1521,7 @@ function buildWeek(mon,availOverride,opt={}){
   const capOff=!opt.phase&&S.capOff&&S.capOff[mon];
   const LC=opt.phase||capOff?null:loadCtx(mon);
   if(capOff) warns.push("Ajustements de charge désactivés par toi cette semaine (progression, fatigue, reprise) : seul ton volume max s’applique. Le check-in du matin continue de juger chaque séance.");
-  if(LC&&LC.reprise&&tag!=="maladie"){keys=Math.min(keys,1);gym=Math.min(gym,1);warns.push("Reprise après "+LC.reprise+" jours sans séance enregistrée : 1 séance clé au maximum et volume réduit. Si tu as roulé sans l’enregistrer, synchronise ou ajoute tes sorties : le plan se recalera.");}
+  if(LC&&LC.reprise&&tag!=="maladie"){keys=Math.min(keys,1);gym=Math.min(gym,1);warns.push("Reprise après "+LC.reprise+" jours sans séance enregistrée : 1 séance clé au maximum et volume réduit. Si tu t’es entraîné sans l’enregistrer, synchronise ou ajoute tes séances : le plan se recalera.");}
   if(LC&&LC.fatigue&&!shock&&tag!=="maladie"){keys=Math.max(0,keys-1);warns.push("Fatigue détectée ("+LC.fatigue.join(", ")+") : une séance clé de moins et volume réduit de 15 % cette semaine (entraînement guidé par la VFC et le ressenti).");}
   if(LC&&LC.monotony&&!shock) warns.push("Monotonie élevée sur 7 jours ("+LC.monotony.toFixed(1).replace(".",",")+") : le plan garde au moins un vrai jour de repos et des jours faciles vraiment faciles.");
   const P_=days.filter(d=>d.past&&d.main.id!=="RACE"), keys0=keys, pastKeys=P_.filter(d=>d.pastKey).length;
@@ -2111,7 +2111,7 @@ function renderToday(){
   const box=document.getElementById("todayOut");
   let struct="";
   if(r.id==="RACE") struct="<p>"+esc(r.race.name)+" · priorité "+esc(r.race.prio)+(r.race.profile?" · "+esc(r.race.profile):"")+"</p>";
-  else if(s.sport!=="repos") struct=`<dl class="kv"><dt>Objectif</dt><dd>${esc(s.obj)}</dd><dt>Version</dt><dd>${esc(r.variant)} · ${fmtMin(r.dur)}</dd><dt>Intensité</dt><dd>${esc(s.int)}</dd><dt>Contenu</dt><dd>${esc(r.variant==="longue"?s.long:s.court)}</dd></dl>`;
+  else if(s.sport!=="repos") struct=`<dl class="kv"><dt>Objectif</dt><dd>${esc(s.obj)}</dd><dt>Version</dt><dd>${esc(r.variant)} · ${fmtMin(r.dur)}</dd><dt>Intensité</dt><dd>${esc(s.int)}</dd><dt>Contenu</dt><dd>${esc(contentText(r.id,r.variant,r.dur))}</dd></dl>`;
   else struct="<p>"+esc(s.court)+"</p>";
   const ch=(()=>{const dd=Object.assign({},r.slot,{main:{id:r.id,race:r.race},dur:r.dur||0,gymDur:r.slot.gymDur||0});return dayCHO(dd);})();
   const done=S.sessions.filter(x=>x.date===TODAY&&x.id!=="R0");
@@ -2124,7 +2124,7 @@ function renderToday(){
     ${["velo","course"].includes(s.sport)&&r.id!=="RACE"?svgWorkout(r.id,r.variant,r.dur):""}
     ${s.sport!=="repos"?`<div class="fields">${fields.map(f=>`<div class="field"><span>${f[0]}</span><b>${esc(f[1])}</b></div>`).join("")}</div>`:""}
     ${r.note?`<div class="alert warn">${esc(r.note)}</div>`:""}
-    ${s.sport!=="repos"&&r.id!=="RACE"?`<details><summary>Le détail de la séance</summary><dl class="kv"><dt>Contenu</dt><dd>${esc(r.variant==="longue"?s.long:s.court)}</dd><dt>Intensité</dt><dd>${esc(s.int)}</dd></dl></details>`:""}
+    ${s.sport!=="repos"&&r.id!=="RACE"?`<details><summary>Le détail de la séance</summary><dl class="kv"><dt>Contenu</dt><dd>${esc(contentText(r.id,r.variant,r.dur))}</dd><dt>Intensité</dt><dd>${esc(s.int)}</dd></dl></details>`:""}
     ${done.length?`<div class="alert good"><b>Séance faite</b>${done.map(x=>esc((LIB[x.id]||{}).nom||x.id)+", "+fmtMin(+x.dur||0)).join(" · ")}. L’analyse est plus bas.</div>`:`<div class="actions">
       ${LIB[r.id]&&LIB[r.id].sport!=="repos"?`${["velo","course"].includes(LIB[r.id].sport)?`<button class="btn ghost" id="qSend" type="button">Envoyer sur ma montre</button>`:""}<button class="btn ghost" id="qGarmin" type="button">Fichier .fit</button>`:""}
       <label>Durée faite (min)<input id="qDur" type="number" value="${r.dur||""}"></label><label>RPE (0-10)<input id="qRpe" type="number" min="0" max="10"></label>
@@ -2240,14 +2240,14 @@ function renderWeek(){
   const rows=W.days.map(d=>{
     if(d.past&&d.main.id!=="RACE"){ const dn=d.done.map(x=>esc((LIB[x.id]||{}).nom||x.id)+" · "+fmtMin(+x.dur||0)+(x.rpe!==""&&x.rpe!=null?" · RPE "+x.rpe:"")).join("<br>");
       return `<tr class="past" style="opacity:.6"><td><b>${DAYS[d.i]}</b><br><span class="muted small">${fmtD(d.date)}</span><br><span class="small muted">jour passé</span></td>
-      <td>${dn?"<span class='tag'>fait</span><br>"+dn:"<span class='muted'>Rien d’enregistré</span>"}</td><td class="num">${d.dur?fmtMin(d.dur):"—"}</td><td class="small" colspan="3">${dn?"":"<span class='muted'>Rien d’enregistré : la séance n’est pas reportée. Si tu as roulé, ajoute-la dans Suivi.</span>"}</td></tr>`; }
+      <td>${dn?"<span class='tag'>fait</span><br>"+dn:"<span class='muted'>Rien d’enregistré</span>"}</td><td class="num">${d.dur?fmtMin(d.dur):"—"}</td><td class="small" colspan="3">${dn?"":"<span class='muted'>Rien d’enregistré : la séance n’est pas reportée. Si tu t’es entraîné, ajoute la séance dans Suivi.</span>"}</td></tr>`; }
     const s=LIB[d.main.id]||{};const nom=d.main.id==="RACE"?"Course : "+d.main.race.name:s.nom;
     const fixed=d.main.id==="RACE"; const ch=dayCHO(d);
     const pin=(S.pins||{})[d.date]||{}, mod=!!(pin.id||(pin.add||[]).length||pin.noGym);
     const mv=fixed?"<span class='small muted'>course fixe</span>":`<button class="editbtn${mod?" on":""}" type="button" data-edit="${d.i}" aria-label="Modifier ${DAYS[d.i]}">${mod?"✎ Modifié":"Modifier"}</button>`;
     const key=d.main.id==="RACE"||s.key;
     const wh=d.main.id==="RACE"||!whyOn?null:whyHere(W,d), whyHtml=wh&&(wh.obj||wh.why)?`<div class="whybox">${wh.obj?`<div><b>À quoi ça sert :</b> ${esc(wh.obj)}</div>`:""}${wh.why?`<div><b>Pourquoi ici :</b> ${esc(wh.why)}</div>`:""}</div>`:"";
-    const content=d.main.id==="RACE"?"Priorité "+d.main.race.prio:(s.sport==="repos"?"—":(d.v==="longue"?s.long:s.court));
+    const content=d.main.id==="RACE"?"Priorité "+d.main.race.prio:(s.sport==="repos"?"—":contentText(d.main.id,d.v,d.dur));
     const extra=d.extra.map(x=>"+ "+sicoH(x)+esc(LIB[x].nom)+" ("+fmtMin(LIB[x].dS)+")"+((d.pinAdd||[]).includes(x)?` <button class="xbtn" type="button" data-unadd="${d.date}|${x}" aria-label="Retirer ${esc(LIB[x].nom)}">✕</button>`:"")).join("<br>");
     return `<tr draggable="${!fixed}" data-dr="${d.i}" style="cursor:${fixed?"default":"grab"}"><td><b>${DAYS[d.i]}</b><br><span class="muted small">${fmtD(d.date)}</span><br>${mv}</td>
       <td><b>${sicoH(d.main.id)}${esc(nom)}</b>${key?' <span class="tag key">clé</span>':""}${d.pinned?' <span class="tag pin">choisie</span>':""}${["velo","course"].includes(s.sport)&&d.main.id!=="RACE"?svgMini(d.main.id,d.v,d.dur):""}${extra?"<span class='small' style='display:block;margin-top:2px'>"+extra+"</span>":""}${whyHtml}</td>
@@ -3787,7 +3787,7 @@ document.addEventListener("keydown",e=>{ if(e.key==="Escape"&&sheet) closeSheet(
 document.addEventListener("click",e=>{ if(e.target&&e.target.id==="sheetBg") closeSheet(); });
 // ---------- à quoi sert chaque séance et pourquoi elle est ici (d'après ses voisines de la semaine) ----------
 function whyHere(W,d){ const D=W.days, L=x=>LIB[x]||{}, nm=x=>DAYS[x.i].toLowerCase();
-  const kind=x=>{ if(!x) return ""; const id=x.main.id; if(id==="RACE") return "race"; const l=L(id); if(l.sport==="repos") return "rest"; if(l.sport==="muscu") return "gym"; if(l.sport==="course") return "run"; if(l.key) return "key"; if(l.sport==="velo"&&(x.dur||0)>=150&&x.main.id!=="E3") return "long"; return "easy"; };
+  const kind=x=>{ if(!x) return ""; const id=x.main.id; if(id==="RACE") return "race"; const l=L(id); if(l.sport==="repos") return "rest"; if(l.sport==="muscu") return "gym"; if(l.sport==="course") return ["C3","C4","C15"].includes(id)?"long":l.key?"key":"run"; if(l.key) return "key"; if(l.sport==="velo"&&(x.dur||0)>=150&&x.main.id!=="E3") return "long"; return "easy"; };
   const k=kind(d), id=d.main.id, l=L(id), pv=D[d.i-1], nx=D[d.i+1], kp=kind(pv), kn=kind(nx);
   const hasG=!!(d.gym&&d.main.id!==d.gym);
   const before=pv?(pv.past&&pv.done&&pv.done.length?"après ta séance de la veille":kp==="rest"?"après un jour de repos, donc des jambes fraîches":kp==="key"?"au lendemain d’une séance dure":kp==="long"?"au lendemain d’une longue sortie":kp==="gym"?"au lendemain de la muscu":kp==="race"?"au lendemain d’une course":"après un jour facile, donc des jambes disponibles"):"en début de semaine";
@@ -3802,12 +3802,15 @@ function whyHere(W,d){ const D=W.days, L=x=>LIB[x]||{}, nm=x=>DAYS[x.i].toLowerC
     if(["P2","P3"].includes(id)) why="Un test ne se fait jamais fatigué (il sous-estimerait ta FTP) : il est placé "+before+(after?", "+after:"")+".";
   } else if(k==="long"){
     const hardYest=!!(pv&&pv.past&&pv.pastKey), glued=kp==="key"||kn==="key"||hardYest;
-    const ease=hardYest?" Hier tu as fait une séance dure : garde cette sortie vraiment facile, sous "+Math.round(fcRef()*.8)+" bpm (petit braquet dans les bosses, pas de sprint), mange dès la première heure (60 à 90 g de glucides par heure), et raccourcis si tu es très lourd après 1 h 30. L’intensité, tu l’as déjà faite.":"";
-    why="Ton créneau le plus long ("+fmtMin(d.avail||d.dur)+") sert à la sortie longue, "+before+(after?", "+after:"")+"."+(glued?(hardYest?" Elle suit une séance dure."+ease:" Elle touche une séance dure : roule-la tranquille pour protéger la séance dure.")+" Tu peux l’échanger avec un autre jour dans « Modifier ».":" Elle n’est pas collée à une séance dure, pour ne pas dégrader la qualité de l’intensité.");
+    const run=l.sport==="course";
+    const ease=hardYest?(run?" Hier tu as fait une séance dure : garde cette sortie vraiment facile, sous "+Math.round(runProf().fcmax*.78)+" bpm, bois et mange au-delà de 1 h 15, et raccourcis si les jambes sont très lourdes. L’intensité, tu l’as déjà faite."
+      :" Hier tu as fait une séance dure : garde cette sortie vraiment facile, sous "+Math.round(fcRef()*.8)+" bpm (petit braquet dans les bosses, pas de sprint), mange dès la première heure (60 à 90 g de glucides par heure), et raccourcis si tu es très lourd après 1 h 30. L’intensité, tu l’as déjà faite."):"";
+    why="Ton créneau le plus long ("+fmtMin(d.avail||d.dur)+") sert à la sortie longue, "+before+(after?", "+after:"")+"."+(glued?(hardYest?" Elle suit une séance dure."+ease:(run?" Elle touche une séance dure : cours-la tranquillement pour protéger la séance dure.":" Elle touche une séance dure : roule-la tranquille pour protéger la séance dure."))+" Tu peux l’échanger avec un autre jour dans « Modifier ».":" Elle n’est pas collée à une séance dure, pour ne pas dégrader la qualité de l’intensité.");
   } else if(k==="gym"){
     why="La musculation se place à 48 h d’une autre séance de jambes et hors des 3 jours avant une course, "+before+(after?", "+after:"")+".";
   } else if(k==="run"){
-    why="Footing court sur un jour libre, "+before+" : jamais la veille d’une séance dure ni le lendemain d’une muscu, car l’impact de la course fatigue les jambes.";
+    why=W.RW?"Footing facile : il ajoute du volume de course sans fatigue, "+before+(after?", "+after:"")+". Pas trois jours de course d’affilée quand c’est évitable, et pas le lendemain d’une muscu."
+      :"Footing court sur un jour libre, "+before+" : jamais la veille d’une séance dure ni le lendemain d’une muscu, car l’impact de la course fatigue les jambes.";
   } else if(k==="rest"){
     why=(d.notes||[]).some(n=>/imposé/.test(n))?"Au moins 1 jour de repos par semaine : c’est là que l’adaptation se fait. Placé "+(kn==="key"?"la veille d’une séance dure":kp==="key"||kp==="long"?"après une séance dure":"là où il gêne le moins")+".":"Jour de repos : l’adaptation se fait pendant la récupération. Placé "+(kn==="key"||kn==="long"?"la veille d’une séance dure":kp==="key"||kp==="long"?"après une séance dure":"entre deux enchaînements de séances")+".";
   } else {
@@ -4238,6 +4241,19 @@ async function offerZip(files,zipName,msgEl){
   try{ await dlNS.save({filename:zipName,data:makeZip(files)}); say(files.length+" séance(s) exportée(s). Décompresse le .zip, branche ta montre ou ton compteur en USB et copie les .fit dans Garmin/NewFiles (ou dépose-les sur intervals.icu). N’utilise pas « Importer des données » de Garmin Connect : il n’accepte que les activités enregistrées et refuse les séances.");}
   catch(e){ say(e&&e.code==="declined"?"Téléchargement annulé.":e&&e.code==="rate_limited"?"Une autre fenêtre de téléchargement est ouverte, réessaie dans un instant.":"Téléchargement impossible ("+((e&&e.code)||"erreur")+")."); }
 }
+// contenu d'une séance pour sa durée réelle : textes générés depuis la structure, pour que le contenu et la durée affichée disent toujours la même chose
+function contentText(id,v,dur){ const L=LIB[id]; if(!L) return ""; const D=fmtMin(dur||0);
+  const C={E1:D+" très souple, cadence libre, sur le plat.",E2:D+" en endurance fondamentale (Z2) : régulier, tu peux parler.",E4:D+" en Z2, terrain varié ; mange dès la 1re heure.",
+    C1:D+" de footing facile, terrain souple.",C3:D+" en endurance fondamentale, terrain varié."+(dur>=75?" Glucides 30 à 60 g/h au-delà de 1 h 15.":"")};
+  if(C[id]&&dur) return C[id];
+  if(L.sport==="muscu"||L.sport==="repos"||!dur) return v==="longue"?L.long:L.court;
+  let st; try{ st=planSteps(id,v,dur); }catch(e){ st=null; } if(!st||!st.length) return v==="longue"?L.long:L.court;
+  const t=sec=>{ sec=Math.round(sec); if(sec<60) return sec+" s"; const m=Math.floor(sec/60), r=sec%60; return r>=10&&sec<600?m+" min "+String(r).padStart(2,"0"):fmtMin(Math.round(sec/60)); };
+  const low=x=>{ x=String(x||""); return /^[A-ZÉ][a-zéèêàç]/.test(x)?x.charAt(0).toLowerCase()+x.slice(1):x; };
+  const f=x=>{ if(x.rep) return x.rep+" × ("+x.steps.map(f).join(", ")+")"; if(x.d==null) return low(x.n);
+    const n=low(x.n).replace(/ \d+( min| s)$/,"").replace(/^(\d+) (min|s) /,"");
+    return /^\d/.test(n)&&/\d ?k?m\b/.test(n)?n+" ("+t(x.d)+")":t(x.d)+" "+n; };
+  return st.map(f).join(", ")+"."; }
 function stepsText(steps){
   const f=s=>{ if(s.rep) return s.rep+" × ("+s.steps.map(f).join(" + ")+")";
     const d=s.d==null?"jusqu’au bouton Lap":(s.d>=60?fmtMin(s.d/60):s.d+" s");
@@ -5994,8 +6010,8 @@ function badges(){
     ["s16","flame","16 semaines solides","une saison complète",()=>streakWhen(16)],
     ["km100","road","Premier 100 km","en une sortie",()=>firstWhen(s=>velo(s)&&km(s)>=100)],
     ["km200","road","200 km","en une sortie",()=>firstWhen(s=>velo(s)&&km(s)>=200)],
-    ["kc1000","road","1 000 km","cumulés à vélo",()=>cumWhen(s=>velo(s)?km(s):0,1000)],
-    ["kc5000","road","5 000 km","cumulés à vélo",()=>cumWhen(s=>velo(s)?km(s):0,5000)],
+    ["kc1000","road",S.settings.sportProfile==="course"?"500 km":"1 000 km",S.settings.sportProfile==="course"?"cumulés en course":"cumulés à vélo",()=>cumWhen(s=>(S.settings.sportProfile==="course"?!velo(s):velo(s))?km(s):0,S.settings.sportProfile==="course"?500:1000)],
+    ["kc5000","road",S.settings.sportProfile==="course"?"2 000 km":"5 000 km",S.settings.sportProfile==="course"?"cumulés en course":"cumulés à vélo",()=>cumWhen(s=>(S.settings.sportProfile==="course"?!velo(s):velo(s))?km(s):0,S.settings.sportProfile==="course"?2000:5000)],
     ["d1500","mount","Grimpeur","1 500 m D+ en une sortie",()=>firstWhen(s=>velo(s)&&gain(s)>=1500)],
     ["h100","clock","100 heures","d’entraînement cumulées",()=>cumWhen(s=>(+s.dur||0)/60,100)],
     ["h500","clock","500 heures","d’entraînement cumulées",()=>cumWhen(s=>(+s.dur||0)/60,500)],
