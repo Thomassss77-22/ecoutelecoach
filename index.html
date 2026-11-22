@@ -6043,5 +6043,371 @@ try{ renderTodayV6(); renderProgres(); if(location.hash==="#progres") show("prog
 }catch(err){console.warn("v6",err)}})();
 </script>
 
+<style id="v7css">
+/* ===== v7 : compte automatique, profil public et communauté ===== */
+.cmtabs{display:inline-flex;gap:4px;background:var(--raised);padding:4px;border-radius:10px;margin:4px 0 18px;flex-wrap:wrap}
+.cmtabs button{border:0;background:none;font:650 14.5px var(--f);padding:8px 14px;border-radius:8px;color:var(--muted);cursor:pointer}
+.cmtabs button[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.av{flex:none;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:800;font-stretch:80%;font-size:17px;letter-spacing:0}
+.av.lg{width:96px;height:96px;font-size:38px}
+.av.sm{width:32px;height:32px;font-size:13px}
+.cmfeed{display:flex;flex-direction:column;gap:14px;max-width:680px}
+.cmlay{display:grid;grid-template-columns:minmax(0,680px) minmax(240px,320px);gap:24px;align-items:start}
+.cmlay>aside{position:sticky;top:16px;display:flex;flex-direction:column;gap:16px}
+@media (max-width:1100px){.cmlay{grid-template-columns:minmax(0,1fr)}.cmlay>aside{position:static;order:-1}}
+.act{border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:16px 18px}
+.act .hd{display:flex;gap:12px;align-items:center}
+.act .hd a{color:var(--ink);font-weight:700;text-decoration:none}
+.act .hd a:hover{text-decoration:underline}
+.act .hd .sub{font-size:13px;color:var(--muted)}
+.act h3{margin:12px 0 8px;font-size:21px;font-stretch:78%;font-weight:780;display:flex;align-items:center;gap:8px}
+.act .nums{display:flex;gap:26px;flex-wrap:wrap}
+.act .nums div{display:flex;flex-direction:column}
+.act .nums span{font-size:12.5px;color:var(--muted);font-weight:600}
+.act .nums b{font-stretch:72%;font-weight:800;font-size:24px;font-variant-numeric:tabular-nums}
+.act .ft{display:flex;align-items:center;gap:10px;margin-top:12px;padding-top:10px;border-top:1px solid var(--line);font-size:13.5px;color:var(--muted)}
+.kudo{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line2);background:var(--surface);border-radius:999px;padding:5px 12px;font:650 13.5px var(--f);color:var(--ink);cursor:pointer}
+.kudo svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2}
+.kudo[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.kudo[aria-pressed="true"] svg{fill:currentColor}
+.prof{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:20px;align-items:center}
+.prof h2{font-size:34px;font-stretch:68%;font-weight:840;margin:0;line-height:1}
+.prof .h{color:var(--muted);font-size:14px;margin-top:4px}
+.prof .bio{margin-top:8px;max-width:60ch}
+.prof .cnt{display:flex;gap:22px;margin-top:12px}
+.prof .cnt b{font-stretch:72%;font-weight:820;font-size:22px;display:block;font-variant-numeric:tabular-nums}
+.prof .cnt span{font-size:12.5px;color:var(--muted);font-weight:600}
+.pstats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:18px}
+.pstats div{background:var(--raised);border-radius:12px;padding:14px}
+.pstats span{font-size:12.5px;color:var(--muted);font-weight:600;display:block}
+.pstats b{font-stretch:70%;font-weight:820;font-size:30px;font-variant-numeric:tabular-nums}
+.pcal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;max-width:320px}
+.pcal i{width:auto!important;height:auto!important;min-width:0;aspect-ratio:1;display:block;border-radius:4px;background:var(--raised);position:relative}
+.pcal i.l1{background:color-mix(in srgb,var(--accent) 30%,var(--raised))} .pcal i.l2{background:color-mix(in srgb,var(--accent) 60%,var(--raised))} .pcal i.l3{background:var(--accent)}
+.pcal i.today{outline:2px solid var(--ink);outline-offset:1px}
+.ptrophy{display:flex;flex-wrap:wrap;gap:8px}
+.ptrophy span{display:inline-flex;align-items:center;gap:6px;background:var(--raised);border-radius:999px;padding:6px 12px 6px 6px;font-size:13.5px;font-weight:600}
+.ptrophy span i{width:24px;height:24px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center}
+.ptrophy span i svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2}
+.plist{display:flex;flex-direction:column}
+.plist .row{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.plist .row:first-child{border-top:0}
+.plist .row .t{flex:1;min-width:0}
+.plist .row .t a{color:var(--ink);font-weight:700;text-decoration:none}
+.plist .row .t .s{font-size:13px;color:var(--muted)}
+.vis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0}
+.vis button{text-align:left;border:1px solid var(--line2);background:var(--surface);border-radius:12px;padding:14px;font:inherit;color:var(--ink);cursor:pointer}
+.vis button b{display:block;font-size:15.5px;margin-bottom:4px}
+.vis button span{font-size:13px;color:var(--muted)}
+.vis button:hover{border-color:var(--ink)}
+.vis button[aria-pressed="true"]{border:2px solid var(--accent);padding:13px;background:var(--accent-soft)}
+.vis button.rec{border-color:var(--ink)}
+.cmform{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.cmform label{display:flex;flex-direction:column;gap:5px;font-size:13.5px;font-weight:600}
+.cmform label.full{grid-column:1/-1}
+.cmnote{font-size:13px;color:var(--muted)}
+.v7join{display:flex;gap:16px;align-items:center;flex-wrap:wrap;border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:14px 18px;margin-top:16px;grid-column:1/-1}
+.v7join .t{flex:1;min-width:220px}
+.mobonly{display:none!important}
+.navs{display:none}
+@media (max-width:900px){
+  .prof{grid-template-columns:auto minmax(0,1fr)} .prof>.act-btn{grid-column:1/-1}
+  .av.lg{width:72px;height:72px;font-size:28px} .prof h2{font-size:28px}
+  .pstats{grid-template-columns:1fr 1fr} .vis{grid-template-columns:1fr} .cmform{grid-template-columns:1fr}
+  .cmtabs{display:flex;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;max-width:100%} .cmtabs button{white-space:nowrap;flex:none;padding:8px 12px}
+  .cmboard th:nth-child(5),.cmboard td:nth-child(5),.cmboard th:nth-child(6),.cmboard td:nth-child(6){display:none}
+  .cmboard td a{white-space:normal}
+  nav.tabs>button[data-v="progres"]{display:none!important}
+  nav.tabs .sheet button.mobonly{display:flex!important}
+  nav.tabs button[data-v="communaute"] .navl{display:none} nav.tabs button[data-v="communaute"] .navs{display:inline}
+}
+</style>
+<script id="v7js">
+(function(){try{
+const $=(s,r=document)=>r.querySelector(s);
+const HEART='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>';
+const COLORS=["#2a78d6","#b83c64","#1baf7a","#eb6834","#6d5bd0","#0f8a9d","#8a5a2b","#3d4a5c"];
+const fr=n=>Number(n||0).toLocaleString("fr-FR");
+const dfr=d=>parse(d).toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"short"});
+const initials=n=>String(n||"?").trim().split(/\s+/).map(w=>w[0]).join("").slice(0,2).toUpperCase();
+const avatar=(p,cls="")=>`<span class="av ${cls}" style="background:${esc(p&&p.color||COLORS[0])}" aria-hidden="true">${esc(initials(p&&p.name))}</span>`;
+const kmS=v=>v?String(Math.round(v*10)/10).replace(".",","):"";
+const SPN={velo:"Vélo",course:"Course à pied",muscu:"Musculation"};
+const soc=()=>{ S.settings.social=S.settings.social||{visibility:null,name:"",handle:"",city:"",bio:"",club:"",color:""}; return S.settings.social; };
+const me=()=>typeof cloudUser!=="undefined"&&cloudUser?cloudUser:null;
+const isAnon=()=>{ const u=me(); return !!(u&&(u.is_anonymous||!u.email)); };
+let ERR=null;
+const missingTable=e=>e&&(e.code==="42P01"||e.code==="PGRST205"||/relation .* does not exist|Could not find the table/i.test(String(e.message||"")));
+
+/* ---------- 1. compte d'office : session anonyme créée au premier passage ---------- */
+let ensureP=null;
+function ensureAccount(){ if(!ensureP) ensureP=ensureAcc().finally(()=>{ ensureP=null; }); return ensureP; }
+async function ensureAcc(){
+  if(typeof cloudOn!=="function"||!cloudOn()||me()) return;
+  try{ const c=await cloudClient(); const {data}=await c.auth.getSession(); if(data&&data.session) return;
+    const r=await c.auth.signInAnonymously(); if(r.error) throw r.error;
+    if(r.data&&r.data.user){ await cloudAttach(r.data.user); hideLogin(); renderAccount(); }
+  }catch(e){ ERR=e; console.warn("compte automatique",e); }
+}
+// démarrage : on remplace l'écran de connexion obligatoire par un compte créé automatiquement
+const oldStart=window.cloudStart;
+if(typeof oldStart==="function"&&!oldStart.v7){ const w=async function(){ await oldStart.apply(this,arguments); if(!me()) await ensureAccount(); }; w.v7=true; window.cloudStart=w; }
+// l'écran de connexion n'apparaît plus d'office : on crée d'abord un compte automatique ; il reste accessible à la demande
+let askedLogin=false; const oldLogin=window.showLogin;
+if(typeof oldLogin==="function"&&!oldLogin.v7){ const w=function(mode){ if(mode==="login"&&!me()&&!askedLogin&&cloudOn()){ ensureAccount().then(()=>{ if(!me()) oldLogin.call(this,mode); }); return; } return oldLogin.apply(this,arguments); }; w.v7=true; window.showLogin=w; }
+const askLogin=()=>{ askedLogin=true; showLogin("login"); };
+setTimeout(()=>{ if(!me()&&!askedLogin) ensureAccount(); },3000);
+
+// encart compte : compte automatique, à sécuriser avec un e-mail
+const oldAcct=window.renderAccount;
+if(typeof oldAcct==="function"&&!oldAcct.v7){ const w=function(){ oldAcct.apply(this,arguments); const u=me(); if(!u) return;
+    const needPwd=(()=>{try{return localStorage.getItem("coach-needpwd")==="1"&&u.email;}catch(e){return false;}})();
+    const html=isAnon()?`<div class="acct"><span class="small">Compte créé automatiquement${soc().name?" : <b>"+esc(soc().name)+"</b>":""}. Ajoute ton e-mail pour le retrouver sur tes autres appareils.</span><button type="button" class="btn small" data-secure>Sécuriser mon compte</button><button type="button" class="linkbtn small" data-login2>J’ai déjà un compte</button></div>`
+      :needPwd?`<div class="acct"><span class="small">E-mail confirmé : <b>${esc(u.email)}</b>. Choisis un mot de passe pour te connecter ailleurs.</span><button type="button" class="btn small" data-pwd>Choisir un mot de passe</button></div>`:null;
+    if(html) ["acctSide","acctSettings"].forEach(id=>{const el=document.getElementById(id); if(el) el.innerHTML=html;});
+    document.querySelectorAll("[data-secure]").forEach(b=>b.onclick=secure);
+    document.querySelectorAll("[data-login2]").forEach(b=>b.onclick=askLogin);
+    document.querySelectorAll("[data-pwd]").forEach(b=>b.onclick=()=>{ showLogin("reset"); }); };
+  w.v7=true; window.renderAccount=w; }
+async function secure(){
+  const email=prompt("Ton adresse e-mail : un lien de confirmation va t’être envoyé. Tes données restent dans ce compte.");
+  if(!email) return;
+  try{ const c=await cloudClient(); const r=await c.auth.updateUser({email:email.trim()},{emailRedirectTo:location.origin+location.pathname}); if(r.error) throw r.error;
+    try{localStorage.setItem("coach-needpwd","1");}catch(e){}
+    toast("Lien envoyé à "+email.trim()+" : clique dessus, puis reviens choisir ton mot de passe."); }
+  catch(e){ toast(typeof authMsg==="function"?authMsg(e):String(e.message||e)); }
+}
+// mot de passe choisi après confirmation : on retire le rappel
+const oldSubmit=window.loginSubmit; if(typeof oldSubmit==="function"&&!oldSubmit.v7){ const w=async function(e){ const mode=document.getElementById("login").dataset.mode; const r=await oldSubmit.apply(this,arguments); if(mode==="reset") try{localStorage.removeItem("coach-needpwd");}catch(x){} renderAccount(); return r; }; w.v7=true; window.loginSubmit=w; const f=document.getElementById("lgForm"); if(f) f.onsubmit=w; }
+
+/* ---------- 2. publication : profil et résumés d'activités, jamais de données de santé ---------- */
+function slug(s){ return String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/[^a-z0-9_.-]+/g,"").slice(0,24); }
+function profileStats(){
+  const V=window.v6||{}, mon=mondayOf(TODAY), y0=TODAY.slice(0,4)+"-01-01";
+  const ses=(S.sessions||[]).filter(s=>s.date<=TODAY);
+  const sum=(a,f)=>a.reduce((x,s)=>x+f(s),0), km=s=>+(s.km||(s.an&&s.an.sum&&s.an.sum.km)||0), gn=s=>+(s.gainSum||(s.an&&s.an.sum&&s.an.sum.gain)||0);
+  const wk=ses.filter(s=>s.date>=mon), yr=ses.filter(s=>s.date>=y0);
+  const cal=[...Array(28)].map((_,i)=>{ const d=addDays(TODAY,i-27); return sum(ses.filter(s=>s.date===d),s=>+s.dur||0); });
+  let pts_week=0,pts_total=0,streak=0,badges=[],records=[];
+  try{ pts_week=V.weekPoints(mon).total; pts_total=V.seasonPoints().total; const st=V.currentStreak(); streak=st.n+(st.curSolid?1:0);
+    badges=V.badges().filter(b=>b.date).map(b=>({id:b.id,nom:b.nom,ic:b.ic,date:b.date}));
+    const R=V.records(); records=Object.entries(R.best).map(([k,b])=>{ const ev=R.events.filter(e=>e.k===k).slice(-1)[0]; return ev?{lab:ev.lab,val:ev.fmt(b.v),date:b.date}:null; }).filter(Boolean); }catch(e){}
+  return {week_mon:mon,week:{h:Math.round(sum(wk,s=>+s.dur||0)),km:Math.round(sum(wk,km)),gain:Math.round(sum(wk,gn)),n:wk.length},
+    year:{h:Math.round(sum(yr,s=>+s.dur||0)),km:Math.round(sum(yr,km)),gain:Math.round(sum(yr,gn)),n:yr.length},cal,pts_week,pts_total,streak,badges,records};
+}
+function actPts(s){ let p=Math.round((+s.dur||0)/60*10); try{ if(isKeyLog(s)) p+=25; }catch(e){} if(sessSport(s)==="muscu") p+=15; return p; }
+function actRows(uid){
+  const lim=addDays(TODAY,-90);
+  return (S.sessions||[]).filter(s=>s.date>=lim&&s.date<=TODAY&&s.id!=="R0"&&(+s.dur||0)>0).map(s=>{
+    const L=LIB[s.id]||{}, race=s.id==="RACE"?(S.settings.races||[]).find(r=>r.date===s.date):null;
+    const key=String(s.ext||[s.date,s.start||"",s.id,s.dur].join("-")).replace(/[^A-Za-z0-9:_-]/g,"").slice(0,80);
+    return {id:uid.slice(0,8)+":"+key,user_id:uid,date:s.date,sport:sessSport(s),title:race?("Course : "+(race.name||"")):(L.nom||"Séance"),
+      dur:Math.round(+s.dur||0),km:+(s.km||(s.an&&s.an.sum&&s.an.sum.km)||0)||null,gain:Math.round(+(s.gainSum||(s.an&&s.an.sum&&s.an.sum.gain)||0))||null,
+      kind:sessSport(s)==="muscu"?"muscu":(()=>{try{return isKeyLog(s)?"cle":"facile";}catch(e){return "facile";}})(),pts:actPts(s)};
+  });
+}
+let pubFp="", pubAt=0, pubBusy=false;
+async function publish(force){
+  const u=me(), P=soc(); if(!u||!P.visibility||!P.handle||pubBusy) return;
+  const stats=profileStats(), acts=actRows(u.id);
+  const prof={user_id:u.id,handle:P.handle,name:P.name||P.handle,city:P.city||null,bio:P.bio||null,club:(P.club||"").trim().toLowerCase()||null,sport:(typeof sportProfile==="function"?sportProfile():"velo"),color:P.color||COLORS[0],visibility:P.visibility,stats,updated_at:new Date().toISOString()};
+  const fp=JSON.stringify([prof.handle,prof.name,prof.city,prof.bio,prof.club,prof.color,prof.visibility,stats.pts_week,stats.pts_total,stats.streak,stats.week,stats.badges.length,acts.length,acts.slice(-1)]);
+  if(!force&&(fp===pubFp||Date.now()-pubAt<30000)) return;
+  pubBusy=true;
+  try{ const c=await cloudClient();
+    const r=await c.from("profiles").upsert(prof); if(r.error) throw r.error;
+    if(acts.length){ const r2=await c.from("activities").upsert(acts); if(r2.error) throw r2.error; }
+    // séances supprimées de l'appli : retirées du profil
+    const ex=await c.from("activities").select("id").eq("user_id",u.id).gte("date",addDays(TODAY,-90)); if(!ex.error){ const keep=new Set(acts.map(a=>a.id)), gone=(ex.data||[]).map(x=>x.id).filter(id=>!keep.has(id)); if(gone.length) await c.from("activities").delete().in("id",gone); }
+    pubFp=fp; pubAt=Date.now(); ERR=null;
+  }catch(e){ ERR=e; if(e&&e.code==="23505") toast("Ce pseudo est déjà pris : choisis-en un autre dans ton profil."); }
+  pubBusy=false;
+}
+
+/* ---------- 3. lectures ---------- */
+async function q(fn){ try{ const c=await cloudClient(); const r=await fn(c); if(r.error) throw r.error; return r.data; }catch(e){ ERR=e; return null; } }
+async function profilesBy(ids){ if(!ids.length) return {}; const d=await q(c=>c.from("profiles").select("user_id,handle,name,color,city,club,stats,visibility").in("user_id",ids)); const m={}; (d||[]).forEach(p=>m[p.user_id]=p); return m; }
+async function myFollowing(){ const u=me(); if(!u) return []; const d=await q(c=>c.from("follows").select("followee").eq("follower",u.id)); return (d||[]).map(x=>x.followee); }
+async function kudosFor(ids){ if(!ids.length) return {}; const d=await q(c=>c.from("kudos").select("activity_id,user_id").in("activity_id",ids)); const m={}; (d||[]).forEach(k=>{ (m[k.activity_id]=m[k.activity_id]||[]).push(k.user_id); }); return m; }
+
+/* ---------- 4. vue Communauté ---------- */
+let TAB="fil", VIEWED=null, FEEDN=12;
+function setTab(t){ TAB=t; VIEWED=null; renderCm(); }
+function shell(inner){
+  const tabs=[["fil","Fil d’actualité"],["classement","Classement"],["athletes","Athlètes"],["moi","Mon profil"]];
+  return `<div class="cmtabs" role="tablist" aria-label="Communauté">${tabs.map(([k,l])=>`<button type="button" role="tab" data-cm="${k}" aria-selected="${TAB===k&&!VIEWED}">${l}</button>`).join("")}</div><div id="cmBody">${inner}</div>`;
+}
+function bind(){ document.querySelectorAll("[data-cm]").forEach(b=>b.onclick=()=>{ location.hash="communaute"; setTab(b.dataset.cm); });
+  document.querySelectorAll("[data-ath]").forEach(a=>a.onclick=e=>{ e.preventDefault(); openProfile(a.dataset.ath); });
+  document.querySelectorAll("[data-follow]").forEach(b=>b.onclick=()=>follow(b.dataset.follow,b.dataset.on!=="1"));
+  document.querySelectorAll("[data-kudo]").forEach(b=>b.onclick=()=>kudo(b));
+}
+function setupCard(){
+  const P=soc(); const name=P.name||"", handle=P.handle||"";
+  return `<div class="card"><h2>Ton profil</h2><p class="small muted">Comme sur Strava : un profil avec tes séances, tes stats, tes records et tes badges, que d’autres peuvent suivre et encourager. Tes données de santé (VFC, FC, sommeil, check-in, douleur, maladie, poids) ne sont jamais publiées.</p>
+    <div class="cmform"><label>Nom affiché<input id="cmName" maxlength="40" value="${esc(name)}" placeholder="ex. Roi Touchard"></label><label>Pseudo (adresse du profil)<input id="cmHandle" maxlength="24" value="${esc(handle)}" placeholder="ex. roi31"></label></div>
+    <p style="margin:14px 0 2px"><b>Qui voit ton profil et tes séances ?</b></p>
+    <div class="vis" role="group" aria-label="Visibilité du profil">
+      <button type="button" class="rec" data-vis="public"><b>Tout le monde</b><span>Recommandé : tout compte de l’appli voit ton profil, te suit et te classe.</span></button>
+      <button type="button" data-vis="following"><b>Les personnes que je suis</b><span>Seuls ceux que tu suis toi-même te voient.</span></button>
+      <button type="button" data-vis="private"><b>Moi seul</b><span>Rien n’est visible par les autres.</span></button></div>
+    <p class="cmnote">Tu pourras changer à tout moment dans Mon profil.</p></div>`;
+}
+function bindSetup(){
+  const nm=$("#cmName"), hd=$("#cmHandle"); if(nm&&hd){ nm.oninput=()=>{ if(!hd.dataset.touched) hd.value=slug(nm.value); }; hd.oninput=()=>{ hd.dataset.touched=1; hd.value=slug(hd.value); }; }
+  document.querySelectorAll("[data-vis]").forEach(b=>b.onclick=async()=>{ const P=soc(); const n=(nm?nm.value:P.name).trim(), h=slug(hd?hd.value:P.handle);
+    if(n.length<2){ nm&&nm.focus(); toast("Indique un nom d’au moins 2 caractères."); return; }
+    if(h.length<3){ hd&&hd.focus(); toast("Choisis un pseudo d’au moins 3 caractères (lettres, chiffres, point, tiret)."); return; }
+    Object.assign(P,{name:n,handle:h,visibility:b.dataset.vis,color:P.color||COLORS[Math.abs([...h].reduce((a,c)=>a*31+c.charCodeAt(0)|0,7))%COLORS.length],chosenAt:TODAY}); save();
+    await publish(true); if(ERR&&ERR.code==="23505"){ P.visibility=null; save(); } renderCm(); renderJoin(); });
+}
+function statusCard(){
+  const e=ERR; if(!e) return "";
+  if(missingTable(e)) return `<div class="alert warn">La communauté n’est pas encore activée sur le serveur : il manque les tables dans Supabase. Le fichier <b>supabase/social.sql</b> du dépôt les crée en une fois (éditeur SQL de Supabase).</div>`;
+  if(/anonymous/i.test(String(e.message||""))) return `<div class="alert warn">La création automatique de compte n’est pas activée dans Supabase (Authentication, Sign In / Providers, « Allow anonymous sign-ins »). En attendant, crée un compte avec ton e-mail.</div>`;
+  return `<div class="alert warn">Communauté indisponible pour l’instant : ${esc(String(e.message||e))}</div>`;
+}
+function actCard(a,p,K){
+  const mine=me()&&(K[a.id]||[]).includes(me().id), n=(K[a.id]||[]).length;
+  const col=a.sport==="velo"?"var(--v4-1)":a.sport==="course"?"var(--v4-2)":"var(--v4-3)";
+  return `<article class="act"><div class="hd">${avatar(p)}<div><a href="#communaute/@${esc(p&&p.handle||"")}" data-ath="${esc(p&&p.handle||"")}">${esc(p&&p.name||"Athlète")}</a><div class="sub">${dfr(a.date)} · ${SPN[a.sport]||a.sport}${p&&p.city?" · "+esc(p.city):""}</div></div></div>
+    <h3><i class="spm" style="background:${col}"></i>${esc(a.title)}</h3>
+    <div class="nums"><div><span>Durée</span><b>${fmtMin(a.dur)}</b></div>${a.km?`<div><span>Distance</span><b>${kmS(a.km)} km</b></div>`:""}${a.gain?`<div><span>Dénivelé</span><b>${fr(a.gain)} m</b></div>`:""}<div><span>Points</span><b>+${a.pts}</b></div></div>
+    <div class="ft"><button type="button" class="kudo" data-kudo="${esc(a.id)}" aria-pressed="${mine}" ${me()&&a.user_id===me().id?"disabled":""}>${HEART}<span>${n}</span></button><span>${n?n+" bravo"+(n>1?"s":""):(me()&&a.user_id===me().id?"":"Dis bravo")}</span></div></article>`;
+}
+async function renderFil(){
+  const u=me(); const ids=await myFollowing(); const all=[...ids,u.id];
+  const acts=await q(c=>c.from("activities").select("*").in("user_id",all).order("date",{ascending:false}).order("created_at",{ascending:false}).limit(FEEDN))||[];
+  const P=await profilesBy([...new Set(acts.map(a=>a.user_id))]), K=await kudosFor(acts.map(a=>a.id));
+  let h=statusCard();
+  if(!ids.length) h+=`<div class="card"><h2>Suis d’autres athlètes</h2><p class="small muted">Ton fil montre tes séances et celles des personnes que tu suis. Commence par les athlètes de ton club.</p><div id="cmSuggest">${await suggestHTML()}</div></div>`;
+  const feed=acts.length?`<div class="cmfeed">${acts.map(a=>actCard(a,P[a.user_id],K)).join("")}</div>${acts.length>=FEEDN?`<p><button type="button" class="btn ghost small" data-more>Afficher plus</button></p>`:""}`:`<p class="small muted">Aucune séance publiée pour l’instant : importe ou saisis une sortie, elle apparaîtra ici.</p>`;
+  const st=profileStats(), mp=P[u.id]||{name:soc().name,color:soc().color,handle:soc().handle};
+  const side=`<div class="card"><div style="display:flex;gap:12px;align-items:center">${avatar(mp)}<div><a href="#communaute/@${esc(mp.handle||"")}" data-ath="${esc(mp.handle||"")}" style="color:var(--ink);font-weight:700;text-decoration:none">${esc(mp.name||"")}</a><div class="small muted">${ids.length} abonnement${ids.length>1?"s":""}</div></div></div>
+    <div class="pstats" style="grid-template-columns:1fr 1fr;margin-top:14px"><div><span>Cette semaine</span><b>${fmtMin(st.week.h)||"0 min"}</b></div><div><span>Points</span><b>${fr(st.pts_week)}</b></div><div><span>Série</span><b>${st.streak} sem.</b></div><div><span>Badges</span><b>${st.badges.length}</b></div></div></div>`;
+  return h+`<div class="cmlay"><div>${feed}</div><aside>${side}</aside></div>`;
+}
+async function suggestHTML(){
+  const u=me(), P=soc(), ids=new Set(await myFollowing());
+  let rows=await q(c=>{ let x=c.from("profiles").select("user_id,handle,name,color,city,club,stats").neq("user_id",u.id).order("updated_at",{ascending:false}).limit(30); return x; })||[];
+  if(P.club) rows.sort((a,b)=>(b.club===P.club)-(a.club===P.club));
+  rows=rows.slice(0,12);
+  return rows.length?`<div class="plist">${rows.map(p=>`<div class="row">${avatar(p,"sm")}<div class="t"><a href="#communaute/@${esc(p.handle)}" data-ath="${esc(p.handle)}">${esc(p.name)}</a><div class="s">@${esc(p.handle)}${p.city?" · "+esc(p.city):""}${p.club?" · club "+esc(p.club):""} · ${fr(p.stats&&p.stats.week&&p.stats.week.h?Math.round(p.stats.week.h/6)/10:0)} h cette semaine</div></div><button type="button" class="btn small ${ids.has(p.user_id)?"ghost":""}" data-follow="${p.user_id}" data-on="${ids.has(p.user_id)?1:0}">${ids.has(p.user_id)?"Suivi":"Suivre"}</button></div>`).join("")}</div>`:`<p class="small muted">Personne d’autre n’a encore publié son profil. Partage l’appli à ton club !</p>`;
+}
+let SCOPE="all";
+async function renderClassement(){
+  const u=me(), P=soc(), ids=await myFollowing(), mon=mondayOf(TODAY);
+  let rows=await q(c=>{ let x=c.from("profiles").select("user_id,handle,name,color,club,stats").limit(300); if(SCOPE==="club"&&P.club) x=x.eq("club",P.club.trim().toLowerCase()); if(SCOPE==="following") x=x.in("user_id",[...ids,u.id]); return x; })||[];
+  rows=rows.map(p=>Object.assign({},p,{pw:p.stats&&p.stats.week_mon===mon?p.stats.pts_week||0:0,pt:p.stats&&p.stats.pts_total||0,st:p.stats&&p.stats.streak||0,bd:p.stats&&p.stats.badges?p.stats.badges.length:0})).sort((a,b)=>b.pw-a.pw||b.pt-a.pt);
+  const seg=`<div class="pgsegb" role="group" aria-label="Portée"><button type="button" data-sc="all" aria-pressed="${SCOPE==="all"}">Tout le monde</button><button type="button" data-sc="following" aria-pressed="${SCOPE==="following"}">Mes abonnements</button><button type="button" data-sc="club" aria-pressed="${SCOPE==="club"}" ${P.club?"":"disabled title=\"Indique ton club dans Mon profil\""}>Mon club</button></div>`;
+  return statusCard()+`<div class="card"><h2>Classement de la semaine</h2><p class="small muted">Points gagnés en suivant son plan (voir Progrès). Remis à zéro chaque lundi.</p>${seg}`+(rows.length?`<div class="tablewrap pgboard cmboard"><table><thead><tr><th>Rang</th><th>Athlète</th><th class="num">Semaine</th><th class="num">Total</th><th class="num">Série</th><th class="num">Badges</th></tr></thead><tbody>${rows.map((r,i)=>`<tr class="${r.user_id===u.id?"me":""}"><td class="rk">${i+1}</td><td><a href="#communaute/@${esc(r.handle)}" data-ath="${esc(r.handle)}" style="color:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:8px">${avatar(r,"sm")}${esc(r.name)}</a></td><td class="num">${fr(r.pw)}</td><td class="num">${fr(r.pt)}</td><td class="num">${r.st} sem.</td><td class="num">${r.bd}</td></tr>`).join("")}</tbody></table></div>`:`<p class="small muted">Personne ici pour l’instant.</p>`)+`</div>`;
+}
+async function renderAthletes(){
+  return statusCard()+`<div class="card"><h2>Trouver des athlètes</h2><label class="small" style="display:flex;flex-direction:column;gap:6px;font-weight:600;max-width:420px">Nom ou pseudo<input id="cmSearch" placeholder="ex. roi, club-toulouse" autocomplete="off"></label><div id="cmRes" style="margin-top:12px">${await suggestHTML()}</div></div>`;
+}
+async function search(t){
+  const u=me(), ids=new Set(await myFollowing()); const s=String(t||"").replace(/[%,()*]/g,"").trim();
+  const rows=s.length<2?null:await q(c=>c.from("profiles").select("user_id,handle,name,color,city,club,stats").or(`handle.ilike.%${s}%,name.ilike.%${s}%,club.ilike.%${s}%`).neq("user_id",u.id).limit(30));
+  const el=$("#cmRes"); if(!el) return;
+  el.innerHTML=rows===null?await suggestHTML():rows.length?`<div class="plist">${rows.map(p=>`<div class="row">${avatar(p,"sm")}<div class="t"><a href="#communaute/@${esc(p.handle)}" data-ath="${esc(p.handle)}">${esc(p.name)}</a><div class="s">@${esc(p.handle)}${p.city?" · "+esc(p.city):""}${p.club?" · club "+esc(p.club):""}</div></div><button type="button" class="btn small ${ids.has(p.user_id)?"ghost":""}" data-follow="${p.user_id}" data-on="${ids.has(p.user_id)?1:0}">${ids.has(p.user_id)?"Suivi":"Suivre"}</button></div>`).join("")}</div>`:`<p class="small muted">Aucun athlète trouvé.</p>`;
+  bind();
+}
+const ICOB=k=>`<svg viewBox="0 0 24 24">${({flame:'<path d="M12 3c1 3 4 4.5 4 8.5a4 4 0 0 1-8 0c0-1.6.7-2.8 1.6-3.8C10 10 11 9 12 3z"/>',bolt:'<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',road:'<path d="M8 21l3-18M16 21l-3-18"/>',mount:'<path d="M2 20l7-12 4 6 3-4 6 10z"/>',clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',heart:'<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>',check:'<path d="M5 12l4 4 10-10"/>',target:'<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/>',trophy:'<path d="M8 4h8v5a4 4 0 0 1-8 0zM12 13v4M8 21h8"/>',shoe:'<path d="M3 16h16a2 2 0 0 1 2 2v1H3zM4 16l1-8 4 1 2 3 5 2 3 2"/>'})[k]||'<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>'}</svg>`;
+async function profileHTML(p,editable){
+  const u=me(), st=p.stats||{}, mon=mondayOf(TODAY), wk=st.week_mon===mon?st.week||{}:{h:0,km:0,gain:0};
+  const [fol,fing,ids]=await Promise.all([q(c=>c.from("follows").select("follower",{count:"exact"}).eq("followee",p.user_id)),q(c=>c.from("follows").select("followee").eq("follower",p.user_id)),myFollowing()]);
+  const following=ids.includes(p.user_id);
+  const acts=await q(c=>c.from("activities").select("*").eq("user_id",p.user_id).order("date",{ascending:false}).limit(8))||[]; const K=await kudosFor(acts.map(a=>a.id));
+  const cal=(st.cal||[]).map((m,i)=>`<i class="${m>=150?"l3":m>=75?"l2":m>0?"l1":""} ${i===27?"today":""}" title="${dfr(addDays(TODAY,i-27))} : ${m?fmtMin(m):"repos"}"></i>`).join("");
+  const btn=editable?"":`<button type="button" class="btn act-btn ${following?"ghost":""}" data-follow="${p.user_id}" data-on="${following?1:0}">${following?"Suivi":"Suivre"}</button>`;
+  return `<div class="card"><div class="prof">${avatar(p,"lg")}<div><h2>${esc(p.name)}</h2><div class="h">@${esc(p.handle)}${p.city?" · "+esc(p.city):""}${p.club?" · club "+esc(p.club):""}${editable?" · "+({public:"profil public",following:"visible par les personnes que tu suis",private:"profil privé"})[p.visibility]:""}</div>${p.bio?`<p class="bio">${esc(p.bio)}</p>`:""}
+    <div class="cnt"><div><b>${fr((fol&&fol.length)||0)}</b><span>abonnés</span></div><div><b>${fr((fing&&fing.length)||0)}</b><span>abonnements</span></div><div><b>${st.streak||0}</b><span>sem. de série</span></div><div><b>${fr(st.pts_total)}</b><span>points</span></div></div></div>${btn}</div>
+    <div class="pstats"><div><span>Cette semaine</span><b>${fmtMin(wk.h||0)||"0 min"}</b></div><div><span>Distance (semaine)</span><b>${fr(wk.km)} km</b></div><div><span>Dénivelé (semaine)</span><b>${fr(wk.gain)} m</b></div><div><span>Cette année</span><b>${fr(Math.round((st.year&&st.year.h||0)/60))} h</b></div></div></div>
+    <div class="pggrid"><div class="card"><h2>4 dernières semaines</h2><div class="pcal" aria-label="Calendrier des 28 derniers jours">${cal}</div><p class="small muted" style="margin-top:8px">Plus la case est foncée, plus la journée a été longue.</p></div>
+    <div class="card"><h2>Trophées</h2>${(st.badges||[]).length?`<div class="ptrophy">${st.badges.map(b=>`<span title="obtenu le ${dfr(b.date)}"><i>${ICOB(b.ic)}</i>${esc(b.nom)}</span>`).join("")}</div>`:`<p class="small muted">Pas encore de badge.</p>`}
+    ${(st.records||[]).length?`<h3 style="margin-top:16px">Records</h3><div class="plist">${st.records.map(r=>`<div class="row"><div class="t">${esc(r.lab)}<div class="s">${dfr(r.date)}</div></div><b>${esc(r.val)}</b></div>`).join("")}</div>`:""}</div></div>
+    <h2 style="margin:8px 0 12px">Activités récentes</h2>${acts.length?`<div class="cmfeed">${acts.map(a=>actCard(a,p,K)).join("")}</div>`:`<p class="small muted">Aucune activité publiée.</p>`}`;
+}
+async function renderMoi(){
+  const P=soc(); if(!P.visibility) return statusCard()+setupCard();
+  await publish(false);
+  const u=me(); const p=(await q(c=>c.from("profiles").select("*").eq("user_id",u.id).maybeSingle()))||{user_id:u.id,handle:P.handle,name:P.name,city:P.city,bio:P.bio,club:P.club,color:P.color,visibility:P.visibility,stats:profileStats()};
+  return statusCard()+await profileHTML(p,true)+`<div class="card"><h2>Modifier mon profil</h2><div class="cmform">
+    <label>Nom affiché<input id="cmName" maxlength="40" value="${esc(P.name||"")}"></label><label>Pseudo<input id="cmHandle" maxlength="24" value="${esc(P.handle||"")}"></label>
+    <label>Ville<input id="cmCity" maxlength="40" value="${esc(P.city||"")}" placeholder="ex. Toulouse"></label><label>Club ou groupe<input id="cmClub" maxlength="32" value="${esc(P.club||"")}" placeholder="ex. club-toulouse"></label>
+    <label class="full">Bio<textarea id="cmBio" maxlength="200" rows="2" placeholder="ex. Coureur sur route, objectif : les cols pyrénéens">${esc(P.bio||"")}</textarea></label></div>
+    <p style="margin:14px 0 2px"><b>Qui voit ton profil et tes séances ?</b></p>
+    <div class="vis" role="group" aria-label="Visibilité du profil"><button type="button" data-v2="public" aria-pressed="${P.visibility==="public"}"><b>Tout le monde</b><span>Tout compte de l’appli.</span></button><button type="button" data-v2="following" aria-pressed="${P.visibility==="following"}"><b>Les personnes que je suis</b><span>Seuls ceux que tu suis.</span></button><button type="button" data-v2="private" aria-pressed="${P.visibility==="private"}"><b>Moi seul</b><span>Rien n’est visible par les autres.</span></button></div>
+    <div class="row"><button type="button" class="btn" id="cmSave">Enregistrer</button><span class="cmnote">Données de santé jamais publiées. Tu peux tout retirer avec « Moi seul ».</span></div></div>`;
+}
+function bindMoi(){
+  const P=soc(); const g=id=>$("#"+id);
+  document.querySelectorAll("[data-v2]").forEach(b=>b.onclick=()=>{ document.querySelectorAll("[data-v2]").forEach(x=>x.setAttribute("aria-pressed",String(x===b))); });
+  const sv=g("cmSave"); if(sv) sv.onclick=async()=>{ const sel=document.querySelector("[data-v2][aria-pressed=true]"); const h=slug(g("cmHandle").value), n=g("cmName").value.trim();
+    if(n.length<2||h.length<3){ toast("Nom d’au moins 2 caractères et pseudo d’au moins 3."); return; }
+    const old=P.handle; Object.assign(P,{name:n,handle:h,city:g("cmCity").value.trim(),club:g("cmClub").value.trim(),bio:g("cmBio").value.trim(),visibility:sel?sel.dataset.v2:P.visibility}); save();
+    await publish(true); if(ERR&&ERR.code==="23505"){ P.handle=old; save(); } else toast("Profil enregistré."); renderCm(); };
+}
+async function openProfile(handle){
+  VIEWED=handle; location.hash="communaute/@"+handle; const body=$("#v-communaute .cmwrap"); if(!body) return;
+  body.innerHTML=shell(`<p class="small muted">Chargement…</p>`); bind();
+  const p=await q(c=>c.from("profiles").select("*").eq("handle",handle).maybeSingle());
+  const mine=p&&me()&&p.user_id===me().id;
+  $("#cmBody").innerHTML=p?`<p><button type="button" class="linkbtn" id="cmBack">← Retour</button></p>`+await profileHTML(p,mine):statusCard()+`<p class="small muted">Ce profil n’existe pas ou n’est pas visible pour toi.</p>`;
+  const bk=$("#cmBack"); if(bk) bk.onclick=()=>{ history.back(); }; bind();
+}
+async function renderCm(){
+  const sec=$("#v-communaute"); if(!sec) return; const body=sec.querySelector(".cmwrap");
+  if(!me()){ body.innerHTML=statusCard()+`<div class="card"><h2>Communauté</h2><p class="small muted">Création de ton compte en cours… Si rien ne se passe, crée un compte avec ton e-mail.</p><button class="btn" type="button" data-login>Se connecter ou créer un compte</button></div>`; body.querySelectorAll("[data-login]").forEach(b=>b.onclick=askLogin); return; }
+  if(VIEWED) return openProfile(VIEWED);
+  if(!soc().visibility&&TAB!=="moi"){ body.innerHTML=shell(setupCard()); bind(); bindSetup(); return; }
+  body.innerHTML=shell(`<p class="small muted">Chargement…</p>`); bind();
+  let h=""; try{ h=TAB==="fil"?await renderFil():TAB==="classement"?await renderClassement():TAB==="athletes"?await renderAthletes():await renderMoi(); }catch(e){ ERR=e; h=statusCard(); }
+  const b=$("#cmBody"); if(!b) return; b.innerHTML=h; bind(); bindSetup(); bindMoi();
+  const s=$("#cmSearch"); if(s){ let t; s.oninput=()=>{ clearTimeout(t); t=setTimeout(()=>search(s.value),250); }; }
+  document.querySelectorAll("[data-sc]").forEach(x=>x.onclick=()=>{ SCOPE=x.dataset.sc; renderCm(); });
+  const mb=document.querySelector("[data-more]"); if(mb) mb.onclick=()=>{ FEEDN+=12; renderCm(); };
+}
+async function follow(uid,on){ const u=me(); if(!u) return;
+  const r=await q(c=>on?c.from("follows").insert({follower:u.id,followee:uid}):c.from("follows").delete().eq("follower",u.id).eq("followee",uid));
+  if(r===null&&ERR){ toast("Impossible pour l’instant : "+(ERR.message||ERR)); return; }
+  VIEWED?openProfile(VIEWED):renderCm(); }
+async function kudo(b){ const u=me(); if(!u) return; const id=b.dataset.kudo, on=b.getAttribute("aria-pressed")!=="true";
+  b.setAttribute("aria-pressed",String(on)); const n=b.querySelector("span"); n.textContent=String(Math.max(0,(+n.textContent||0)+(on?1:-1)));
+  await q(c=>on?c.from("kudos").insert({activity_id:id,user_id:u.id}):c.from("kudos").delete().eq("activity_id",id).eq("user_id",u.id)); }
+
+/* ---------- 5. invitation sur Aujourd'hui tant que le profil n'est pas créé ---------- */
+function renderJoin(){
+  const out=$("#todayOut"); if(!out) return; let j=$("#v7join"); const P=soc();
+  if(P.visibility||P.joinLater===TODAY){ if(j) j.remove(); return; }
+  if(!j){ j=document.createElement("div"); j.id="v7join"; j.className="v7join"; }
+  const hero=out.querySelector(".hero"); if(hero&&j.parentNode!==hero) hero.appendChild(j);
+  j.innerHTML=`<div class="t"><b>Crée ton profil</b><div class="small muted">Tes séances, ta série et tes badges visibles par ton club, des bravos sur tes sorties et le classement de la semaine.</div></div><button type="button" class="btn small" id="v7go">Créer mon profil</button><button type="button" class="linkbtn small" id="v7later">Plus tard</button>`;
+  $("#v7go").onclick=()=>{ TAB="moi"; location.hash="communaute"; show("communaute"); };
+  $("#v7later").onclick=()=>{ P.joinLater=TODAY; save(); j.remove(); };
+}
+
+/* ---------- branchements ---------- */
+if(typeof VIEWS!=="undefined"&&!VIEWS.includes("communaute")) VIEWS.push("communaute");
+const nav=$("#tabs"), after=nav&&(nav.querySelector('button[data-v="progres"]')||nav.querySelector('button[data-v="suivi"]'));
+if(after&&!nav.querySelector('button[data-v="communaute"]')){ const b=document.createElement("button"); b.setAttribute("role","tab"); b.dataset.v="communaute";
+  b.innerHTML=`<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.5"/><path d="M15.5 14.2c3 .2 5.5 2.6 5.5 5.8"/></svg><span class="navl">Communauté</span><span class="navs">Social</span>`;
+  after.after(b); b.onclick=()=>{ VIEWED=null; location.hash="communaute"; show("communaute"); }; }
+// sur téléphone, Progrès passe dans « Plus » pour laisser la place à Communauté
+const sheet=$("#moreSheet"), pg=nav&&nav.querySelector('button[data-v="progres"]');
+if(sheet&&pg&&!sheet.querySelector('[data-v="progres"]')){ const c=pg.cloneNode(true); c.classList.add("sec","mobonly"); sheet.insertBefore(c,sheet.firstChild); c.onclick=()=>{ location.hash="progres"; show("progres"); }; }
+if(!$("#v-communaute")){ const s=document.createElement("section"); s.className="view"; s.id="v-communaute"; s.innerHTML=`<div class="pagehead"><h1>Communauté</h1><p class="muted">Suis tes amis et ton club, dis bravo à leurs sorties et compare-toi au classement de la semaine.</p></div><div class="cmwrap"></div>`; const pv=$("#v-preuves"); pv.parentNode.insertBefore(s,pv); }
+const oldShow=window.show; if(typeof oldShow==="function"&&!oldShow.v7){ const w=function(v){ const r=oldShow.apply(this,arguments); if(v==="communaute") renderCm(); return r; }; w.v7=true; window.show=w; }
+addEventListener("hashchange",()=>{ const h=location.hash.slice(1); const m=h.match(/^communaute\/@([a-z0-9_.-]+)$/); if(m){ if(VIEWED!==m[1]) openProfile(m[1]); } else if(h==="communaute"&&VIEWED){ VIEWED=null; renderCm(); } });
+const wrapR=(n,fn)=>{ const f=window[n]; if(typeof f!=="function"||f.v7) return; const w=function(){ const r=f.apply(this,arguments); try{ fn(); }catch(e){ console.warn("v7 "+n,e); } return r; }; w.v7=true; window[n]=w; };
+wrapR("renderToday",renderJoin); wrapR("renderAllNow",()=>{ renderJoin(); publish(false); });
+// Progrès : le classement vit maintenant dans Communauté
+const pb=$("#pgBoard"); const fixPg=()=>{ const el=$("#pgBoard"); if(el) el.innerHTML=`<h2>Classement</h2><p class="small muted">Le classement de la semaine, ton profil et les séances de tes amis sont dans Communauté.</p><button class="btn small" type="button" id="pgToCm">Ouvrir la Communauté</button>`; const b=$("#pgToCm"); if(b) b.onclick=()=>{ TAB="classement"; location.hash="communaute"; show("communaute"); }; };
+const oldPg=window.show; void oldPg; const mo=new MutationObserver(()=>{ const el=$("#pgBoard"); if(el&&!el.querySelector("#pgToCm")) fixPg(); }); if(pb) mo.observe(pb,{childList:true}); fixPg();
+window.v7={publish,profileStats,renderCm};
+try{ renderJoin(); const m=location.hash.match(/^#communaute(?:\/@([a-z0-9_.-]+))?$/); if(m){ if(m[1]) VIEWED=m[1]; show("communaute"); } }catch(e){ console.warn("v7 init",e); }
+}catch(err){console.warn("v7",err)}})();
+</script>
+
 </body>
 </html>
