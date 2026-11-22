@@ -1511,7 +1511,7 @@ function buildWeek(mon,availOverride,opt={}){
   const prio=prioFor(phase,mon);
   let gym=P.gym, run=RW?Math.max(0,Math.min(sportProfile()==="velo"&&!+st.runOn?Math.max(+st.runMax||0,3):(+st.runMax||4),races.some(r=>r.prio!=="C"&&r.date>=mon&&r.date<=addDays(mon,6))?3:99)):(runOnW?Math.min(P.run,+st.runMax):0);
   if(phase==="affutage"){ const ra=races.find(r=>r.prio==="A"&&r.date>=mon); if(ra&&diff(mon,ra.date)<7) keys=Math.min(keys,1); }
-  if(deload){keys=Math.min(keys,1);gym=Math.min(gym,RW?0:1);run=RW?Math.max(1,run-(run>=5?2:1)):Math.min(run,1);}
+  if(deload){keys=Math.min(keys,1);gym=Math.min(gym,1);run=RW?Math.max(1,run-(run>=5?2:1)):Math.min(run,1);}
   // course à pied : avec 3 sorties ou moins (ou une base de course encore faible), 1 seule séance de qualité en plus de la sortie longue,
   // pour garder au moins une sortie facile et ≈ 80 % du temps en endurance (Seiler 2010 ; Rosenblat 2025 : pas de supériorité d'une répartition plus intense chez l'amateur)
   if(RW&&!opt.phase&&phase!=="competition"){ const slots=days.filter(d=>!d.past&&d.avail>=25).length+days.filter(d=>d.past&&d.pastRun).length, nRun=Math.min(run,slots), lowBase=recentLongRun(mon)<45;
@@ -1614,8 +1614,14 @@ function buildWeek(mon,availOverride,opt={}){
       d.main={id:strides&&!nextKey(d.i)?"C2":"C1"}; if(d.main.id==="C2") strides=false; left--; }
     // musculation restante : après un footing facile, si le créneau le permet (30 min de course au moins)
     const gD=LIB[gymId].dS;
-    for(;gymLeft>0;gymLeft--){ const d=days.find(d=>!d.past&&!d.pinned&&d.main&&["C1","C2"].includes(d.main.id)&&!nextKey(d.i)&&gymOk(d)&&d.avail-gD>=30);
-      if(d){ d.gym=gymId; d.extra.push(gymId); d.notes.push("muscu après le footing, jamais juste avant une séance de qualité"); }
+    // à défaut de place pour la séance complète, une version courte de 30 min (force lourde + pliométrie) après un footing raccourci : la musculation ne doit pas disparaître des semaines de course
+    for(;gymLeft>0;gymLeft--){ const ok=(d,g)=>!d.past&&!d.pinned&&d.main&&["C1","C2"].includes(d.main.id)&&!nextKey(d.i)&&gymOk(d)&&d.avail-LIB[g].dS>=25;
+      const g=days.some(d=>ok(d,gymId)&&d.avail-gD>=30)?gymId:"M3", d=days.filter(x=>ok(x,g)).sort((a,b)=>b.avail-a.avail)[0];
+      if(d){ d.gym=g; d.extra.push(g); d.notes.push("muscu après le footing"+(g==="M3"&&gymId!=="M3"?" (version courte de 30 min)":"")+", jamais juste avant une séance de qualité"); continue; }
+      // dernier recours : version courte la veille de la sortie longue (allure facile), jamais la veille d'une séance de qualité
+      const beforeLong=x=>x.i<6&&["C3"].includes((days[x.i+1].main||{}).id)&&gymOk(x)&&!x.past&&!x.pinned;
+      const f=days.find(x=>beforeLong(x)&&free(x)&&x.avail>=LIB.M3.dS&&!stealsRun(x))||days.find(x=>beforeLong(x)&&x.main&&["C1","C2"].includes(x.main.id)&&x.avail-LIB.M3.dS>=25);
+      if(f){ if(free(f)){ f.main={id:"M3"}; f.gym="M3"; } else { f.gym="M3"; f.extra.push("M3"); } f.notes.push("muscu courte la veille de la sortie longue : force lourde et sauts, peu de répétitions, pour ne pas alourdir les jambes"); continue; }
       else warns.push("Musculation non placée : tous tes créneaux servent déjà aux sorties de course. Si tu as 20 à 30 min en plus un jour facile, ajoute-la après un footing."); }
   }
   // course à pied
@@ -1786,6 +1792,11 @@ function buildWeek(mon,availOverride,opt={}){
   if(RW&&!opt.phase&&phase!=="competition"){ const R=days.filter(d=>!d.past&&(LIB[d.main.id]||{}).sport==="course"), done=days.filter(d=>d.past&&d.pastRun).length, Qd=R.filter(d=>!d.pinned&&(LIB[d.main.id]||{}).key&&!["C3","C4","C15","C13","C14"].includes(d.main.id));
     const qAll=R.filter(d=>(LIB[d.main.id]||{}).key&&!["C3"].includes(d.main.id)).length+days.filter(d=>d.past&&d.pastKey).length;
     if(R.length+done<=3&&qAll>=2&&Qd.length){ const d=Qd[Qd.length-1], lgD=Math.max(0,...R.filter(x=>["C3","C4","C15"].includes(x.main.id)).map(x=>x.dur)), nd=Math.min(d.dur,LIB.C1.dL,d.avail,lgD?Math.max(LIB.C1.dS,lgD-15):99); total-=d.dur-nd; d.main={id:"C1"}; d.dur=Math.max(LIB.C1.dS,Math.round(nd/5)*5); d.notes=["footing facile à la place d’une 2e séance de qualité : avec 3 sorties cette semaine, une seule séance de qualité en plus de la sortie longue"]; } }
+  // trail : préparer les cuisses aux descentes (exposition progressive, renforcement excentrique ; Bontemps 2020)
+  if(RW&&goal==="trail"&&!opt.phase&&!["affutage","transition"].includes(phase)){ const nA=races.find(r=>r.prio==="A"&&r.date>=mon&&isTrail(r)), late=nA&&diff(mon,nA.date)<10;
+    days.forEach(d=>{ if(d.past) return;
+      if(d.gym||(LIB[d.main.id]||{}).sport==="muscu") d.notes.push("trail : ajoute 3 × 8 descentes de marche lentes (step-down) et 3 × 12 mollets en excentrique, qui préparent les cuisses aux descentes");
+      if(d.main.id==="C3"&&!late) d.notes.push("trail : sur sentier, montées raides en marchant, et des descentes en augmentant peu à peu leur longueur (la dernière grosse descente vers J-10 à J-14)"); }); }
   days.forEach(d=>{ if(d.past||d.pinned||!d.dur||!d.main) return; const r=alignDur(d.main.id,d.v,d.dur); if(r.dur!==d.dur){ total+=r.dur-d.dur; d.dur=r.dur; } d.v=r.v; });
   total+=raceMin;
   // acclimatation à la chaleur (Racinais 2015) : séances faciles au chaud dans les 14 jours avant une course chaude
