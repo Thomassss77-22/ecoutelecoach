@@ -3826,15 +3826,19 @@ function firstDataDate(){const ds=S.sessions.map(s=>s.date).concat(Object.keys(S
 let bilOffset=0;
 function weekReport(mon){
   const W=buildWeek(mon,null,{asPlanned:true}), end=addDays(mon,6), logs=S.sessions.filter(s=>s.date>=mon&&s.date<=end);
-  const rows=W.days.map(d=>{const done=logs.filter(s=>s.date===d.date), pl=d.main.id, past=d.date<TODAY, today=d.date===TODAY;
+  const rows=W.days.map(d=>{const all=logs.filter(s=>s.date===d.date), pl=d.main.id, past=d.date<TODAY, today=d.date===TODAY;
+    const isG=s=>sessSport(s)==="muscu", plG=(LIB[pl]||{}).sport==="muscu", done=plG?all:all.filter(s=>!isG(s)), gymDone=all.some(isG);
     let st;
     if(pl==="R0") st=done.length?["warn","Séance ajoutée sur un jour de repos"]:(past||today?["good","Repos respecté"]:["", "À venir"]);
-    else if(!done.length) st=past?["bad","Manquée"]:["","À venir"];
+    else if(!done.length) st=past?["bad",gymDone?"Manquée (muscu faite)":"Manquée"]:["","À venir"];
     else if(done.some(s=>s.id===pl||s.planned===pl)) st=["good","Faite"];
-    else { const pk=(LIB[pl]||{}).key||pl==="RACE", dk=done.some(isKeyLog); st=pk&&!dk?["warn","Remplacée par une séance facile"]:!pk&&dk?["warn","Séance dure à la place d’une facile"]:["good","Faite (autre séance)"]; }
+    else { const pk=(LIB[pl]||{}).key||pl==="RACE", dk=done.some(isKeyLog); st=pk&&!dk?["warn",Math.max(0,...done.map(s=>+s.rpe||0))<=4?"Remplacée par une séance facile":"Remplacée par une autre séance (la séance clé prévue n’est pas faite)"]:!pk&&dk?["warn","Séance dure à la place d’une facile"]:["good","Faite (autre séance)"]; }
     const te=done.length&&pl!=="R0"&&pl!=="RACE"?teCheck(pl,done.find(x=>x.teA!=null||x.teAn!=null||x.benefit)||done[0]):null;
-    return {d,done,st,te};});
-  const plannedMin=W.total, doneMin=logs.reduce((a,s)=>a+(+s.dur||0),0);
+    if(d.gym&&!plG&&(past||today||gymDone)) st=[st[0]==="good"&&!gymDone&&past?"warn":st[0],st[1]+(gymDone?" · muscu faite":past?" · muscu manquée":"")];
+    return {d,done:all,st,te};});
+  const plannedMin=W.total, doneMin=logs.reduce((a,s)=>a+(+s.dur||0),0), cur=mon===mondayOf(TODAY), elapsed=cur?diff(mon,TODAY)+1:7;
+  const plannedTD=cur?W.days.filter(d=>d.date<=TODAY).reduce((a,d)=>a+(d.main.id==="RACE"?0:(d.dur||0))+(d.gym?(+d.gymDur||0):0),0):plannedMin;
+  const keysPlTD=cur?W.days.filter(d=>d.date<=TODAY&&(d.main.id==="RACE"||(LIB[d.main.id]||{}).key)).length:W.keysPlanned;
   const keysDone=logs.filter(isKeyLog).length, keysPl=W.keysPlanned;
   const gload=logs.reduce((a,s)=>a+(+s.gLoad||0),0), load=logs.reduce((a,s)=>a+(+s.dur||0)*(s.rpe===""?3:+s.rpe),0), tss=logs.reduce((a,s)=>a+(+s.tss||0),0);
   const rpes=logs.filter(s=>s.rpe!=="").map(s=>+s.rpe);
@@ -3842,7 +3846,7 @@ function weekReport(mon){
   const cnt=k=>lv.filter(x=>x===k).length;
   const sl=cis.filter(c=>c.sleep!==""&&c.sleep!=null).map(c=>+c.sleep);
   const mm=w=>Math.max(0,...logs.filter(s=>s.mmp).map(s=>s.mmp[w]||0));
-  return {W,rows,plannedMin,doneMin,keysDone,keysPl,load,gload,tss,rpeAvg:rpes.length?mean(rpes):null,green:cnt("good"),orange:cnt("warn"),red:cnt("bad"),nCI:lv.length,sleep:sl.length?mean(sl):null,b300:mm(300),b1200:mm(1200),missed:rows.filter(r=>r.st[1]==="Manquée").length};
+  return {W,rows,plannedMin,plannedTD,keysPlTD,cur,elapsed,doneMin,keysDone,keysPl,load,gload,tss,rpeAvg:rpes.length?mean(rpes):null,green:cnt("good"),orange:cnt("warn"),red:cnt("bad"),nCI:lv.length,sleep:sl.length?mean(sl):null,b300:mm(300),b1200:mm(1200),missed:rows.filter(r=>r.st[1].startsWith("Manquée")).length};
 }
 function weekAdvice(R,mon){
   const a=[], next=addDays(mon,7), nPh=phaseFor(next), nDl=isDeload(next,nPh);
@@ -3857,7 +3861,7 @@ function weekAdvice(R,mon){
   const tooEasy=teW.filter(r=>(EXP_BEN[r.d.main.id]||0)>=4).length, tooHard=teW.filter(r=>(EXP_BEN[r.d.main.id]||9)<=2).length;
   if(tooEasy) a.push(["warn",tooEasy+" séance(s) clé(s) moins intense(s) que prévu d’après le Training Effect : vérifie ta FTP (trop basse ?) ou tiens mieux les cibles des répétitions."]);
   if(tooHard) a.push(["warn",tooHard+" sortie(s) facile(s) trop appuyée(s) d’après le Training Effect : reste en Z2 sur les sorties d’endurance, c’est ce qui permet de réussir les séances dures."]);
-  if(R.nCI<4) a.push(["warn","Check-in rempli "+R.nCI+" jour(s) sur 7 : les alertes de fatigue sont peu fiables avec si peu de données."]);
+  if(R.nCI<Math.min(4,R.elapsed)) a.push(["warn","Check-in rempli "+R.nCI+" jour(s) sur "+R.elapsed+(R.cur?" écoulés":"")+" : les alertes de fatigue sont peu fiables avec si peu de données."]);
   if(R.rpeAvg!=null&&R.rpeAvg>6&&R.W.phase==="base") a.push(["warn","RPE moyen de "+fx(R.rpeAvg,1)+" en phase de base : trop d’intensité, les sorties faciles doivent rester faciles."]);
   return a;
 }
@@ -3871,13 +3875,13 @@ function renderBilan(){
   const kp=(k,v,sm,cls)=>`<div class="kpi static ${cls||""}"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${sm}</div></div>`;
   el.innerHTML=`<div class="row small"><span class="chip"><span class="dot" style="background:${phColor(R.W.phase)}"></span>${PHL[R.W.phase]}${R.W.deload?" · semaine allégée":""}</span></div>
     <div class="kpis" style="margin:0">
-      ${kp("Volume",fmtMin(R.doneMin)||"0 min","sur "+fmtMin(R.plannedMin)+" prévus ("+pct(R.doneMin,R.plannedMin)+")")}
+      ${kp("Volume",fmtMin(R.doneMin)||"0 min",R.cur?"sur "+fmtMin(R.plannedTD)+" prévus à ce jour ("+pct(R.doneMin,R.plannedTD)+"), "+fmtMin(R.plannedMin)+" sur la semaine":"sur "+fmtMin(R.plannedMin)+" prévus ("+pct(R.doneMin,R.plannedMin)+")")}
       ${kp("Séances clés",R.keysDone+" / "+R.keysPl,R.keysPl?(R.keysDone>=R.keysPl?"toutes faites":"à faire ou manquées"):"aucune prévue",R.keysPl&&R.keysDone<R.keysPl&&bilOffset<0?"warn":"")}
       ${kp("Charge",Math.round(R.load),"RPE moyen "+(R.rpeAvg!=null?fx(R.rpeAvg,1):"—")+(R.tss?" · TSS "+R.tss:""))}
       ${(()=>{const T=tidReal(addDays(mon,-21),addDays(mon,6)); return T?kp("Facile / modéré / dur (FC, 4 sem.)",T.f.map(x=>Math.round(x*100)).join(" / ")+" %",(T.pi!=null?(T.pi>2?"polarisé":"pyramidal")+" · indice de Treff "+fx(T.pi,2):T.f[0]>=0.7?"pyramidal":"trop de zone modérée"),T.f[0]<0.7?"warn":""):"";})()}
       ${kp("Forme (check-in)",`<span style="color:var(--good)">${R.green}</span> · <span style="color:var(--warn)">${R.orange}</span> · <span style="color:var(--bad)">${R.red}</span>`,"vert · orange · rouge"+(R.sleep!=null?" · sommeil "+fx(R.sleep,1)+" h":""),R.red?"bad":R.orange?"warn":"")}
     </div>
-    <div class="tablewrap stackable"><table><thead><tr><th>Jour</th><th>Prévu</th><th>Réalisé</th><th>Statut</th></tr></thead><tbody>${R.rows.map(r=>`<tr><td>${DAYS[r.d.i]}<br><span class="small muted">${fmtD(r.d.date)}</span></td><td>${esc(r.d.main.id==="RACE"?"Course":(LIB[r.d.main.id]||{}).nom)}${r.d.dur?" · "+fmtMin(r.d.dur):""}</td><td>${r.done.map(s=>esc((LIB[s.id]||{nom:s.id==="RACE"?"Course":s.id}).nom)+" · "+fmtMin(+s.dur||0)+(s.rpe!==""?" · RPE "+s.rpe:"")).join("<br>")||"—"}</td><td>${r.st[0]?`<span class="chip ${r.st[0]}">${r.st[1]}</span>`:`<span class="muted">${r.st[1]}</span>`}${r.te?`<br><span class="small" style="color:var(--${r.te[0]==="good"?"good":"warn"})">${esc(r.te[1])}</span>`:""}</td></tr>`).join("")}</tbody></table></div>
+    <div class="tablewrap stackable"><table><thead><tr><th>Jour</th><th>Prévu</th><th>Réalisé</th><th>Statut</th></tr></thead><tbody>${R.rows.map(r=>`<tr><td>${DAYS[r.d.i]}<br><span class="small muted">${fmtD(r.d.date)}</span></td><td>${esc(r.d.main.id==="RACE"?"Course":(LIB[r.d.main.id]||{}).nom)}${r.d.dur?" · "+fmtMin(r.d.dur):""}${r.d.gym?"<br>"+esc((LIB[r.d.gym]||{}).nom||"Musculation")+" · "+fmtMin(+r.d.gymDur||0):""}</td><td>${r.done.map(s=>esc((LIB[s.id]||{nom:s.id==="RACE"?"Course":s.id}).nom)+" · "+fmtMin(+s.dur||0)+(s.rpe!==""?" · RPE "+s.rpe:"")).join("<br>")||"—"}</td><td>${r.st[0]?`<span class="chip ${r.st[0]}">${r.st[1]}</span>`:`<span class="muted">${r.st[1]}</span>`}${r.te?`<br><span class="small" style="color:var(--${r.te[0]==="good"?"good":"warn"})">${esc(r.te[1])}</span>`:""}</td></tr>`).join("")}</tbody></table></div>
     <h3>Pour la semaine prochaine (${PHL[nPh]})</h3>
     ${adv.map(x=>`<div class="alert ${x[0]}">${esc(x[1])}${x[2]==="deload"&&["base","construction","specifique"].includes(nPh)?`<div class="row" style="margin-top:6px"><button class="btn small" type="button" id="advDeload">${(S.deloadOv||{})[next]?"Annuler la semaine allégée avancée":"Avancer la semaine allégée à la semaine prochaine"}</button></div>`:""}</div>`).join("")||"<p class='small muted'>Rien de particulier.</p>"}`;
   const b=document.getElementById("advDeload"); if(b) b.onclick=()=>{S.deloadOv=S.deloadOv||{}; if(S.deloadOv[next]) delete S.deloadOv[next]; else S.deloadOv[next]=true; save(); renderAll();};
@@ -4717,10 +4721,10 @@ function wkData(){const m0=mondayOf(TODAY),out=[];for(let i=11;i>=0;i--){const m
  out.push({mon,v:v,c:c+g,cr:c,g,load:weekLoad(mon),n:ss.length});}return out;}
 function ring(pct,col,title,sub,lab){pct=Math.max(0,Math.min(100,pct));return `<div class="v2ringc"><div class="v2g" style="--off:${(226*(1-pct/100)).toFixed(1)}"><svg viewBox="0 0 80 80"><circle class="b" cx="40" cy="40" r="36"/><circle class="f" cx="40" cy="40" r="36" stroke="${col}"/></svg><b>${lab}</b></div><div><div class="t">${title}</div><div class="s">${sub}</div></div></div>`;}
 function ringsHTML(mon){let R;try{R=weekReport(mon);}catch(e){return "";}
- const pv=R.plannedMin?R.doneMin/R.plannedMin*100:0,pk=R.keysPl?R.keysDone/R.keysPl*100:0;const L=R.load||0,Lp=(()=>{let a=0,k=0;for(let i=1;i<=4;i++){const x=weekLoad(addDays(mon,-7*i));if(x){a+=x;k++;}}return k?a/k:0;})();const pl=Lp?L/Lp*100:0;
- return ring(pv,"var(--accent)","Volume",R.plannedMin?fmtMin(R.doneMin)+" sur "+fmtMin(R.plannedMin):"aucun volume prévu",Math.round(pv)+"%")
-  +ring(pk,"var(--good)","Séances clés",R.keysPl?R.keysDone+" sur "+R.keysPl:"aucune prévue",R.keysPl?Math.round(pk)+"%":"—")
-  +ring(Math.min(pl,100),pl>130?"var(--bad)":"var(--warn)","Charge",Lp?"moyenne 4 sem. : "+Math.round(Lp):"pas d’historique",Lp?Math.round(pl)+"%":"—");}
+ const PM=R.cur?R.plannedTD:R.plannedMin, KP=R.cur?R.keysPlTD:R.keysPl, pv=PM?R.doneMin/PM*100:0,pk=KP?Math.min(R.keysDone,KP)/KP*100:0;const L=R.load||0,Lp=(()=>{let a=0,k=0;for(let i=1;i<=4;i++){const x=weekLoad(addDays(mon,-7*i));if(x){a+=x;k++;}}return k?a/k:0;})();const pl=Lp?L/Lp*100:0;
+ return ring(pv,"var(--accent)","Volume",PM?fmtMin(R.doneMin)+" sur "+fmtMin(PM)+(R.cur?" prévus à ce jour":""):"aucun volume prévu",Math.round(pv)+"%")
+  +ring(pk,"var(--good)","Séances clés",KP?R.keysDone+" sur "+KP+(R.cur?" prévues à ce jour":""):(R.cur&&R.keysPl?"aucune prévue à ce jour":"aucune prévue"),KP?Math.round(pk)+"%":"—")
+  +ring(Math.min(pl,100),pl>130?"var(--bad)":"var(--warn)","Charge"+(R.cur?" à ce jour":""),Lp?Math.round(L)+" contre "+Math.round(Lp)+" en moyenne sur 4 semaines":"pas d’historique",Lp?Math.round(pl)+"%":"—");}
 function chartHTML(D){const W=640,H=135,pl=34,pb=30,pt=18,pr=8,n=D.length,bw=(W-pl-pr)/n;
  const top=Math.max(60,...D.map(d=>d.v+d.c)),stepH=top<=300?60:top<=720?120:top<=1200?240:360,mx=Math.ceil(top/stepH)*stepH;
  const y=v=>H-pb-(H-pb-pt)*v/mx;let g="";for(let v=0;v<=mx;v+=stepH){const yy=y(v);g+=`<line x1="${pl}" x2="${W-pr}" y1="${yy}" y2="${yy}" stroke="var(--line)" ${v?'stroke-dasharray="2 4"':""}/><text x="${pl-6}" y="${yy+3}" text-anchor="end">${v/60} h</text>`;}
