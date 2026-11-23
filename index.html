@@ -1594,10 +1594,17 @@ function buildWeek(mon,availOverride,opt={}){
       rec(0,[]);
       if(best){ const ids=mine.sort((a,b)=>a.i-b.i).map(x=>({main:x.main,notes:x.notes})); mine.forEach(x=>{ delete x.main; x.keyK=false; x.notes=[]; });
         best.slice(0,ids.length).forEach((i,j)=>{ days[i].main=ids[j].main; days[i].notes=ids[j].notes; days[i].keyK=true; }); d=days[best[ids.length]]; } }
+    // tu as modifié des jours et il n'y a plus de place à 48 h d'écart : plutôt que de perdre la séance, on la colle à la 1re (bloc de 2 jours durs), jamais le lendemain d'une sortie longue ni la veille d'une autre séance dure
+    let blk=false;
+    if(!d&&!RW&&!deload&&!tag&&days.some(x=>x.pinned&&!x.past)){ const firsts=days.filter(x=>x.keyK);
+      for(const f of firsts){ for(const j of [f.i+1,f.i-1]){ const x=days[j]; if(!x||x.past||x.pinned||!free(x)||x.avail<minK) continue;
+          const other=days[j===f.i+1?j+1:j-1]; if(other&&(isKey(other)||(j===f.i-1&&isLongD(other)))) continue; if(j>0&&j!==f.i+1&&isLongD(days[j-1])) continue; if(j===0&&prevSunHard(mon)) continue;
+          d=x; blk=true; break; } if(d) break; } }
     if(!d){warns.push("Séance clé n°"+(k+1)+" non placée : pas de jour d’au moins "+fmtMin(minK)+" avec 48 h d’écart avec les autres séances clés. Elle est abandonnée, pas doublée.");continue;}
     const id=RW?rid:shock?["V2","V1","V3","V2","S2"][k]:(due&&k===0?testId():pickKey(prio,usedCats,widx,phase)); if(!id) continue;
     if(due&&k===0) d.notes.push("retest pour recaler les zones : enregistre le résultat dans Suivi → Tests");
     usedCats.push(RW?runCatOf(id):LIB[id].cat); d.main={id}; d.keyK=true;
+    if(blk){ d.notes.push("séance clé collée à l’autre (bloc de 2 jours durs) : tes jours modifiés ne laissent pas d’autre place à 48 h d’écart. Le lendemain du bloc reste facile ou au repos."); warns.push("Bloc de 2 jours durs cette semaine : avec les jours que tu as choisis, c’était la seule façon de garder 2 séances clés. Si tu es très fatigué le 2e jour, passe-le en endurance."); }
     if(deload) d.notes.push("semaine allégée : version courte, une série de moins");
   }
   // une seule séance en zone modérée par semaine : si une séance clé de tempo ou de seuil est déjà là, la sortie longue reste en Z2 pure
@@ -1611,7 +1618,7 @@ function buildWeek(mon,availOverride,opt={}){
   let gymLeft=0;
   for(let g=0;g<gym;g++){
     const gD=LIB[gymId].dS, fits=(d,need)=>d.avail-gD>=need;
-    let d=days.find(d=>isKey(d)&&d.main.id!=="RACE"&&!(RW&&["C3","C4","C15"].includes(d.main.id))&&gymOk(d)&&fits(d,(LIB[d.main.id]||{}).dS||0));
+    let d=days.find(d=>isKey(d)&&d.main.id!=="RACE"&&!(RW&&["C3","C4","C15"].includes(d.main.id))&&!nextKey(d.i)&&gymOk(d)&&fits(d,(LIB[d.main.id]||{}).dS||0));
     if(d){d.gym=gymId;d.extra.push(gymId);d.notes.push("muscu après la séance "+(RW?"de course":"vélo")+", au moins 3 h et idéalement 6 h plus tard ; jamais juste avant l’intensité");continue;}
     d=days.find(d=>free(d)&&!nextKey(d.i)&&gymOk(d)&&!stealsRun(d));
     if(d){d.main={id:gymId};d.gym=gymId;continue;}
