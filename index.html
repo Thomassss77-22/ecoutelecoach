@@ -2475,7 +2475,7 @@ function renderWeek(){
   document.getElementById("weekSummary").innerHTML=
     `<span class="chip"><span class="dot" style="background:${phColor(W.phase)}"></span>${PHL[W.phase]}</span>`+
     (W.deload?`<span class="chip warn">Semaine allégée (−40 % de volume)</span>`:`<span class="chip">Semaine de charge n°${((mesoIdx(mon)%(S.settings.meso==="2:1"?3:4))+(S.settings.meso==="2:1"?3:4))%(S.settings.meso==="2:1"?3:4)+1}</span>`)+
-    `<span class="chip">${W.keysPlanned} séance(s) clé(s)</span><span class="chip">Total ${fmtMin(W.total)} / max ${fmtMin(W.cap)}</span>${W.upTot?`<span class="chip" title="Compté à part : ne charge pas les jambes">+ haut du corps ${fmtMin(W.upTot)}</span>`:""}${W.capWhy?`<span class="chip warn" title="Plafond abaissé d’après ta charge réelle">${esc(W.capWhy)}</span>`:""}${(W.capWhy||(S.capOff&&S.capOff[W.mon]))&&W.mon>=mondayOf(TODAY)?`<label class="small" style="flex-direction:row;align-items:center;gap:6px;display:inline-flex"><input type="checkbox" id="capOffChk" style="width:auto" ${S.capOff&&S.capOff[W.mon]?"checked":""}>Ignorer les ajustements de charge cette semaine</label>`:""}<span class="muted">${esc(W.RW?(RUNTID[W.phase]||""):PH[W.phase].tid)}</span>`;
+    `<span class="chip">${W.keysPlanned} séance(s) clé(s)</span><span class="chip">Total ${fmtMin(W.total+(W.upTot||0))} / max ${fmtMin(W.cap+(W.upTot||0))}</span>${W.upTot?`<span class="chip" title="Le haut du corps ne charge pas les jambes : il ne compte pas dans la progression de l’endurance">dont haut du corps ${fmtMin(W.upTot)}</span>`:""}${W.capWhy?`<span class="chip warn" title="Plafond abaissé d’après ta charge réelle">${esc(W.capWhy)}</span>`:""}${(W.capWhy||(S.capOff&&S.capOff[W.mon]))&&W.mon>=mondayOf(TODAY)?`<label class="small" style="flex-direction:row;align-items:center;gap:6px;display:inline-flex"><input type="checkbox" id="capOffChk" style="width:auto" ${S.capOff&&S.capOff[W.mon]?"checked":""}>Ignorer les ajustements de charge cette semaine</label>`:""}<span class="muted">${esc(W.RW?(RUNTID[W.phase]||""):PH[W.phase].tid)}</span>`;
   const cok=document.getElementById("capOffChk"); if(cok) cok.onchange=()=>{S.capOff=S.capOff||{}; if(cok.checked) S.capOff[mon]=1; else delete S.capOff[mon]; save(); renderAll();};
   let whyOn=true; try{ whyOn=localStorage.getItem("coach-why")!=="0"; }catch(e){}
   const wt=document.getElementById("wkWhyTog"); if(wt){ wt.textContent=whyOn?"Masquer les explications":"Afficher les explications"; wt.onclick=()=>{ try{ localStorage.setItem("coach-why",whyOn?"0":"1"); }catch(e){} renderWeek(); }; }
@@ -2532,7 +2532,7 @@ function renderMonth(){
   let plan=0,done=0,keys=0; const rc=[];
   for(let mon=mondayOf(iso(first)); mon<=last; mon=addDays(mon,7)){
     const W=buildWeek(mon);
-    html+=`<div class="mwk" style="border-left-color:${phColor(W.phase)}"><b>${PHL[W.phase]}</b><br>${W.deload?"allégée<br>":""}${tagOf(mon)?esc(TAGS[tagOf(mon)].split(" /")[0])+"<br>":""}${W.shock?"bloc de choc<br>":""}${fmtMin(W.total)}</div>`;
+    html+=`<div class="mwk" style="border-left-color:${phColor(W.phase)}"><b>${PHL[W.phase]}</b><br>${W.deload?"allégée<br>":""}${tagOf(mon)?esc(TAGS[tagOf(mon)].split(" /")[0])+"<br>":""}${W.shock?"bloc de choc<br>":""}${fmtMin(W.total+(W.upTot||0))}</div>`;
     W.days.forEach(d=>{const inM=d.date.slice(0,7)===ym, s=LIB[d.main.id]||{}; let body="";
       if(d.main.id==="RACE"){body=`<span class="race">🏁 ${esc(d.main.race.prio)}</span><span class="lbl">${esc(d.main.race.name)}</span>`; if(inM) rc.push(d.main.race);}
       else if(d.past){body=d.done.length?d.done.map(x=>`<span class="done">✓ ${sicoH(x.id)}${esc(ABR[x.id]||x.id)}</span><span class="lbl muted">${fmtMin(+x.dur||0)}</span>`).join(""):`<span class="muted">—</span>`; if(inM) done+=d.dur;}
@@ -5851,8 +5851,8 @@ function renderSeasonV4(){ const host=document.getElementById("seasonStrip"); if
   if(key!==seasonKey||!document.getElementById("v4Season")){ seasonKey=key;
     const start=mondayOf(TODAY), rs=racesSorted(), end=rs.length?addDays(mondayOf(rs[rs.length-1].date),35):addDays(start,26*7), W=[]; for(let m=start;m<=end&&W.length<80;m=addDays(m,7)) W.push(m);
     const items=[], used={}; let mx=0;
-    W.forEach(m=>{ const b=buildWeek(m), ph=b.phase, rc=rs.filter(r=>r.date>=m&&r.date<=addDays(m,6)); used[ph]=1; mx=Math.max(mx,b.total);
-      items.push({m,ph,v:b.total,dl:b.deload,rc}); });
+    W.forEach(m=>{ const b=buildWeek(m), ph=b.phase, rc=rs.filter(r=>r.date>=m&&r.date<=addDays(m,6)); used[ph]=1; const tv=b.total+(b.upTot||0); mx=Math.max(mx,tv);
+      items.push({m,ph,v:tv,dl:b.deload,rc}); });
     const Wd=900,H=220,L=34,B=26,Tp=22, n=items.length, cw=(Wd-L-4)/n, bw=Math.max(4,Math.min(22,cw-3)); mx=Math.max(120,Math.ceil(mx/120)*120);
     const y=v=>H-B-(H-B-Tp)*v/mx; let s=`<svg class="v4svg" viewBox="0 0 ${Wd} ${H}" role="img" aria-label="Volume prévu semaine par semaine, coloré par phase">`;
     [0,.5,1].forEach(t=>{ const v=mx*t; s+=`<line class="grid" x1="${L}" x2="${Wd}" y1="${y(v)}" y2="${y(v)}" ${v?'stroke-dasharray="2 4"':""}/><text x="${L-8}" y="${y(v)+4}" text-anchor="end">${v?Math.round(v/60)+" h":"0"}</text>`; });
