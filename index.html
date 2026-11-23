@@ -1510,6 +1510,7 @@ function buildWeek(mon,availOverride,opt={}){
   const postShock=!opt.phase&&!shock&&!!S.shock&&[1,2,3].some(k=>S.shock[addDays(mon,-7*k)]);
   const prio=prioFor(phase,mon);
   let gym=P.gym, run=RW?Math.max(0,Math.min(sportProfile()==="velo"&&!+st.runOn?Math.max(+st.runMax||0,3):(+st.runMax||4),races.some(r=>r.prio!=="C"&&r.date>=mon&&r.date<=addDays(mon,6))?3:99)):(runOnW?Math.min(P.run,+st.runMax):0);
+  const keysPhase=keys;
   if(phase==="affutage"){ const ra=races.find(r=>r.prio==="A"&&r.date>=mon); if(ra&&diff(mon,ra.date)<7) keys=Math.min(keys,1); }
   if(deload){keys=Math.min(keys,1);gym=Math.min(gym,1);run=RW?Math.max(1,run-(run>=5?2:1)):Math.min(run,1);}
   // course à pied : avec 3 sorties ou moins (ou une base de course encore faible), 1 seule séance de qualité en plus de la sortie longue,
@@ -1576,10 +1577,18 @@ function buildWeek(mon,availOverride,opt={}){
           if(lg){ lg.main={id:spec}; lg.notes.push("cette semaine, la séance à l’allure "+RDL[goal]+" remplace la sortie longue : tes créneaux de semaine sont trop courts pour elle"); d=lg; rid=spec; break; } } } }
     else d=order.map(i=>days[i]).find(d=>free(d)&&d.avail>=minK&&nbOk(d.i));
     if(!d&&RW){warns.push("Séance clé de course n°"+(k+1)+" non placée : aucun jour libre assez long pour sa structure complète (échauffement, répétitions, retour au calme) avec 48 h d’écart avec les autres séances clés. Elle est abandonnée, pas tronquée.");continue;}
+    // vélo : si la séance clé suivante ne trouve plus de jour, on cherche une autre répartition des séances clés déjà placées (ex. lundi + mercredi au lieu de mardi seul quand tu as modifié jeudi et samedi)
+    if(!d&&!RW&&k>0){ const mine=days.filter(x=>x.keyK), fixedK=x=>{ const L=LIB[(x.main||{}).id]||{}; return (L.key||(x.main||{}).id==="RACE")&&!x.keyK; };
+      const cand=days.filter(x=>!x.past&&!x.pinned&&(free(x)||x.keyK)&&x.avail>=minK).map(x=>x.i), n=mine.length+1;
+      const okSet=set=>set.every(i=>!set.includes(i+1)&&!set.includes(i-1)&&!(days[i-1]&&fixedK(days[i-1]))&&!(days[i+1]&&fixedK(days[i+1])));
+      let best=null; const rec=(st,set)=>{ if(best) return; if(set.length===n){ if(okSet(set)) best=set.slice(); return; } for(let j=st;j<cand.length;j++){ set.push(cand[j]); rec(j+1,set); set.pop(); } };
+      rec(0,[]);
+      if(best){ const ids=mine.sort((a,b)=>a.i-b.i).map(x=>({main:x.main,notes:x.notes})); mine.forEach(x=>{ delete x.main; x.keyK=false; x.notes=[]; });
+        best.slice(0,ids.length).forEach((i,j)=>{ days[i].main=ids[j].main; days[i].notes=ids[j].notes; days[i].keyK=true; }); d=days[best[ids.length]]; } }
     if(!d){warns.push("Séance clé n°"+(k+1)+" non placée : pas de jour d’au moins "+fmtMin(minK)+" avec 48 h d’écart avec les autres séances clés. Elle est abandonnée, pas doublée.");continue;}
     const id=RW?rid:shock?["V2","V1","V3","V2","S2"][k]:(due&&k===0?testId():pickKey(prio,usedCats,widx,phase)); if(!id) continue;
     if(due&&k===0) d.notes.push("retest pour recaler les zones : enregistre le résultat dans Suivi → Tests");
-    usedCats.push(RW?runCatOf(id):LIB[id].cat); d.main={id};
+    usedCats.push(RW?runCatOf(id):LIB[id].cat); d.main={id}; d.keyK=true;
     if(deload) d.notes.push("semaine allégée : version courte, une série de moins");
   }
   // une seule séance en zone modérée par semaine : si une séance clé de tempo ou de seuil est déjà là, la sortie longue reste en Z2 pure
@@ -1789,6 +1798,13 @@ function buildWeek(mon,availOverride,opt={}){
   }
   if(RW&&!opt.phase){ const lgD=Math.max(0,...days.filter(d=>!d.past&&["C3","C4","C15"].includes(d.main.id)).map(d=>d.dur));
     if(lgD) days.filter(d=>!d.past&&!d.pinned&&["C1","C2"].includes(d.main.id)&&d.dur>lgD-15).forEach(d=>{ const nd=Math.max(LIB[d.main.id].dS,Math.floor((lgD-15)/5)*5); if(nd<d.dur){ total-=d.dur-nd; d.dur=nd; } }); }
+  if(!opt.phase&&!shock&&!tag){ const isK=d=>{ const L=LIB[d.main.id]||{}; return L.key&&d.main.id!=="RACE"; }, placed=days.filter(d=>d.past?d.pastKey:isK(d)).length;
+    const expect=deload?Math.min(keysPhase,1):keysPhase;
+    if(placed<expect&&phase!=="affutage"){ const why=[];
+      if(postShock) why.push("récupération après le bloc de choc"); if(LC&&LC.fatigue) why.push("fatigue détectée"); if(LC&&LC.reprise) why.push("reprise après une coupure");
+      if(days.some(d=>d.pinned&&!isK(d)&&!d.past)) why.push("jours que tu as modifiés : il ne reste plus assez de jours libres à 48 h d’écart");
+      if(warns.some(w=>/non placée/.test(w))) why.push("pas assez de jours libres et assez longs, à 48 h d’écart");
+      warns.unshift("Séances clés cette semaine : "+placed+" au lieu de "+expect+(why.length?" ("+why.join(" ; ")+")":"")+"."); } }
   // une « sortie longue » de moins d'1 h n'en est pas une : elle s'affiche comme un footing (base de course encore courte, ou affûtage)
   days.filter(d=>!d.past&&!d.pinned&&d.main.id==="C3"&&d.dur<LIB.C3.dS).forEach(d=>{ d.main={id:"C1"}; d.dur=Math.min(d.dur,LIB.C1.dL);
     d.notes=d.notes.filter(n=>!/sortie longue|affûtage : version courte/.test(n)).concat([phase==="affutage"?"affûtage : footing à la place de la sortie longue":"footing à la place de la sortie longue : ta plus longue course récente est encore courte, la sortie longue (1 h et plus) arrive quand la progression de 10 % par semaine le permet"]); });
@@ -3837,7 +3853,7 @@ function whyHere(W,d){ const D=W.days, L=x=>LIB[x]||{}, nm=x=>DAYS[x.i].toLowerC
     why="La musculation se place à 48 h d’une autre séance de jambes et hors des 3 jours avant une course, "+before+(after?", "+after:"")+".";
   } else if(k==="run"){
     why=W.RW?"Footing facile : il ajoute du volume de course sans fatigue, "+before+(after?", "+after:"")+". Pas trois jours de course d’affilée quand c’est évitable, et pas le lendemain d’une muscu."
-      :"Footing court sur un jour libre, "+before+" : jamais la veille d’une séance dure ni le lendemain d’une muscu, car l’impact de la course fatigue les jambes.";
+      :"Footing sur un jour libre, "+before+" : jamais la veille d’une séance dure ni le lendemain d’une muscu, car l’impact de la course fatigue les jambes.";
   } else if(k==="rest"){
     why=(d.notes||[]).some(n=>/imposé/.test(n))?"Au moins 1 jour de repos par semaine : c’est là que l’adaptation se fait. Placé "+(kn==="key"?"la veille d’une séance dure":kp==="key"||kp==="long"?"après une séance dure":"là où il gêne le moins")+".":"Jour de repos : l’adaptation se fait pendant la récupération. Placé "+(kn==="key"||kn==="long"?"la veille d’une séance dure":kp==="key"||kp==="long"?"après une séance dure":"entre deux enchaînements de séances")+".";
   } else {
@@ -4275,9 +4291,10 @@ function contentText(id,v,dur){ const L=LIB[id]; if(!L) return ""; const D=fmtMi
   if(C[id]&&dur) return C[id];
   if(L.sport==="muscu"||L.sport==="repos"||!dur) return v==="longue"?L.long:L.court;
   let st; try{ st=planSteps(id,v,dur); }catch(e){ st=null; } if(!st||!st.length) return v==="longue"?L.long:L.court;
-  const t=sec=>{ sec=Math.round(sec); if(sec<60) return sec+" s"; const m=Math.floor(sec/60), r=sec%60; return r>=10&&sec<600?m+" min "+String(r).padStart(2,"0"):fmtMin(Math.round(sec/60)); };
+  const t=sec=>{ sec=Math.round(sec); if(sec<60) return sec+" s"; const m=Math.floor(sec/60), r=sec%60; return r>=10&&sec<600?m+" min "+String(r).padStart(2,"0"):fmtMin(sec>=1200?Math.round(sec/300)*5:Math.round(sec/60)); };
   const low=x=>{ x=String(x||""); return /^[A-ZÉ][a-zéèêàç]/.test(x)?x.charAt(0).toLowerCase()+x.slice(1):x; };
   const f=x=>{ if(x.rep) return x.rep+" × ("+x.steps.map(f).join(", ")+")"; if(x.d==null) return low(x.n);
+    if(/^\d+ ?(min|s)$/.test(String(x.n||"").trim())) return t(x.d)+(x.lo!=null?(x.lo>=85?" à "+x.lo+"-"+x.hi+(L.sport==="course"?" % VMA":" % FTP"):" facile"):"");
     const n=low(x.n).replace(/ \d+( min| s)$/,"").replace(/^(\d+) (min|s) /,"");
     return /^\d/.test(n)&&/\d ?k?m\b/.test(n)?n+" ("+t(x.d)+")":t(x.d)+" "+n; };
   return st.map(f).join(", ")+"."; }
