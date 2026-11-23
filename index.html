@@ -1650,7 +1650,8 @@ function buildWeek(mon,availOverride,opt={}){
   // sortie longue
   if(!RW&&P.long&&!nRace&&!longDone&&tag!=="voyage"){
     const minL=deload?120:150;
-    const c=days.filter(d=>free(d)&&d.avail>=minL).sort((a,b)=>((b.i>=5)-(a.i>=5))||(b.avail-a.avail));
+    // le plus long créneau de la semaine ; le week-end n'est préféré que s'il offre presque autant (85 %)
+    const c0=days.filter(d=>free(d)&&d.avail>=minL), mxA=Math.max(0,...c0.map(d=>d.avail)), sc=d=>d.avail+(d.i>=5?.15*mxA:0), c=c0.sort((a,b)=>sc(b)-sc(a)||b.i-a.i);
     if(c.length&&!["voyage","maladie"].includes(tag)){const d=c[0]; const dur=P.durab&&!deload&&!shock&&!tag&&keys>(due?1:0)&&nbOk(d.i)&&d.avail>=150;
       const tempo=!dur&&!deload&&!shock&&(phase==="base"?((widx%3)+3)%3!==0:phase==="construction"&&widx%2===1);
       d.main={id:dur?"D1":tempo?"E5":"E4"}; if(dur){keys--;usedCats.push("durabilite");}}
@@ -1842,6 +1843,8 @@ function buildWeek(mon,availOverride,opt={}){
       if(phase==="affutage") av=Math.min(av,races.some(r=>r.prio!=="C"&&r.date>=mon&&r.date<=addDays(mon,6))?40:Math.round((RW?FOOT[goal]||60:60)*.8/5)*5); }
     if(RW&&!d.pinned&&lk&&lk.key&&lk.sport==="course"&&lk.dS){ const cat=runCatOf(d.main.id), short=[5,10].includes(goal)?cat==="c_seuil":cat==="c_vma"; if(short) av=Math.min(av,lk.dS); }
     const f=fitDur(d.main.id,av); d.dur=f.dur; d.v=f.v;
+    // élite et pro : un jour facile peut remplir le créneau jusqu'à 3 h (sauf la veille d'une séance clé, déjà limitée plus haut)
+    if(!RW&&!d.pinned&&d.main.id==="E3"&&["elite","pro"].includes(st.level)&&av>d.dur) d.dur=Math.min(180,Math.floor(av/5)*5);
     if(d.main.id==="C16"){ const k=rpk>=0?rpk:0; d.dur=rpDur(k); d.v="e"+k; }
     if(lk&&lk.key&&phase==="affutage"&&d.main.id!=="C3") d.notes.push("affûtage : version courte, intensité maintenue");
     if(f.tight) d.notes.push("créneau court : version réduite");
