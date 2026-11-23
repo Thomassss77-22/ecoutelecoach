@@ -1498,6 +1498,7 @@ function buildWeek(mon,availOverride,opt={}){
   days.forEach(d=>{const r=raceOn(d.date); if(r){d.main={id:"RACE",race:r};}});
   days.forEach(d=>{
     if(d.main) return;
+    if(tagOf(mon)==="maladie"&&(raceOn(addDays(d.date,1))||raceOn(addDays(d.date,2)))){ d.main={id:"R0"}; d.notes.push("semaine maladie : repos avant la course ; avec de la fièvre, ne prends pas le départ"); return; }
     const r1=raceOn(addDays(d.date,1)); if(r1){ if((pureRun||raceSport(r1)==="course")&&runOnW) {d.main={id:d.avail>=25?"C2":"R0",cap:30};d.notes.push("veille de course : 20-30 min facile et quelques lignes droites");} else d.main={id:d.avail>=30?"P1":"R0"}; if(!d.notes.length) d.notes.push("veille de course"); return;}
     const r2=raceOn(addDays(d.date,2)); if(r2&&r2.prio!=="C"){d.main={id:d.avail>=45?(pureRun?"C1":"E2"):"R0",cap:pureRun?40:60};d.notes.push("J-2 course : court et facile");return;}
     const rb=raceOn(addDays(d.date,-1)); if(rb&&rb.prio!=="C"){
@@ -1553,7 +1554,9 @@ function buildWeek(mon,availOverride,opt={}){
   const vmaDue=!opt.phase&&!shock&&vmaTestWeek()===mon&&!P_.some(d=>(d.done||[]).some(x=>x.id==="C13"))&&!PN.some(d=>d.pinned&&d.main&&d.main.id==="C13");
   // pas de séance clé le lendemain d'une sortie longue (glycogène et jambes encore entamés), y compris le lundi après la sortie longue du dimanche précédent
   const isLongD=d=>d&&d.main&&(["E4","E5","D1","C4","C15"].includes(d.main.id)||(d.main.id==="C3"&&d.dur>=90)||(d.past&&(d.done||[]).some(x=>(+x.dur||0)>=180)));
-  const nbOk=i=>shock||([i-1,i+1].every(j=>j<0||j>6||!isKey(days[j]))&&!(i>0&&isLongD(days[i-1]))&&!(i===0&&!opt.phase&&prevSunHard(mon)));
+  // récupération après une course : pas d'intensité le lendemain d'une course vélo, ni pendant 2 jours (10 km), 5 jours (semi) ou 14 jours (marathon, trail long) après une course à pied
+  const recov=i=>{ const dt=addDays(mon,i); return races.some(r=>r.date<dt&&r.prio!=="C"&&diff(r.date,dt)<=(raceSport(r)==="course"?((+r.dist||0)>=30?14:(+r.dist||0)>=15?5:2):1)); };
+  const nbOk=i=>shock||(!recov(i)&&[i-1,i+1].every(j=>j<0||j>6||!isKey(days[j]))&&!(i>0&&isLongD(days[i-1]))&&!(i===0&&!opt.phase&&prevSunHard(mon)));
   const nextKey=i=>i<6&&isKey(days[i+1]);
   const usedCats=[];
   // sortie longue de course (semaine course) : le week-end de préférence ; en spécifique marathon, une semaine sur deux avec blocs à l'allure marathon (compte comme séance clé)
@@ -1589,7 +1592,7 @@ function buildWeek(mon,availOverride,opt={}){
     // vélo : si la séance clé suivante ne trouve plus de jour, on cherche une autre répartition des séances clés déjà placées (ex. lundi + mercredi au lieu de mardi seul quand tu as modifié jeudi et samedi)
     if(!d&&!RW&&k>0){ const mine=days.filter(x=>x.keyK), fixedK=x=>{ const L=LIB[(x.main||{}).id]||{}; return (L.key||(x.main||{}).id==="RACE")&&!x.keyK; };
       const cand=days.filter(x=>!x.past&&!x.pinned&&(free(x)||x.keyK)&&x.avail>=minK).map(x=>x.i), n=mine.length+1;
-      const okSet=set=>set.every(i=>!set.includes(i+1)&&!set.includes(i-1)&&!(days[i-1]&&fixedK(days[i-1]))&&!(days[i+1]&&fixedK(days[i+1]))&&!(i>0&&isLongD(days[i-1]))&&!(i===0&&!opt.phase&&prevSunHard(mon)));
+      const okSet=set=>set.every(i=>!recov(i)&&!set.includes(i+1)&&!set.includes(i-1)&&!(days[i-1]&&fixedK(days[i-1]))&&!(days[i+1]&&fixedK(days[i+1]))&&!(i>0&&isLongD(days[i-1]))&&!(i===0&&!opt.phase&&prevSunHard(mon)));
       let best=null; const rec=(st,set)=>{ if(best) return; if(set.length===n){ if(okSet(set)) best=set.slice(); return; } for(let j=st;j<cand.length;j++){ set.push(cand[j]); rec(j+1,set); set.pop(); } };
       rec(0,[]);
       if(best){ const ids=mine.sort((a,b)=>a.i-b.i).map(x=>({main:x.main,notes:x.notes})); mine.forEach(x=>{ delete x.main; x.keyK=false; x.notes=[]; });
@@ -1599,7 +1602,7 @@ function buildWeek(mon,availOverride,opt={}){
     if(!d&&!RW&&!deload&&!tag&&days.some(x=>x.pinned&&!x.past)){ const firsts=days.filter(x=>x.keyK);
       for(const f of firsts){ for(const j of [f.i+1,f.i-1]){ const x=days[j]; if(!x||x.past||x.pinned||!free(x)||x.avail<minK) continue;
           const other=days[j===f.i+1?j+1:j-1]; if(other&&(isKey(other)||(j===f.i-1&&isLongD(other)))) continue; if(j>0&&j!==f.i+1&&isLongD(days[j-1])) continue; if(j===0&&prevSunHard(mon)) continue;
-          d=x; blk=true; break; } if(d) break; } }
+          if(recov(j)) continue; d=x; blk=true; break; } if(d) break; } }
     if(!d){warns.push("Séance clé n°"+(k+1)+" non placée : pas de jour d’au moins "+fmtMin(minK)+" avec 48 h d’écart avec les autres séances clés. Elle est abandonnée, pas doublée.");continue;}
     const id=RW?rid:shock?["V2","V1","V3","V2","S2"][k]:(due&&k===0?testId():pickKey(prio,usedCats,widx,phase)); if(!id) continue;
     if(due&&k===0) d.notes.push("retest pour recaler les zones : enregistre le résultat dans Suivi → Tests");
@@ -1762,6 +1765,9 @@ function buildWeek(mon,availOverride,opt={}){
     // affûtage progressif : −20 % à 3 semaines (marathon, trail), −35 % la semaine d'avant, −55 % la semaine de course (Bosquet 2007 : réduction de 41-60 % sur 2 semaines, décroissance progressive)
     const raceWk=races.some(r=>r.prio!=="C"&&r.date>=mon&&r.date<=addDays(mon,6)), nA=races.find(r=>r.prio==="A"&&r.date>=mon), far=nA&&diff(mon,nA.date)>=14, f=raceWk?.45:far?.8:.65;
     if(ref&&ref*f<cap){ cap=Math.max(120,ref*f); capWhy="affûtage : "+(raceWk?"−55 %":far?"−20 %":"−35 %")+" par rapport à ta dernière semaine de charge ("+fmtMin(Math.round(ref))+"), intensité conservée (Bosquet 2007 : −41 à −60 % sur 2 semaines)"; } }
+  // semaine d'une course A : toujours plus légère que la semaine d'avant (au plus 70 % de son entraînement), même sans historique
+  if(!opt.phase&&races.some(r=>r.prio==="A"&&r.date>=mon&&r.date<=addDays(mon,6))&&mon>mondayOf(TODAY)){ const pm=addDays(mon,-7), ref=weekVol(pm)-buildWeek(pm).days.filter(d=>d.main.id==="RACE").reduce((a,d)=>a+d.dur,0);
+    if(ref&&ref*.7<cap){ cap=Math.max(60,ref*.7); capWhy="semaine de course : au plus 70 % de l’entraînement de la semaine précédente"; } }
   // semaine allégée sans historique : environ 65 % de la semaine de charge précédente prévue (sinon le plafond de 60 % du volume max peut dépasser la semaine normale)
   if(deload&&!opt.phase&&!(LC&&LC.ramp)&&mon>mondayOf(TODAY)){ const pm=addDays(mon,-7), ref=!tagOf(pm)?weekVol(pm):0; if(ref&&ref*.65<cap){ cap=Math.max(90,ref*.65); capWhy="semaine allégée : environ 65 % de la semaine précédente ("+fmtMin(Math.round(ref))+")"; } }
   // semaine examens, voyage ou maladie : le coefficient s'applique à ton volume habituel, pas seulement à ton volume max
