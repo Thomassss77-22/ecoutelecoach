@@ -1616,12 +1616,12 @@ function buildWeek(mon,availOverride,opt={}){
     const gD=LIB[gymId].dS;
     // à défaut de place pour la séance complète, une version courte de 30 min (force lourde + pliométrie) après un footing raccourci : la musculation ne doit pas disparaître des semaines de course
     for(;gymLeft>0;gymLeft--){ const ok=(d,g)=>!d.past&&!d.pinned&&d.main&&["C1","C2"].includes(d.main.id)&&!nextKey(d.i)&&gymOk(d)&&d.avail-LIB[g].dS>=25;
-      const g=days.some(d=>ok(d,gymId)&&d.avail-gD>=30)?gymId:"M3", d=days.filter(x=>ok(x,g)).sort((a,b)=>b.avail-a.avail)[0];
-      if(d){ d.gym=g; d.extra.push(g); d.notes.push("muscu après le footing"+(g==="M3"&&gymId!=="M3"?" (version courte de 30 min)":"")+", jamais juste avant une séance de qualité"); continue; }
+      const SH=LIB.M3.phases.includes(phase)?"M3":(LIB.M1.phases.includes(phase)&&LIB.M1.dS<gD?"M1":gymId), g=days.some(d=>ok(d,gymId)&&d.avail-gD>=30)?gymId:SH, d=days.filter(x=>ok(x,g)).sort((a,b)=>b.avail-a.avail)[0];
+      if(d){ d.gym=g; d.extra.push(g); d.notes.push("muscu après le footing"+(g!==gymId?" (version courte)":"")+", jamais juste avant une séance de qualité"); continue; }
       // dernier recours : version courte la veille de la sortie longue (allure facile), jamais la veille d'une séance de qualité
       const beforeLong=x=>x.i<6&&["C3"].includes((days[x.i+1].main||{}).id)&&gymOk(x)&&!x.past&&!x.pinned;
-      const f=days.find(x=>beforeLong(x)&&free(x)&&x.avail>=LIB.M3.dS&&!stealsRun(x))||days.find(x=>beforeLong(x)&&x.main&&["C1","C2"].includes(x.main.id)&&x.avail-LIB.M3.dS>=25);
-      if(f){ if(free(f)){ f.main={id:"M3"}; f.gym="M3"; } else { f.gym="M3"; f.extra.push("M3"); } f.notes.push("muscu courte la veille de la sortie longue : force lourde et sauts, peu de répétitions, pour ne pas alourdir les jambes"); continue; }
+      const f=days.find(x=>beforeLong(x)&&free(x)&&x.avail>=LIB[SH].dS&&!stealsRun(x))||days.find(x=>beforeLong(x)&&x.main&&["C1","C2"].includes(x.main.id)&&x.avail-LIB[SH].dS>=25);
+      if(f){ if(free(f)){ f.main={id:SH}; f.gym=SH; } else { f.gym=SH; f.extra.push(SH); } f.notes.push("muscu courte la veille de la sortie longue : force lourde et sauts, peu de répétitions, pour ne pas alourdir les jambes"); continue; }
       else warns.push("Musculation non placée : tous tes créneaux servent déjà aux sorties de course. Si tu as 20 à 30 min en plus un jour facile, ajoute-la après un footing."); }
   }
   // course à pied
@@ -1761,7 +1761,11 @@ function buildWeek(mon,availOverride,opt={}){
     // 3) on raccourcit la sortie longue (jusqu'à sa durée courte) ; ensuite seulement, les règles générales ci-dessous.
     if(!RW&&phase!=="affutage"){ const F=EZMIN[S.settings.level]||60, ez=days.filter(d=>["E2","E3"].includes(d.main.id)&&!d.pinned&&!d.past);
       for(const d of ez.sort((a,b)=>b.dur-a.dur)){ if(total<=cap) break; const cut=Math.min(d.dur-Math.max(F,LIB[d.main.id].dS),Math.ceil((total-cap)/5)*5); if(cut>0){d.dur-=cut;total-=cut;d.notes.push("raccourcie pour respecter le volume max");} }
-      for(const d of days.filter(d=>["E1","E2","E3"].includes(d.main.id)&&!d.gym&&!d.pinned&&!d.past).sort((a,b)=>a.dur-b.dur)){ if(total<=cap) break; total-=d.dur; d.notes=["transformée en repos pour respecter le volume max : mieux vaut moins de sorties, chacune assez longue pour être utile"]; d.main={id:"R0"}; d.dur=0; }
+      // progression : un jour d'endurance ne s'ajoute que par blocs d'au moins 1 h à 1 h 30 ; sans marge, le +15 % ne suffit jamais à en ajouter un et le volume reste bloqué des mois.
+      // On tolère donc un dépassement de 10 % au plus du plafond de progression pour garder ce jour (le plafond suivant repart de ce volume).
+      const tol=/^progression/.test(capWhy)?Math.max(0,Math.min(Math.round(cap*.1),weekCap(mon,phase,deload)-cap)):0;
+      for(const d of days.filter(d=>["E1","E2","E3"].includes(d.main.id)&&!d.gym&&!d.pinned&&!d.past).sort((a,b)=>a.dur-b.dur)){ if(total<=cap+tol) break; total-=d.dur; d.notes=["transformée en repos pour respecter le volume max : mieux vaut moins de sorties, chacune assez longue pour être utile"]; d.main={id:"R0"}; d.dur=0; }
+      if(tol&&total>cap&&total<=cap+tol){ capWhy+=" ; marge de "+fmtMin(total-Math.round(cap))+" acceptée pour garder une sortie entière"; cap=total; }
       // un jour retiré libère parfois plus que nécessaire : on rend le reste aux endurances gardées, dans leur créneau
       for(const d of ez.filter(d=>["E2","E3"].includes(d.main.id)).sort((a,b)=>(b.avail-b.dur)-(a.avail-a.dur))){ const room=Math.floor((cap-total)/5)*5; if(room<10) break; const lim=Math.min(d.main.cap?Math.min(d.avail,d.main.cap):d.avail,LIB[d.main.id].dL,(d.notes.some(n=>n.startsWith("veille"))?(EVEMAX[S.settings.level]||90):999)); const add=Math.min(room,lim-d.dur); if(add>=10){ d.dur+=add; total+=add; } }
       for(const d of days.filter(d=>["E4","E5"].includes(d.main.id)&&!d.pinned&&!d.past)){ if(total<=cap) break; const cut=Math.min(d.dur-LIB[d.main.id].dS,Math.ceil((total-cap)/5)*5); if(cut>0){d.dur-=cut;total-=cut;d.notes.push("sortie longue raccourcie pour respecter le volume max");} } }
