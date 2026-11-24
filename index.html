@@ -161,7 +161,7 @@ td.num{text-align:right}
 .filter{display:flex;gap:6px;flex-wrap:wrap}
 .filter button{font:650 13px var(--font-body);border:1px solid var(--line2);background:var(--surface);color:var(--ink);border-radius:999px;padding:6px 13px;cursor:pointer}
 .filter button[aria-pressed="true"],#bilCur[aria-pressed="true"],#bilNow[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
-.lib{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}
+.lib{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(320px,100%),1fr));gap:16px}
 .lib .card h3{display:flex;justify-content:space-between;gap:8px}
 .kv{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;font-size:15px}
 .kv dt{color:var(--muted);font-weight:600}
@@ -310,7 +310,7 @@ html.locked body{overflow:hidden}
 .kpi.static{cursor:default}.kpi.static:hover{border-color:var(--line)}
 .kpi .k{font-size:12.5px;color:var(--muted);font-weight:600}
 .kpi .v{font:700 24px/1.15 var(--font-display,inherit);font-stretch:75%;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.kpi .s{font-size:12.5px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi .s{font-size:12.5px;color:var(--muted);margin-top:2px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .kpi.warn{border-color:var(--warn)} .kpi.bad{border-color:var(--bad)}
 .subtabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:16px;overflow-x:auto;scrollbar-width:none}
 .subtabs button{font:650 14.5px var(--font-body);background:none;border:0;border-bottom:3px solid transparent;color:var(--muted);padding:10px 14px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;min-height:44px}
@@ -367,6 +367,7 @@ html.locked body{overflow:hidden}
 .rchead .iconbtn,.sess .act .iconbtn{width:36px;height:36px;border-radius:999px;border:1px solid var(--line2);background:none;color:var(--muted);cursor:pointer;font-size:16px;line-height:1;flex:none}
 .rchead .iconbtn:hover{color:var(--bad);border-color:var(--bad)}
 .rcgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 12px}
+.rcgrid .v3s{display:flex;width:100%}.rcgrid .v3s button{flex:1 1 0;text-align:center;white-space:normal;padding:7px 6px}
 .rcgrid label{font-size:13px}
 .rcgrid .rheat{flex-direction:row!important;align-items:center;gap:8px;align-self:end;min-height:40px}
 .rcgrid .rheat input{width:auto}
@@ -374,7 +375,7 @@ html.locked body{overflow:hidden}
 body.sp-course .only-velo,body.sp-course .bike-only,body.sp-course #sessFilter [data-f="velo"]{display:none!important}
 body:not(.sp-mixte) .only-mixte{display:none!important}
 body.run-off .only-run{display:none!important}
-@media (max-width:760px){ .rcgrid{grid-template-columns:repeat(2,minmax(0,1fr))} }
+@media (max-width:760px){ .rcgrid{grid-template-columns:repeat(2,minmax(0,1fr))} .rcgrid .rprof{grid-column:1/-1} }
 
 .libcard{display:flex;flex-direction:column;gap:8px}
 .libcard .lhead{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
@@ -1005,7 +1006,7 @@ section.view.on{animation:v2in .55s var(--ease)}
     <div class="subview" data-sub="compteur"><div class="card setcard">
         <h2>Séances sur le compteur</h2><p class="small muted">Comment tes séances s’affichent et se déroulent sur ta Garmin.</p>
         <form class="form" onsubmit="return false">
-          <label class="full">Cibles des séances Garmin<select id="st_wkTarget"><option value="power">Puissance (watts calculés sur ta FTP)</option><option value="hr">Fréquence cardiaque (sans capteur de puissance ; efforts au-dessus du seuil au ressenti)</option></select></label>
+          <label class="full only-velo">Cibles des séances vélo sur la Garmin<select id="st_wkTarget"><option value="power">Puissance (watts calculés sur ta FTP)</option><option value="hr">Fréquence cardiaque (sans capteur de puissance ; efforts au-dessus du seuil au ressenti)</option></select></label>
           <label class="full">Début des efforts sur le compteur<select id="st_lapStart"><option value="1">Quand j’appuie sur Tour (Lap) : l’échauffement part tout seul, j’appuie pour lancer chaque bloc</option><option value="0">Automatique, à la fin de la durée prévue</option></select></label>
         </form>
     </div></div>
@@ -1818,12 +1819,12 @@ function buildWeek(mon,availOverride,opt={}){
     if(d.main.id==="RACE"){d.dur=180;return;}
     if(d.past){d.dur=d.pastDur;d.v="—";d.gymDur=0;return;}
     if(d.pinned&&d.pinDur){ d.dur=d.pinDur; d.v=d.pinDur>=((LIB[d.main.id].dS+(LIB[d.main.id].dL||LIB[d.main.id].dS))/2)?"longue":"courte"; d.gymDur=d.gym&&d.main.id!==d.gym?LIB[d.gym].dS:0; d.addDur=(d.pinAdd||[]).reduce((a,x)=>a+(LIB[x].dS||0),0); return; }
-    if(d.pinned&&d.avail<(LIB[d.main.id].dS||0)) d.avail=Math.max(d.avail,LIB[d.main.id].dS||0);
+    if(d.pinned&&d.avail<(LIB[d.main.id].dS||0)){ d.notes.push("séance choisie : elle dure au moins "+fmtMin(LIB[d.main.id].dS)+", plus que ton créneau de "+fmtMin(d.avail)+" ; prévois le temps ou choisis une séance plus courte"); d.avail=Math.max(d.avail,LIB[d.main.id].dS||0); }
     let av=d.main.cap?Math.min(d.avail,d.main.cap):d.avail;
     // muscu ajoutée en plus : elle doit tenir dans le créneau du jour avec la séance vélo
-    if(d.gym&&d.main.id!==d.gym){ const g=LIB[d.gym].dS, ms=(LIB[d.main.id]&&LIB[d.main.id].dS)||0;
+    if(d.gym&&d.main.id!==d.gym){ const g=LIB[d.gym].dS, ms=d.main.id==="C16"?rpDur(rpk>=0?rpk:0):(LIB[d.main.id]&&LIB[d.main.id].dS)||0;
       if(d.avail-g>=((LIB[d.main.id]||{}).key?ms:Math.min(ms,45))) av=Math.min(av,d.avail-g);
-      else { d.extra=d.extra.filter(x=>x!==d.gym); d.notes=d.notes.filter(n=>!n.startsWith("muscu")); d.gym=null; warns.push(DAYS[d.i]+" : la musculation ne tient pas dans le créneau de "+fmtMin(d.avail)+" avec la séance vélo, elle est retirée ce jour-là."); } }
+      else { d.extra=d.extra.filter(x=>x!==d.gym); d.notes=d.notes.filter(n=>!n.startsWith("muscu")); d.gym=null; warns.push(DAYS[d.i]+" : la musculation ne tient pas dans le créneau de "+fmtMin(d.avail)+" avec la séance "+((LIB[d.main.id]||{}).sport==="course"?"de course":"vélo")+", elle est retirée ce jour-là."); } }
     if(d.up&&d.main.id!==d.up&&!d.pinned&&!(d.pinAdd||[]).includes(d.up)){ const ms=(LIB[d.main.id]&&LIB[d.main.id].dS)||0, g=d.gym&&d.main.id!==d.gym?LIB[d.gym].dS:0;
       if(d.avail-g-LIB.H1.dS>=((LIB[d.main.id]||{}).key?ms:Math.min(ms,30))) av=Math.min(av,d.avail-g-LIB.H1.dS);
       else { d.extra=d.extra.filter(x=>x!==d.up); d.notes=d.notes.filter(n=>!n.startsWith("haut du corps")); d.up=null; warns.push(DAYS[d.i]+" : la séance de haut du corps ne tient pas dans le créneau de "+fmtMin(d.avail)+", elle est retirée ce jour-là."); } }
@@ -1966,7 +1967,22 @@ function buildWeek(mon,availOverride,opt={}){
       for(const d of g.slice(1).reverse()){ if(total<=cap) break;
         if((LIB[d.main.id]||{}).sport==="muscu"){total-=d.dur;d.main={id:"R0"};d.dur=0;} else {total-=d.gymDur||0;d.extra=d.extra.filter(x=>x!==d.gym);d.gymDur=0;}
         d.gym=null; d.notes.push("muscu retirée pour respecter le plafond de la semaine"); } }
-    if(total>cap) warns.push(RW?"Même raccourci, le plan dépasse le plafond ("+fmtMin(total)+" pour "+fmtMin(cap)+") : séances clés, sortie longue et une muscu sont gardées. Si tu sens la fatigue, raccourcis la sortie longue plutôt que les séances clés.":"Même raccourci, le plan dépasse le plafond ("+fmtMin(total)+" pour "+fmtMin(cap)+") : séances clés, sortie longue de "+fmtMin(LC&&LC.reprise?90:120)+" et une muscu sont gardées. Si tu sens la fatigue, remplace la sortie longue par 1 h 30 d’endurance.");
+    // petit volume max (3-5 h) : le temps déclaré est une limite. Au-delà de 15 min de dépassement, les séances clés passent à leur version courte,
+    // puis la sortie longue descend jusqu'à 1 h (elle devient une endurance), puis on garde une seule séance clé
+    // (2 séances d'intervalles et 1 endurance tiennent en 3 h ; pas 2 h de sortie longue en plus)
+    if(total>cap+15&&!opt.phase){ const fut=d=>!d.past&&!d.pinned;
+      for(const d of days.filter(d=>fut(d)&&isKey(d)&&d.main.id!=="RACE").sort((a,b)=>b.dur-a.dur)){ if(total<=cap) break; const cut=Math.min(d.dur-LIB[d.main.id].dS,Math.ceil((total-cap)/5)*5); if(cut>0){ d.dur-=cut; total-=cut; d.notes.push("version courte pour respecter le volume max"); } }
+      if(total>cap+15) days.filter(d=>fut(d)&&["E4","E5","D1"].includes(d.main.id)).forEach(d=>{ if(total<=cap) return; const cut=Math.min(d.dur-60,Math.ceil((total-cap)/5)*5); if(cut>0){ d.dur-=cut; total-=cut;
+        if(d.dur<120){ d.main={id:"E2"}; d.notes=d.notes.filter(n=>!/sortie longue/.test(n)).concat(["endurance à la place de la sortie longue : ton volume max ne laisse pas la place à 2 h"]); } } });
+      const drop=days.filter(d=>fut(d)&&isKey(d)&&d.main.id!=="RACE").reverse();
+      for(const d of drop){ if(total<=cap+15||days.filter(x=>isKey(x)&&x.main.id!=="RACE").length<=1) break; total-=d.dur;
+        if(d.gym&&d.gymDur){ d.main={id:d.gym}; d.extra=d.extra.filter(x=>x!==d.gym); d.dur=d.gymDur; d.gymDur=0; d.notes=["séance clé retirée : ton volume max ne laisse la place qu’à une séance clé, la musculation reste"]; }
+        else { d.main={id:"R0"}; d.dur=0; d.notes=["séance clé retirée : ton volume max ne laisse la place qu’à une séance clé cette semaine"]; } }
+      // le temps libéré revient à l'endurance, dans son créneau
+      for(const d of days.filter(d=>fut(d)&&["E2","E3"].includes(d.main.id)).sort((a,b)=>(b.avail-b.dur)-(a.avail-a.dur))){ const room=Math.floor((cap-total)/5)*5; if(room<10) break; const add=Math.min(room,d.avail-(d.gymDur||0)-(d.upDur||0)-d.dur,LIB[d.main.id].dL-d.dur); if(add>=10){ d.dur+=add; total+=add; } } }
+    if(total>cap){ const nk=days.filter(d=>!d.past&&isKey(d)&&d.main.id!=="RACE").length, lg=days.find(d=>!d.past&&["E4","E5","D1"].includes(d.main.id)), mu=days.some(d=>!d.past&&(d.gym||(LIB[d.main.id]||{}).sport==="muscu")), rp=days.some(d=>!d.past&&d.main.id==="C16");
+      const kept=[nk?(nk>1?nk+" séances clés":"une séance clé"):"",lg?"la sortie longue de "+fmtMin(lg.dur):"",rp?"le programme course-marche":"",mu?"une muscu":""].filter(Boolean);
+      warns.push("Même raccourci, le plan dépasse le plafond ("+fmtMin(total)+" pour "+fmtMin(cap)+") : "+(kept.length?kept.join(", ").replace(/, ([^,]*)$/," et $1")+(kept.length>1?" sont gardé"+(rp?"s":"es"):" est gardé"+(rp?"":"e"))+" au minimum.":"c’est le minimum utile.")+(RW?" Si tu sens la fatigue, raccourcis la sortie longue plutôt que les séances clés.":lg?" Si tu sens la fatigue, remplace la sortie longue par 1 h 30 d’endurance.":mu?" Si tu manques de temps, saute la muscu cette semaine.":"")); }
   }
   if(RW&&!opt.phase){ const lgD=Math.max(0,...days.filter(d=>!d.past&&["C3","C4","C15"].includes(d.main.id)).map(d=>d.dur));
     if(lgD) days.filter(d=>!d.past&&!d.pinned&&["C1","C2"].includes(d.main.id)&&d.dur>lgD-15).forEach(d=>{ const nd=Math.max(LIB[d.main.id].dS,Math.floor((lgD-15)/5)*5); if(nd<d.dur){ total-=d.dur-nd; d.dur=nd; } }); }
@@ -1975,7 +1991,8 @@ function buildWeek(mon,availOverride,opt={}){
     if(placed<expect&&phase!=="affutage"&&!(RW&&rpk>=0)){ const why=[];
       if(postShock) why.push("récupération après le bloc de choc"); if(LC&&LC.fatigue) why.push("fatigue détectée"); if(LC&&LC.reprise) why.push("reprise après une coupure");
       if(days.some(d=>d.pinned&&!isK(d)&&!d.past)) why.push("jours que tu as modifiés : il ne reste plus assez de jours libres à 48 h d’écart");
-      if(warns.some(w=>/non placée/.test(w))) why.push("pas assez de jours libres et assez longs, à 48 h d’écart");
+      if(warns.some(w=>/^Séance clé.*non placée/.test(w))) why.push("pas assez de jours libres et assez longs, à 48 h d’écart");
+      if(days.some(d=>d.notes.some(n=>/^séance clé retirée : ton volume max/.test(n)))) why.push("ton volume max ne laisse la place qu’à une séance clé");
       warns.unshift("Séances clés cette semaine : "+placed+" au lieu de "+expect+(why.length?" ("+why.join(" ; ")+")":"")+"."); } }
   // une « sortie longue » de moins d'1 h n'en est pas une : elle s'affiche comme un footing (base de course encore courte, ou affûtage)
   days.filter(d=>!d.past&&!d.pinned&&d.main.id==="C3"&&d.dur<LIB.C3.dS).forEach(d=>{ d.main={id:"C1"}; d.dur=Math.min(d.dur,LIB.C1.dL);
@@ -2007,12 +2024,18 @@ function buildWeek(mon,availOverride,opt={}){
     if(tgt&&lg&&lg<tgt*.75) warns.push("Ta sortie longue ("+fmtMin(lg)+") reste loin du repère d’un "+RDL[goal]+" (environ "+fmtMin(tgt)+" et plus) : elle ne peut progresser que d’environ 10 % par semaine sans risque. Pars prudemment le jour J, ou vise une course plus lointaine."); }
   if(RW&&!opt.phase&&sportProfile()==="velo") warns.unshift("Ton profil est « vélo », mais une course à pied est ton objectif A : sa préparation passe en priorité jusqu’à la course ; le vélo sert de volume facile. Si tu veux aussi une course vélo prioritaire sur cette période, passe ton profil sur « les deux » et choisis le sport prioritaire.");
   if(RW&&!opt.phase) warns.unshift("Semaine course à pied ("+(pureRun?"":"sport prioritaire, ")+(races.some(r=>r.date>=mon&&raceSport(r)==="course")?"objectif "+RDL[goal]:"pas de course prévue : base générale")+")"+(pureRun?".":" : les séances clés vont à la course, le vélo sert de volume facile."));
+  // un jour de repos qui garde une séance ajoutée (musculation) : cette séance devient la séance du jour, le temps total ne change pas
+  days.forEach(d=>{ if(d.past||!d.main||d.main.id!=="R0"||!(d.extra||[]).length) return; const x=d.extra[0];
+    d.dur=x===d.up&&d.upDur?d.upDur:x===d.gym&&d.gymDur?d.gymDur:(LIB[x]||{}).dS||0; if(x===d.up) d.upDur=0; if(x===d.gym) d.gymDur=0;
+    d.main={id:x}; d.extra=d.extra.slice(1); });
   // plafond d'heures (volume max) : endurance, jambes et haut du corps ensemble ; au-delà, on garde une seule séance de haut du corps
   { const hc=Math.round(weekCap(mon,phase,deload)); let ut=days.reduce((s,d)=>s+upMin(d),0);
     // l'objectif prise de masse est un choix : le temps du haut du corps se prend d'abord sur les sorties vélo faciles, jamais sur les séances clés ni la sortie longue
     for(const d of days.filter(d=>!d.past&&!d.pinned&&["E2","E3"].includes(d.main.id)).sort((a,b)=>b.dur-a.dur)){ if(!ut||total+ut<=hc) break; const cut=Math.min(d.dur-LIB[d.main.id].dS,Math.ceil((total+ut-hc)/5)*5); if(cut>0){ d.dur-=cut; total-=cut; d.notes.push("raccourcie pour laisser le temps de la séance de haut du corps"); } }
     for(const d of days.filter(d=>!d.past&&!d.pinned&&d.up&&!(d.pinAdd||[]).includes(d.up)).reverse()){ if(total+ut<=hc||days.filter(x=>x.up).length<=1) break; ut-=upMin(d);
       if(d.main.id===d.up){d.main={id:"R0"};d.dur=0;} else {d.extra=d.extra.filter(x=>x!==d.up);d.upDur=0;} d.up=null; d.notes.push("haut du corps retiré : ton volume max d’heures est atteint"); warns.push("Prise de masse : une seule séance de haut du corps cette semaine, ton volume max d’heures est atteint. Augmente-le dans Réglages si tu as le temps."); }
+    // toujours au-delà : la séance de haut du corps gardée passe à sa version courte
+    if(total+ut>hc) days.filter(d=>!d.past&&!d.pinned).forEach(d=>{ if(d.main.id==="H1"&&d.dur>LIB.H1.dS){ ut-=d.dur-LIB.H1.dS; d.dur=LIB.H1.dS; } else if(d.upDur>LIB.H1.dS){ ut-=d.upDur-LIB.H1.dS; d.upDur=LIB.H1.dS; } });
     var upTot=ut; }
   const W={mon,phase,deload,days,cap,capWhy,total,upTot,warns,keysPlanned:days.filter(isKey).length,shock,load:LC,RW,goal};
   if(!opt.phase) applyEdits(W);
@@ -2201,7 +2224,7 @@ function decideToday(ci){
   if(raceTom){trace.push("Course demain : activation.");
     // veille d'une course à pied : footing court avec quelques lignes droites, pas une activation à vélo
     if(raceSport(raceTom)==="course"||pureRun) return out(time>=25?"C2":"R0",{level:"good",title:"Veille de course",dur:time>=25?Math.min(30,time):0,variant:"courte",note:time>=25?"20-30 min facile et quelques lignes droites, rien de nouveau.":""});
-    return out(time>=40?"P1":"R0",{level:"good",title:"Veille de course"});}
+    return out(time>=40?"P1":"R0",{level:"good",title:"Veille de course",dur:time>=40?Math.min(LIB.P1.dL,Math.max(LIB.P1.dS,Math.min(45,time))):0,variant:"courte"});}
 
   // 4. disponibilité et matériel
   if(time<25){trace.push("Moins de 25 min disponibles : repos, rien à compenser.");return out("R0",{level:"good",title:"Repos"});}
@@ -2330,7 +2353,7 @@ function svgWorkout(id,variant,dur){
   const t=`<div class="ptimes"><span>0</span><span>${fmtMin(Math.round(tot/120))}</span><span>${fmtMin(Math.round(tot/60))}</span></div>`;
   return `<div class="profile-wrap"><svg class="profile" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Profil de la séance : ${f.length} étapes sur ${fmtMin(Math.round(tot/60))}">
     <line x1="0" x2="${W}" y1="${ftpY}" y2="${ftpY}" stroke="var(--line2)" stroke-dasharray="4 5" vector-effect="non-scaling-stroke"/>${bars}</svg>${t}
-    <div class="legend" style="margin-top:6px"><span><span class="zbar" style="background:none;border-top:2px dashed var(--line2);height:0;vertical-align:3px"></span>${LIB[id]&&LIB[id].sport==="course"?"":"100 % FTP"}</span>${[["z1","récup"],["z2","endurance"],["z3","tempo"],["z4","seuil"],["z5","PMA"],["z6","anaérobie"],["z7","sprint"]].filter(z=>f.some(s=>zoneColor(s.lo==null?null:pct(s))==="var(--"+z[0]+")")).map(z=>`<span><span class="zbar" style="background:var(--${z[0]})"></span>${z[1]}</span>`).join("")}</div></div>`;
+    <div class="legend" style="margin-top:6px"><span><span class="zbar" style="background:none;border-top:2px dashed var(--line2);height:0;vertical-align:3px"></span>${LIB[id]&&LIB[id].sport==="course"?"":S.settings.hasPower===0||S.settings.wkTarget==="hr"?"seuil":"100 % FTP"}</span>${[["z1","récup"],["z2","endurance"],["z3","tempo"],["z4","seuil"],["z5","PMA"],["z6","anaérobie"],["z7","sprint"]].filter(z=>f.some(s=>zoneColor(s.lo==null?null:pct(s))==="var(--"+z[0]+")")).map(z=>`<span><span class="zbar" style="background:var(--${z[0]})"></span>${z[1]}</span>`).join("")}</div></div>`;
 }
 function svgMini(id,variant,dur){
   let st; try{st=planSteps(id,variant,dur);}catch(e){return "";} if(!st||!st.length) return "";
@@ -2358,6 +2381,7 @@ function renderToday(){
   const secLeft=!!(r.slot&&r.slot.past&&sec.some(x=>!S.sessions.some(y=>y.date===TODAY&&y.id===x.id)));
   const intShort=s.int?String(s.int).split(/[;,(·]/)[0].trim():"";
   const fields=[["Durée",r.dur?fmtMin(r.dur):"—"],r.id==="RACE"?["Priorité","course "+r.race.prio]:/^e\d$/.test(r.variant||"")?["Étape",(+r.variant.slice(1)+1)+" sur 8"]:["Version",r.variant==="longue"?"longue":"courte"],intShort&&intShort.length<=22?["Intensité",intShort]:null,["Glucides du jour",ch.gLo+"-"+ch.gHi+" g"]].filter(Boolean);
+  const demoBar=S.settings.demo?`<div class="alert warn demo-bar" style="margin:0 0 16px"><b>Plan d’exemple</b>Il part de réglages par défaut (FTP ${S.settings.ftp} W, ${String(S.settings.maxH).replace(".",",")} h par semaine au plus), pas de toi. Réponds au questionnaire de départ (3 min) pour un plan à ta mesure.<div class="row" style="margin-top:8px"><button class="btn small" type="button" id="demoStart">Répondre au questionnaire</button></div></div>`:"";
   box.innerHTML=`
   <article class="hero ${r.level}" aria-labelledby="heroName">
     <div class="meta"><span>${fmtD(TODAY).replace(/^./,c=>c.toUpperCase())}</span><span><span class="dot" style="background:${phColor(r.plan.phase)};margin-right:6px"></span>${PHL[r.plan.phase]}${r.plan.deload?", semaine allégée":""}</span>${sec.length?`<span>${sec.length+1} séances aujourd’hui</span>`:""}<span class="chip ${r.R.lvl}"><span class="dot" style="background:currentColor"></span>${r.R.label}</span></div>
@@ -2386,6 +2410,8 @@ function renderToday(){
   if(cis){ cis.textContent=ciDone?"Rempli":"À remplir"; cis.className="state chip "+(ciDone?"good":"warn"); }
   if(cic&&!cic.dataset.touched){ cic.open=!ciDone&&window.innerWidth>900; cic.ontoggle=()=>{cic.dataset.touched="1";}; }
   renderFree(r,ci);
+  { const td=box.closest(".today"); let db=document.getElementById("demoBarBox"); if(!db&&td){ db=document.createElement("div"); db.id="demoBarBox"; td.parentNode.insertBefore(db,td); } if(db) db.innerHTML=demoBar; }
+  const dsb=document.getElementById("demoStart"); if(dsb) dsb.onclick=()=>{ if(window.v2Onboarding) window.v2Onboarding(); };
   const qs=document.getElementById("qSend"); if(qs) qs.onclick=()=>askSendGarmin(r.id,r.variant,r.dur,TODAY,"qGarminMsg");
   const qg=document.getElementById("qGarmin"); if(qg) qg.onclick=()=>offerZip([workoutFile(r.id,r.variant,r.dur,TODAY.replace(/-/g,""),r.dur)],"seance_"+TODAY+".zip","qGarminMsg");
   box.querySelectorAll("[data-q2]").forEach(b=>b.onclick=()=>{ const k=+b.dataset.q2, x=sec[k], dur=+document.getElementById("q2Dur"+k).value||0, rpe=document.getElementById("q2Rpe"+k).value;
@@ -2586,7 +2612,9 @@ let libCat="all",libSport="velo";
 function renderLib(){
   const st=S.settings,f=st.ftp,fc=fcRef(),W=p=>Math.round(f*p/100);
   const Z=[["Z1 Récupération","< 55",`< ${W(55)}`,"< 68","1-2"],["Z2 Endurance","56-75",`${W(56)}-${W(75)}`,"68-80","2-3"],["Z3 Tempo","76-90",`${W(76)}-${W(90)}`,"80-88","4-5"],["Z4 Seuil","91-105",`${W(91)}-${W(105)}`,"88-92","6-7"],["Z5 PMA / VO2max","106-120",`${W(106)}-${W(120)}`,"> 92","8-9"],["Z6 Anaérobie","121-150",`${W(121)}-${W(150)}`,"non pertinent","9-10"],["Z7 Sprint","maximal","> "+W(150),"non pertinent","10"]];
-  document.getElementById("zonesTable").innerHTML=`<table><thead><tr><th>Zone</th><th>% FTP</th><th>Watts (FTP ${f} W)</th><th>% FC max (${fc} bpm)</th><th>RPE</th></tr></thead><tbody>${Z.map(z=>`<tr><td><b>${z[0]}</b></td><td>${z[1]}</td><td class="num">${z[2]}</td><td>${z[3]}</td><td>${z[4]}</td></tr>`).join("")}</tbody></table>`;
+  const noP=st.hasPower===0||st.hasPower==="0", bpm=x=>{ const m=String(x).match(/(\d+)(?:-(\d+))?/); if(!m) return ""; const a=Math.round(+m[1]*fc/100), b=m[2]?Math.round(+m[2]*fc/100):null; return /^</.test(x)?"< "+a:/^>/.test(x)?"> "+a:b?a+"-"+b:a; };
+  document.getElementById("zonesTable").innerHTML=noP?`<p class="small muted">Sans capteur de puissance : tes séances vélo se règlent à la fréquence cardiaque, et au ressenti (RPE) pour les efforts courts où la FC n’a pas le temps de monter.</p><table><thead><tr><th>Zone</th><th>% FC max</th><th>FC (max ${fc} bpm)</th><th>RPE</th></tr></thead><tbody>${Z.map(z=>`<tr><td><b>${z[0]}</b></td><td>${z[3]}</td><td class="num">${/non/.test(z[3])?"au ressenti":bpm(z[3])+" bpm"}</td><td>${z[4]}</td></tr>`).join("")}</tbody></table>`
+    :`<table><thead><tr><th>Zone</th><th>% FTP</th><th>Watts (FTP ${f} W)</th><th>% FC max (${fc} bpm)</th><th>RPE</th></tr></thead><tbody>${Z.map(z=>`<tr><td><b>${z[0]}</b></td><td>${z[1]}</td><td class="num">${z[2]}</td><td>${z[3]}</td><td>${z[4]}</td></tr>`).join("")}</tbody></table>`;
   const VC=["endurance","long","tempo","seuil","vo2","court","anaerobie","durabilite","sprint"],RC=["course","c_long","c_seuil","c_vma","c_spec","c_cotes","c_test"],pr=sportProfile();
   const both=pr!=="course"&&runActive(); if(pr==="course"||!runActive()) libSport=pr==="course"?"course":"velo";
   const ls=document.getElementById("libSport"); ls.style.display=both?"":"none";
@@ -2778,7 +2806,7 @@ function renderSuivi(){
 /* ---------- Suivi : indicateurs, sous-onglets, liste des sorties ---------- */
 // sous-onglets génériques : <div class="subtabs" data-view="x"> + <div class="subview" data-sub="…"> dans #v-x ; mémorisés par vue
 function setSub(view,k){ const sec=document.getElementById("v-"+view); if(!sec) return; const keys=[...sec.querySelectorAll(".subtabs [data-sub]")].map(b=>b.dataset.sub); if(!keys.length) return;
-  if(!keys.includes(k)) k=keys[0]; try{localStorage.setItem("coach-route-sub-"+view,k);}catch(e){}
+  if(!keys.includes(k)) k=view==="preuves"&&typeof S!=="undefined"&&S.settings&&S.settings.sportProfile==="course"&&keys.includes("cap")?"cap":keys[0]; try{localStorage.setItem("coach-route-sub-"+view,k);}catch(e){}
   sec.querySelectorAll(".subtabs [data-sub]").forEach(b=>{b.setAttribute("aria-selected",String(b.dataset.sub===k)); b.tabIndex=b.dataset.sub===k?0:-1;});
   sec.querySelectorAll(".subview").forEach(v=>v.classList.toggle("on",v.dataset.sub===k)); }
 function getSub(view){ try{return localStorage.getItem("coach-route-sub-"+view);}catch(e){return null;} }
@@ -2920,7 +2948,7 @@ function renderSettings(){
       <label>Date<input type="date" data-r="date" data-i="${i}" value="${r.date}"></label>
       <label>Priorité<select data-r="prio" data-i="${i}">${[["A","A : objectif"],["B","B : importante"],["C","C : entraînement"]].map(([p,l])=>`<option value="${p}" ${r.prio===p?"selected":""}>${l}</option>`).join("")}</select></label>
       <label>Sport<select data-r="sport" data-i="${i}">${[["velo","Vélo"],["course","Course à pied"]].map(([k,l])=>`<option value="${k}" ${raceSport(r)===k?"selected":""}>${l}</option>`).join("")}</select></label>
-      <label>Profil<select data-r="profile" data-i="${i}">${(raceSport(r)==="course"?[["plat","route plate"],["vallonné","route vallonnée"],["trail","trail (sentiers, dénivelé)"]]:[["plat","plat"],["vallonné","vallonné"],["montagne","montagne"],["circuit","circuit"]]).map(([p,l])=>`<option value="${p}" ${r.profile===p||(p==="trail"&&r.profile==="montagne")?"selected":""}>${l}</option>`).join("")}</select></label>
+      <label class="rprof">Profil<select data-r="profile" data-i="${i}">${(raceSport(r)==="course"?[["plat","route plate"],["vallonné","route vallonnée"],["trail","trail (sentiers, dénivelé)"]]:[["plat","plat"],["vallonné","vallonné"],["montagne","montagne"],["circuit","circuit"]]).map(([p,l])=>`<option value="${p}" ${r.profile===p||(p==="trail"&&r.profile==="montagne")?"selected":""}>${l}</option>`).join("")}</select></label>
       <label>Distance (km)<input type="number" min="0" max="300" step="0.1" data-r="dist" data-i="${i}" value="${r.dist||""}" ${raceSport(r)==="course"?'list="runDists" placeholder="10 · 21,1 · 42,2"':""}></label>
       <label>Départ<input type="time" data-r="start" data-i="${i}" value="${r.start||""}"></label>
       <label>Altitude max (m)<input type="number" min="0" max="5000" step="50" data-r="alt" data-i="${i}" value="${r.alt||""}" placeholder="facultatif"></label>
@@ -2972,8 +3000,8 @@ function renderEvidence(){try{renderEvidenceRun();}catch(e){}
     ["Musculation","La force lourde améliore efficacité, puissance anaérobie et performance, sans toucher au VO2max.","Modéré","Rønnestad et Mujika 2014 ; Llanos-Lagos 2024 (coureurs)","2 séances par semaine en base et construction, 1 en saison, arrêt avant les courses A."],
     ["Prise de masse","Volume : environ 10 séries par muscle et par semaine ou plus, gains qui ralentissent au-delà ; 2 séances par muscle et par semaine ; 6 à 30 répétitions, efficaces si proches de l’échec (1 à 3 en réserve). Une séance hebdomadaire avec 1/3 du volume suffit à garder la masse.","Fort (dose-réponse), modéré (fréquence, proximité de l’échec)","Schoenfeld 2017 ; Pelland 2024 ; Schoenfeld 2016 et 2019 ; Refalo 2023 ; Bickel 2011","Objectif « prise de masse » : 2 séances de haut du corps par semaine (environ 8 à 14 séries par groupe), 1 en semaine allégée, d’affûtage ou de course ; les jambes restent en force lourde pour la performance."],
     ["Endurance et hypertrophie","L’interférence est surtout locale : la course gêne davantage la prise de masse des jambes que le vélo ; le haut du corps n’est presque pas touché. Hypertrophie des fibres lentes un peu réduite par l’endurance.","Modéré","Wilson 2012 ; Schumann 2022 ; Lundberg 2022","Le haut du corps se place même la veille d’une séance clé ; jamais le jour ou la veille d’une course, 48 h entre deux séances."],
-    ["Débuter ou reprendre la course","Progression par paliers en alternant course et marche ; douleur tolérée jusqu’à 3/10 si elle est revenue le lendemain matin ; entraînement croisé sans impact pendant la blessure","Faible à modéré (pratique, Silbernagel 2007 pour le tendon, Eyestone 1993 pour le vélo)","Programme course-marche en 8 étapes (6 en reprise), semaine « Blessure » sans course."],
-    ["Chaleur et altitude","Acclimatation à la chaleur : 5 à 14 séances au chaud ou bains chauds après l’effort ; altitude : VO2max −6 % environ par 1 000 m au-dessus de 300 m, arriver la veille ou 10 à 14 jours avant","Fort (chaleur, Racinais 2015) ; modéré (altitude, Wehrlin 2006)","Notes d’acclimatation dans les 14 jours avant une course chaude, conseils pour une course en altitude."],
+    ["Débuter ou reprendre la course","Progression par paliers en alternant course et marche ; douleur tolérée jusqu’à 3/10 si elle est revenue le lendemain matin ; entraînement croisé sans impact pendant la blessure","Faible à modéré (surtout la pratique)","Silbernagel 2007 (tendon) ; Eyestone 1993 (vélo à la place de la course)","Programme course-marche en 8 étapes (6 en reprise), semaine « Blessure » sans course."],
+    ["Chaleur et altitude","Acclimatation à la chaleur : 5 à 14 séances au chaud ou bains chauds après l’effort ; altitude : VO2max −6 % environ par 1 000 m au-dessus de 300 m, arriver la veille ou 10 à 14 jours avant","Fort (chaleur) ; modéré (altitude)","Racinais 2015 ; Wehrlin et Hallén 2006","Notes d’acclimatation dans les 14 jours avant une course chaude, conseils pour une course en altitude."],
     ["Interférence","Pas d’effet sur force maximale et hypertrophie ; explosivité réduite si même séance que l’endurance (moins de 20 min d’écart).","Modéré à fort","Schumann 2022 ; Lundberg 2022","Muscu les jours de séance clé, au moins 3 h après le vélo (précaution de l’appli, pas une valeur testée)."],
     ["Course à pied","Aucun essai sur la performance d’un cycliste.","Pas de preuve","—","Endurance facile, plafonnée, jamais la veille d’une séance clé."],
     ["Suivi de la charge","Ratio aigu/chronique invalidé comme prédicteur ; CTL/TSB descriptifs ; monotonie élevée associée aux maladies banales ; entraînement guidé par la VFC (ln rMSSD sur 7 jours, zone ± 0,5 écart-type) : autant de progrès avec moins de séances dures.","Faible à modéré","Impellizzeri 2020, 2021 ; Foster 1998 ; Javaloyes 2019 ; Manresa-Rocamora 2021 ; Düking 2021","Pas de ratio aigu/chronique dans l’appli ; VFC sur 7 jours, FC de repos, sommeil, monotonie et RPE comme garde-fous. Le plan s’ajuste : fatigue sur 7 jours → une séance clé de moins et −15 % de volume ; reprise après 10 jours sans séance → 1 clé, 60 % du volume habituel."],
@@ -4320,7 +4348,7 @@ function renderCycle(refMon){
   }
   el.innerHTML=`<p class="small muted">Cycle du ${fmtD(start)} au ${fmtD(addDays(start,7*n-1))} (${S.settings.meso}).</p>
     <div class="tablewrap"><table><thead><tr><th>Semaine</th><th>Type</th><th>Volume réalisé / prévu</th><th>Clés</th><th>Charge</th><th>RPE moyen</th><th>Jours verts</th><th>Meilleur 5 min</th></tr></thead><tbody>
-    ${reps.map(r=>`<tr><td>${fmtD(r.w)}</td><td>${PHL[r.R.W.phase]}${r.R.W.deload?" · allégée":""}</td><td class="num">${r.pre?"avant le début du suivi":r.fut?"à venir":fmtMin(r.R.doneMin)+" / "+fmtMin(r.R.plannedMin)}</td><td class="num">${r.fut?"—":r.R.keysDone+" / "+r.R.keysPl}</td><td class="num">${r.fut?"—":Math.round(r.R.load)}</td><td class="num">${r.R.rpeAvg!=null?fx(r.R.rpeAvg,1):"—"}</td><td class="num">${r.R.nCI?r.R.green+" / "+r.R.nCI:"—"}</td><td class="num">${r.R.b300?r.R.b300+" W":"—"}</td></tr>`).join("")}</tbody></table></div>
+    ${reps.map(r=>`<tr><td>${fmtD(r.w)}</td><td>${PHL[r.R.W.phase]}${r.R.W.deload?" · allégée":""}</td><td class="num">${r.pre?"pas de données":r.fut?"à venir":fmtMin(r.R.doneMin)+" / "+fmtMin(r.R.plannedMin)}</td><td class="num">${r.fut?"—":r.R.keysDone+" / "+r.R.keysPl}</td><td class="num">${r.fut?"—":Math.round(r.R.load)}</td><td class="num">${r.R.rpeAvg!=null?fx(r.R.rpeAvg,1):"—"}</td><td class="num">${r.R.nCI?r.R.green+" / "+r.R.nCI:"—"}</td><td class="num">${r.R.b300?r.R.b300+" W":"—"}</td></tr>`).join("")}</tbody></table></div>
     <div style="max-width:640px">${svgBars(loads,reps.map(r=>parse(r.w).toLocaleDateString("fr-FR",{day:"numeric",month:"numeric"})))}</div>
     ${con.map(x=>`<div class="alert ${x[0]||"good"}">${esc(x[1])}${x[2]==="up"?`<div class="row" style="margin-top:6px"><button class="btn small" type="button" id="cyUp">Passer le volume max à ${(S.settings.maxH*1.05).toFixed(1)} h</button></div>`:x[2]==="2:1"&&S.settings.meso!=="2:1"?`<div class="row" style="margin-top:6px"><button class="btn small" type="button" id="cy21">Passer en cycles 2:1</button></div>`:""}</div>`).join("")}
     <p class="small muted">Les règles de progression d’un cycle à l’autre viennent de la pratique d’entraîneurs, pas d’essais contrôlés : prends-les comme des repères.</p>`;
@@ -4818,7 +4846,8 @@ function racePlan(r){
 function renderRacePlans(){
   const el=document.getElementById("racePlanOut"); if(!el) return;
   const rs=racesSorted().filter(r=>r.date>=addDays(TODAY,-1)); const sel=document.getElementById("rp_sel");
-  if(!rs.length){sel.innerHTML="";el.innerHTML="<p class='small muted'>Ajoute tes courses dans Réglages.</p>";return;}
+  sel.closest(".row").style.display=rs.length?"":"none";
+  if(!rs.length){sel.innerHTML="";el.innerHTML="<p class='small muted'>Pas encore de course. Ajoute ton objectif dans Réglages → Courses : le plan de course (allure, nutrition, échauffement) s’affiche ici.</p>";return;}
   const cur=sel.value; sel.innerHTML=rs.map((r,i)=>`<option value="${esc(r.date+"|"+r.name)}">${fmtD(r.date)} · ${esc(r.name)} (${r.prio})</option>`).join("");
   if(cur&&[...sel.options].some(o=>o.value===cur)) sel.value=cur;
   const r=rs.find(x=>x.date+"|"+x.name===sel.value)||rs[0]; el.innerHTML=racePlan(r).html;
@@ -5259,7 +5288,7 @@ function dashHTML(){const D=wkData(),tot=D.reduce((a,d)=>a+d.v+d.c,0),act=D.filt
  return `<div><h2>Tableau de bord, 12 semaines</h2><p class="small muted">Heures d’entraînement par semaine et par sport. La charge (RPE × minutes) est dans « Forme et charge ».</p></div>
  <div class="v2rings">${ringsHTML(mondayOf(TODAY))}</div>
  <div class="v2stats"><div class="v2stat"><div class="n">${Math.round(tot/60)} h</div><div class="l">Volume total</div></div><div class="v2stat"><div class="n">${ns}</div><div class="l">Séances</div></div><div class="v2stat"><div class="n">${String(act.length?Math.round(tot/act.length/60*10)/10:0).replace(".",",")} h</div><div class="l">Moyenne / semaine active</div></div><div class="v2stat"><div class="n">${String(Math.round(best/60*10)/10).replace(".",",")} h</div><div class="l">Meilleure semaine</div></div></div>
- ${chartHTML(D)}<div class="v2leg">${D.some(d=>d.v)?`<span><i style="background:var(--v4-1)"></i>Vélo</span>`:""}${D.some(d=>d.cr)?`<span><i style="background:var(--v4-2)"></i>Course</span>`:""}${D.some(d=>d.g)?`<span><i style="background:var(--v4-3)"></i>Muscu</span>`:""}</div>`;}
+ ${!tot?`<p class="small muted" style="margin:10px 0 0">Pas encore de sortie enregistrée. Importe tes fichiers (.fit, .tcx, .gpx) dans « Mes sorties », ou relie Garmin ou Strava : tes 12 dernières semaines apparaîtront ici.</p>`:chartHTML(D)}<div class="v2leg">${D.some(d=>d.v)?`<span><i style="background:var(--v4-1)"></i>Vélo</span>`:""}${D.some(d=>d.cr)?`<span><i style="background:var(--v4-2)"></i>Course</span>`:""}${D.some(d=>d.g)?`<span><i style="background:var(--v4-3)"></i>Muscu</span>`:""}</div>`;}
 let sig="";
 function inject(){if(typeof S==="undefined"||!S.sessions)return;
  const k=$("#suiviKpi");if(k&&k.parentNode){let c=$("#v2dash");const s=JSON.stringify([S.sessions.length,S.sessions.map(x=>x.date+x.dur+(x.rpe||"")).join(),TODAY]);
@@ -5326,7 +5355,7 @@ input[type=checkbox][data-av="on"]:checked::after,.v3sw:checked::after{transform
 .cs.inline .cs-btn{width:auto;min-width:130px}
 .cs-btn:hover{border-color:color-mix(in srgb,var(--ink) 28%,var(--line2))}
 .cs-btn:focus-visible,.cs-btn[aria-expanded="true"]{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 20%,transparent)}
-.cs-btn .cs-t{overflow:hidden;text-overflow:ellipsis;min-width:0}
+.cs-btn .cs-t{overflow:hidden;text-overflow:ellipsis;min-width:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;white-space:normal}
 .cs-btn svg{width:16px;height:16px;flex:none;stroke:var(--muted);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s var(--ease)}
 .cs-btn[aria-expanded="true"] svg{transform:rotate(180deg)}
 .cs-btn[disabled]{opacity:.5;cursor:not-allowed}
@@ -5368,7 +5397,7 @@ input[type=checkbox][data-av="on"]:checked::after,.v3sw:checked::after{transform
 header.top{display:flex;align-items:center;gap:12px}
 header.top .chips{flex:1}
 .v3mode{margin-left:auto;flex:none}
-.v3mode .v3s button{padding:6px 11px;font-size:12.5px}
+.v3mode .v3s button{padding:8px 11px;font-size:12.5px}
 .ci-more{all:unset;cursor:pointer;grid-column:1/-1;font:600 13px "Archivo",sans-serif;color:var(--accent-2);display:none;align-items:center;gap:6px;padding:2px 0}
 .ci-more svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;transition:transform .2s var(--ease)}
 body.ci-open .ci-more svg{transform:rotate(180deg)}
@@ -5735,6 +5764,7 @@ function showTip(el,ev){ const t=el.getAttribute("data-t"); if(!t) return; const
 const hideTip=()=>{ if(tip) tip.classList.remove("on"); };
 document.addEventListener("mouseover",e=>{ const el=e.target.closest&&e.target.closest(".v4 [data-t]"); if(el) showTip(el,e); else hideTip(); });
 document.addEventListener("focusin",e=>{ const el=e.target.closest&&e.target.closest(".v4 [data-t]"); if(el) showTip(el,e); });
+document.addEventListener("focusout",e=>{ if(e.target.closest&&e.target.closest(".v4 [data-t]")) hideTip(); });
 document.addEventListener("focusout",hideTip); document.addEventListener("scroll",hideTip,true);
 document.addEventListener("click",e=>{ const el=e.target.closest&&e.target.closest(".v4 [data-t]"); if(el) showTip(el,e); else hideTip(); });
 /* apparition à l'écran */
@@ -6450,7 +6480,7 @@ function renderBoard(){
   if(B.on) h+=`<div class="pgsegb" role="group" aria-label="Portée du classement"><button type="button" data-sc="grp" aria-pressed="${BOARD.scope==="grp"}" ${B.grp?"":"disabled"}>Mon groupe</button><button type="button" data-sc="all" aria-pressed="${BOARD.scope==="all"||!B.grp}">Tout le monde</button></div>`;
   const e=BOARD.err; const missing=e&&(/board/.test(String(e.message||""))||e.code==="42P01"||e.code==="PGRST205");
   if(missing) h+=`<div class="alert warn">Le classement n’est pas encore activé sur le serveur : la table <b>board</b> manque dans Supabase. Le fichier <b>supabase/board.sql</b> du dépôt la crée en une fois (éditeur SQL de Supabase).</div>`;
-  else if(e) h+=`<div class="alert warn">Classement indisponible pour l’instant : ${esc(String(e.message||e))}</div>`;
+  else if(e) h+=`<div class="alert warn">Classement indisponible pour l’instant : ${/fetch|network|load failed/i.test(String(e.message||e))?"pas de connexion internet, ou le service ne répond pas.":esc(String(e.message||e))}</div>`;
   else if(BOARD.rows){ const wk=mondayOf(TODAY), rows=BOARD.rows.map(r=>Object.assign({},r,{pw:r.week===wk?r.pts_week:0})).sort((a,b)=>b.pw-a.pw||b.pts_total-a.pts_total);
     h+=rows.length?`<div class="tablewrap pgboard"><table><thead><tr><th>Rang</th><th>Pseudo</th><th class="num">Semaine</th><th class="num">Saison</th><th class="num">Série</th><th class="num">Badges</th></tr></thead><tbody>${rows.map((r,i)=>`<tr class="${r.user_id===cloudUser.id?"me":""}"><td class="rk">${i+1}</td><td>${esc(r.pseudo)}</td><td class="num">${fr(r.pw)}</td><td class="num">${fr(r.pts_total)}</td><td class="num">${r.streak} sem.</td><td class="num">${r.badges}</td></tr>`).join("")}</tbody></table></div>`:`<p class="small muted">Personne pour l’instant${BOARD.scope==="grp"?" dans ce groupe : partage le code à tes amis":""}.</p>`; }
   else if(B.on) h+=`<p class="small muted">Chargement du classement…</p>`;
@@ -6765,7 +6795,7 @@ function statusCard(){
   const e=ERR; if(!e) return "";
   if(missingTable(e)) return `<div class="alert warn">La communauté n’est pas encore activée sur le serveur : il manque les tables dans Supabase. Le fichier <b>supabase/social.sql</b> du dépôt les crée en une fois (éditeur SQL de Supabase).</div>`;
   if(/anonymous/i.test(String(e.message||""))) return `<div class="alert warn">La création automatique de compte n’est pas activée dans Supabase (Authentication, Sign In / Providers, « Allow anonymous sign-ins »). En attendant, crée un compte avec ton e-mail.</div>`;
-  return `<div class="alert warn">Communauté indisponible pour l’instant : ${esc(String(e.message||e))}</div>`;
+  const m=String(e&&e.message||e); return `<div class="alert warn">Communauté indisponible pour l’instant : ${/fetch|network|load failed/i.test(m)?"pas de connexion internet, ou le service ne répond pas. Réessaie dans un moment.":esc(m)}</div>`;
 }
 function actCard(a,p,K){
   const mine=me()&&(K[a.id]||[]).includes(me().id), n=(K[a.id]||[]).length;
