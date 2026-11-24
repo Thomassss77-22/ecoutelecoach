@@ -3479,7 +3479,7 @@ function analyzeSeries(rec,ser){
 const INT_FR={0:"effort",1:"récup",2:"échauffement",3:"retour au calme",4:"récup",5:"effort"};
 function stepTarget(stp,watts){ // cible d'une étape de séance FIT ; watts : la séance donne ses cibles en watts sans le décalage de 1000
   if(!stp) return null; const lo=stp.lo, hi=stp.hi;
-  if(stp.tgtType===4&&lo!=null&&hi!=null&&(lo||hi)) return lo>1000||hi>1000?{type:"p",lo:lo-1000,hi:hi-1000}:watts?{type:"p",lo,hi}:{type:"p",lo:lo-1000,hi:hi-1000}:{type:"p",lo:Math.round(lo*S.settings.ftp/100),hi:Math.round(hi*S.settings.ftp/100)};
+  if(stp.tgtType===4&&lo!=null&&hi!=null&&(lo||hi)) return lo>1000||hi>1000?{type:"p",lo:lo-1000,hi:hi-1000}:watts?{type:"p",lo,hi}:{type:"p",lo:Math.round(lo*S.settings.ftp/100),hi:Math.round(hi*S.settings.ftp/100)};
   if(stp.tgtType===1&&lo!=null&&hi!=null&&(lo||hi)) return lo>100||hi>100?{type:"hr",lo:lo-100,hi:hi-100}:{type:"hr",lo:Math.round(lo*fcRef()/100),hi:Math.round(hi*fcRef()/100)};
   return null; }
 function lapBlocks(rec,ser,p,hr,an){
