@@ -1749,11 +1749,11 @@ function buildWeek(mon,availOverride,opt={}){
     else if(mixte&&phase!=="affutage") warns.push("Footing n°"+(r+1)+" non placé : aucun jour libre d’au moins 25 min qui ne suive pas la musculation ou une autre course.");
   }
   // test VMA (course en complément) : il remplace un footing loin des séances clés, sinon il prend un jour libre
-  if(RW&&vmaDue) days.filter(d=>d.main&&d.main.id==="C13").forEach(d=>d.notes.push("ta VMA n’est pas renseignée : ce test la mesure, et toutes tes allures de course en découlent"));
+  if(RW&&vmaDue) days.filter(d=>d.main&&d.main.id==="C13").forEach(d=>d.notes.push(vmaWhy()));
   if(!RW&&vmaDue){ const ok=d=>!d.pinned&&!d.past&&d.avail>=45&&nbOk(d.i)&&!nextKey(d.i);
     const runs=days.filter(d=>d.main&&["C1","C2"].includes(d.main.id)&&!d.past), d=runs.find(ok);
-    if(!runs.length){} else if(d){ d.main={id:"C13"}; d.notes.push("ta VMA n’est pas renseignée : ce test la mesure, et toutes tes allures de course en découlent"); }
-    else warns.push("Test VMA à prévoir : aucun jour d’au moins 45 min loin des séances clés cette semaine. Fais un demi-Cooper quand tu peux, ou renseigne ta VMA dans Réglages."); }
+    if(!runs.length){} else if(d){ d.main={id:"C13"}; d.notes.push(vmaWhy()); }
+    else warns.push("Test VMA à prévoir : aucun jour d’au moins 45 min loin des séances clés cette semaine. Fais un demi-Cooper quand tu peux"+(+S.settings.vma>0?".":", ou renseigne ta VMA dans Réglages.")); }
   // programme course-marche : toutes les sorties de course deviennent de la course-marche, 3 au plus, jamais deux jours de suite
   if(rpk>=0){ const rpNote="course-marche, étape "+(rpk+1)+" sur 8 : douleur 3/10 au plus, pendant et le lendemain matin ; sinon refais l’étape"+(S.settings.runProg==="reprise"?" ; reprise validée par ton médecin ou kiné":"");
     // on choisit les jours de course-marche d'un coup : 3 visés pour un coureur (2 au moins), jamais deux jours de suite, sur des jours de course déjà prévus ou libres
@@ -2395,6 +2395,7 @@ function renderToday(){
       ${LIB[r.id]&&LIB[r.id].sport!=="repos"?`${["velo","course"].includes(LIB[r.id].sport)?`<button class="btn ghost" id="qSend" type="button">Envoyer sur ma montre</button>`:""}<button class="btn ghost" id="qGarmin" type="button">Fichier .fit</button>`:""}
       <label>Durée faite (min)<input id="qDur" type="number" value="${r.dur||""}"></label><label>RPE (0-10)<input id="qRpe" type="number" min="0" max="10"></label>
       <button class="btn" id="qLog" type="button">${r.id==="R0"?"Journée de repos faite":"J’ai fait cette séance"}</button><span class="small muted" id="qGarminMsg"></span></div>`}
+    ${r.id==="C13"?`<div class="actions vmabox"><label>Distance en 6 min (m)<input id="qVmaM" type="number" min="800" max="2600" step="10" placeholder="ex. 1 450"></label><button class="btn ghost" id="qVmaSave" type="button">Enregistrer ma VMA</button><span class="small muted" id="qVmaMsg">${+S.settings.vma>0?"VMA actuelle "+String(S.settings.vma).replace(".",",")+" km/h":"VMA = distance ÷ 100 (1 450 m → 14,5 km/h)"}</span></div>`:""}
     ${secLeft?"":secHTML}
   </article>
   <div class="side-col">
@@ -2416,6 +2417,9 @@ function renderToday(){
   const qg=document.getElementById("qGarmin"); if(qg) qg.onclick=()=>offerZip([workoutFile(r.id,r.variant,r.dur,TODAY.replace(/-/g,""),r.dur)],"seance_"+TODAY+".zip","qGarminMsg");
   box.querySelectorAll("[data-q2]").forEach(b=>b.onclick=()=>{ const k=+b.dataset.q2, x=sec[k], dur=+document.getElementById("q2Dur"+k).value||0, rpe=document.getElementById("q2Rpe"+k).value;
     if(!dur){alertMsg("Indique la durée.");return;} S.sessions.push({date:TODAY,id:x.id,dur,rpe:rpe===""?"":+rpe,note:""}); save(); renderAll(); });
+  const qv=document.getElementById("qVmaSave"); if(qv) qv.onclick=()=>{ const m=+document.getElementById("qVmaM").value, msg=document.getElementById("qVmaMsg");
+    if(!(m>=800&&m<=2600)){ msg.textContent="Indique la distance couverte en 6 min, entre 800 et 2 600 m."; return; }
+    S.settings.vma=Math.round(m/10)/10; S.settings.vmaDate=TODAY; S.pins=S.pins||{}; if(!S.pins[TODAY]) S.pins[TODAY]={id:"C13"}; save(); buildLib(); renderAll(); };
   const ql=document.getElementById("qLog"); if(ql) ql.onclick=()=>{
     const dur=+document.getElementById("qDur").value||0, rpe=document.getElementById("qRpe").value;
     if(!dur&&r.id!=="R0"){alertMsg("Indique la durée.");return;}
@@ -2921,9 +2925,9 @@ const RUNSET={sportProfile:"sp_profile",prioSport:"sp_prio",vma:"rn_vma",runRecD
 function renderRunSettings(){
   Object.entries(RUNSET).forEach(([k,id])=>{const el=document.getElementById(id);if(!el)return;el.value=S.settings[k]==null?"":S.settings[k];
     el.onchange=()=>{let v=el.value;if(el.type==="number")v=v===""?"":+v;if(k==="runRecTime"&&v&&!parseDur(v)){alert("Temps non reconnu : écris par exemple 44:30 ou 1:43:00.");el.value=S.settings[k]||"";return;}
-      S.settings[k]=v;if(k==="sportProfile"&&v!=="velo"){S.settings.runOn=1;S.settings.runMax=Math.max(+S.settings.runMax||0,v==="course"?4:3);}save();renderAll();};});
+      S.settings[k]=v;if(k==="vma") S.settings.vmaDate=v?TODAY:"";if(k==="sportProfile"&&v!=="velo"){S.settings.runOn=1;S.settings.runMax=Math.max(+S.settings.runMax||0,v==="course"?4:3);}save();renderAll();};});
   const o=runProf(),st=document.getElementById("rnState");
-  if(st) st.innerHTML=`FC max course <b>${o.fcmax}</b> · FC seuil course <b>${o.lthr}</b>`+(o.vma?` · VMA <b>${o.vma} km/h</b>${o.vmaSrc==="record"?" (estimée)":""}`:"")+(o.est.length?`<br><span class="muted">Estimé : ${o.est.map(esc).join(" ; ")}.</span>`:"");
+  if(st) st.innerHTML=`FC max course <b>${o.fcmax}</b> · FC seuil course <b>${o.lthr}</b>`+(o.vma?` · VMA <b>${String(o.vma).replace(".",",")} km/h</b>${o.vmaSrc==="record"?" (estimée)":vmaLastDate()?" (test du "+fmtD(vmaLastDate())+(vmaStale()?", à refaire : un test est prévu dans le plan":"")+")":" (date du test inconnue : un test est prévu dans le plan)"}`:"")+(o.est.length?`<br><span class="muted">Estimé : ${o.est.map(esc).join(" ; ")}.</span>`:"");
   const ro=document.getElementById("st_runOn"); if(ro) ro.disabled=sportProfile()!=="velo";
 }
 
@@ -4780,8 +4784,12 @@ function testWeeks(upto){
 }
 const testId=()=>S.settings.hasPower===0?"P3":"P2";
 // test VMA : tant que la VMA n'est pas renseignée, un demi-Cooper la première semaine qui s'y prête (base, construction ou spécifique, pas de voyage, examens ou maladie, pas dans les 10 jours avant une course A ou B)
+function vmaLastDate(){ const t=S.sessions.filter(x=>x.id==="C13").map(x=>x.date).sort().pop()||""; const d=S.settings.vmaDate||""; return t>d?t:d; }
+function vmaStale(){ const l=vmaLastDate(); return !l||diff(l,TODAY)>70; }
+function vmaWhy(){ if(!(+S.settings.vma>0)) return "ta VMA n’est pas renseignée : ce test la mesure, et toutes tes allures de course en découlent";
+  const l=vmaLastDate(); return l?"dernier test VMA le "+fmtD(l)+", il y a plus de 10 semaines : ce test recale tes allures de course":"aucun test VMA enregistré : ce test vérifie ta VMA et recale tes allures de course"; }
 function vmaTestWeek(){
-  if(+S.settings.vma>0||!runActive()) return null;
+  if(!runActive()||(+S.settings.vma>0&&!vmaStale())) return null;
   if(S.sessions.some(x=>x.id==="C13"&&diff(x.date,TODAY)<=56)) return null; // test fait récemment : il reste à reporter la VMA dans Réglages
   for(let w=mondayOf(addDays(TODAY,3)),i=0;i<12;i++,w=addDays(w,7)){ const ph=autoPhase(addDays(w,3)); if(!["base","construction","specifique"].includes(ph)||tagOf(w)) continue;
     if((runProgRaw(w)>=0&&runProgRaw(w)<=9)||(["debute","blessure","pause"].includes(S.settings.startStatus)&&S.settings.startDate&&diff(S.settings.startDate,w)<(S.settings.startStatus==="pause"?14:21))) continue;
