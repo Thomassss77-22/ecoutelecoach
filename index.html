@@ -3543,7 +3543,7 @@ function lapBlocks(rec,ser,p,hr,an){
     let acc=0,last=-99; for(let j=a+8;j<b;j++){const x=spd[j],y=spd[j-8]; if(x!=null&&y!=null&&x-y>=2.2&&x*3.6>=35&&j-last>30){acc++;last=j;}}
     const half=a+Math.floor((b-a)/2), hrSec=sl(hr,half,b,1), hrEnd=sl(hr,Math.max(a,b-30),b,1), hrSt=sl(hr,a,Math.min(b,a+20),1);
     const pl=plan&&plan[i]||{}, tg=pl.tg||null; let res=null, val=null;
-    const judge=tg&&(tg.type==="p"||!["récup","échauffement","retour au calme"].includes(pl.int));
+    const judge=tg&&(tg.type==="p"||(!["récup","échauffement","retour au calme"].includes(pl.int)&&(b-a)>=120));
     if(tg&&judge){ val=tg.type==="p"?pk:hrSec; if(val!=null){ const tol=tg.type==="p"?Math.max(5,tg.lo*.03):3; res=val<tg.lo-tol?"bas":val>tg.hi+tol?"haut":"ok"; } }
     return {i:i+1,t:Math.round((l.start-t0)/60*10)/10,ti:Math.round(a/60*10)/10,d:Math.round(l.timer||(endTs-l.start)||(b-a)),n:pl.n||null,int:pl.int||(l.intensity!=null&&l.intensity!==0?INT_FR[l.intensity]:(Math.round(l.timer||(endTs-l.start))<=40?"effort court":null)),tg,res,val:val!=null?Math.round(val):null,spr:!!pl.spr,
       p:pk,pMax:an.hasP?Math.max(...p.slice(a,b).map(x=>x||0)):null,hr:Math.round(sl(hr,a,b,1)||0)||null,hrMax:Math.max(0,...hr.slice(a,b).map(x=>x||0))||null,hrSt:hrSt?Math.round(hrSt):null,hrEnd:hrEnd?Math.round(hrEnd):null,
@@ -3633,6 +3633,8 @@ const ZCOL5=["#9db7d5","#5b8fd1","#e7b54a","#e07b39","#c0392b"], ZCOL7=["#c8d6e5
 // verdict lisible, calculé à l'affichage (tient compte de l'historique des mêmes séances)
 function sessionReview(sx){
   const an=sx.an||{}, id=an.id||sx.planned||sx.id, L=LIB[id]||{}, ftp=an.ftp||S.settings.ftp, good=[], warn=[], next=[]; let score=null;
+  // FC : jamais jugée sur un bloc de moins de 2 min ni sur une récupération (elle met 1 à 2 min à suivre : on ne redescend pas en 20 s) ; vaut aussi pour les séances déjà importées
+  if(an.blocks&&an.blocks.list) an.blocks.list.forEach(b=>{ if(b.tg&&b.tg.type==="hr"&&(b.d<120||b.int==="récup")){ b.res=null; b.val=null; } });
   const pct=w=>Math.round(w/ftp*100);
   if(an.set&&an.set.reps){ const st=an.set, R=st.reps;
     if(st.spr){ const pk=R.map(r=>r.w); if(pk.length){ good.push(`${pk.length} sprint(s) repéré(s) : ${pk.join(", ")} W sur ${Math.min(st.d,10)} s.`); const f=pk[pk.length-1]/Math.max(...pk);
@@ -3677,7 +3679,7 @@ function sessionReview(sx){
       if(share>.2) { warn.push(`${fmtMin(over)} au-dessus de la Z2 (${Math.round(share*100)} % de la sortie) : trop appuyé pour une séance facile.`); next.push("Sur les sorties faciles, reste sous "+(an.hasP?Math.round(ftp*.75)+" W":Math.round(fcRef()*.8)+" bpm")+" même dans les bosses (petit braquet, quitte à monter lentement)."); }
       else good.push(`Intensité maîtrisée : ${fmtMin(over)} au-dessus de la Z2.`); } }
     if(an.pace&&an.pace[0]>0){ const d=(an.pace[1]-an.pace[0])/an.pace[0]*100; if(d<-12) warn.push(`Puissance moyenne en baisse de ${Math.round(-d)} % sur le dernier tiers : coup de fatigue ou manque de carburant.`); } }
-  const BL=an.blocks&&an.blocks.list, tgB=BL?BL.filter(b=>b.tg&&b.int!=="échauffement"&&b.int!=="retour au calme"&&(b.int==="effort"||b.tg.lo>=(b.tg.type==="p"?ftp*.76:fcRef()*.8))):[];
+  const BL=an.blocks&&an.blocks.list, tgB=BL?BL.filter(b=>b.tg&&!(b.tg.type==="hr"&&(b.d<120||b.int==="récup"))&&b.int!=="échauffement"&&b.int!=="retour au calme"&&(b.int==="effort"||b.tg.lo>=(b.tg.type==="p"?ftp*.76:fcRef()*.8))):[];
   if(tgB.length){ const ok=tgB.filter(b=>b.res==="ok").length, lo=tgB.filter(b=>b.res==="bas"), hi=tgB.filter(b=>b.res==="haut");
     (ok>=tgB.length*.7?good:warn).push(`Blocs d’effort de ta séance guidée : ${ok} sur ${tgB.length} dans la cible${lo.length?", "+lo.length+" en dessous (blocs "+lo.map(b=>b.i).join(", ")+")":""}${hi.length?", "+hi.length+" au-dessus (blocs "+hi.map(b=>b.i).join(", ")+")":""}.`);
     const hrT=tgB.filter(b=>b.tg.type==="hr"&&b.d>=180&&b.hrSt&&b.hrEnd); if(hrT.length) good.push(`FC sur les blocs d’effort : ${hrT.map(b=>b.hrSt+"→"+b.hrEnd).join(", ")} bpm (début → fin). La FC met 1 à 3 min à monter : juge la 2e moitié du bloc.`);
@@ -3762,7 +3764,7 @@ function reviewHTML(sx){
     ${R.warn.length?`<div class="alert warn"><b>À surveiller</b>${R.warn.map(esc).join("<br>")}</div>`:""}
     ${R.next.length?`<div class="alert"><b>La prochaine fois</b>${R.next.map(esc).join("<br>")}</div>`:""}
     ${sec("Séance : prévu et réalisé",(sx.planned&&sx.planned!==id?`<p class="small">Prévu : ${esc((LIB[sx.planned]||{}).nom||sx.planned)} · reconnu : ${esc(L.nom||id)}</p>`:`<p class="small">${esc(L.nom||id)}${L.obj?" · "+esc(L.obj):""}</p>`)+repsT+(an.blocks&&an.blocks.list.some(b=>b.res)?"":hrEf)+(an.set&&an.set.spr&&an.set.reps.length?`<p class="small">Sprints : ${an.set.reps.map(r=>r.w+" W").join(" · ")}</p>`:"")+(an.accel!=null&&id==="E3"?`<p class="small">${an.accel} accélération(s) franche(s) repérée(s) par la vitesse (sans capteur de puissance, l’intensité des sprints ne peut pas être vérifiée).</p>`:""))}
-    ${an.blocks?sec("Blocs de ta séance",`<p class="small muted">${an.blocks.list.length} blocs lus dans le fichier (un tour par étape de la séance guidée)${an.blocks.wkt?" · séance « "+esc(an.blocks.wkt)+" »":""}${an.blocks.src?" · cibles : "+esc(an.blocks.src):" · pas de cible enregistrée"}.</p><div class="tablewrap"><table><thead><tr><th>#</th><th>Bloc</th><th>Départ</th><th>Durée</th><th>Cible</th><th>Réalisé</th><th>FC moy. / max · début→fin</th><th>Terrain</th><th>Vitesse · cadence</th></tr></thead><tbody>${an.blocks.list.map(b=>`<tr><td>${b.i}</td><td>${esc(b.n||b.int||"—")}${b.int&&b.n?"<br><span class='small muted'>"+esc(b.int)+"</span>":""}</td><td>${fx(b.t,0)} min</td><td>${b.d>=120?fmtMin(Math.round(b.d/60)):b.d+" s"}</td><td class="small">${b.tg?(b.tg.type==="p"?b.tg.lo+"-"+b.tg.hi+" W":b.tg.lo+"-"+b.tg.hi+" bpm"):b.spr?"sprint max":"—"}</td><td>${b.val!=null?`<span class="chip ${b.res==="ok"?"good":b.res?"bad":""}">${b.val} ${b.tg.type==="p"?"W":"bpm"}${b.res==="bas"?" · trop bas":b.res==="haut"?" · trop haut":""}</span>`:b.p?b.p+" W":b.spr&&b.vmax?"pointe "+b.vmax+" km/h":"—"}</td><td class="num small">${b.hr||"—"} / ${b.hrMax||"—"}${b.hrSt&&b.hrEnd?"<br>"+b.hrSt+"→"+b.hrEnd:""}</td><td class="small">${b.gain!=null&&Math.abs(b.gain)>=5?(b.gain>0?"+":"")+b.gain+" m"+(b.grade!=null?" · "+fx(b.grade,1)+" %":""):"plat"}${b.est?"<br>≈ "+b.est+" W estimés":""}</td><td class="small">${b.d<=40&&b.vmax?`pointe ${b.vmax} km/h${b.v0!=null?"<br>départ "+b.v0+" km/h (+"+Math.max(0,b.vmax-b.v0)+")":""}`:`${b.kmh!=null?fx(b.kmh,1)+" km/h":"—"}${b.vmax&&b.d>40?" · max "+b.vmax:""}`}${b.cad?" · "+b.cad+" rpm":""}${b.acc&&b.d>40?"<br>"+b.acc+" accélération(s)":""}</td></tr>`).join("")}</tbody></table></div><p class="small muted">Avec une cible de FC, l’appli juge la 2e moitié du bloc (la FC met 1 à 3 min à monter) ; avec une cible de puissance, la moyenne du bloc.</p>`):""}
+    ${an.blocks?sec("Blocs de ta séance",`<p class="small muted">${an.blocks.list.length} blocs lus dans le fichier (un tour par étape de la séance guidée)${an.blocks.wkt?" · séance « "+esc(an.blocks.wkt)+" »":""}${an.blocks.src?" · cibles : "+esc(an.blocks.src):" · pas de cible enregistrée"}.</p><div class="tablewrap"><table><thead><tr><th>#</th><th>Bloc</th><th>Départ</th><th>Durée</th><th>Cible</th><th>Réalisé</th><th>FC moy. / max · début→fin</th><th>Terrain</th><th>Vitesse · cadence</th></tr></thead><tbody>${an.blocks.list.map(b=>`<tr><td>${b.i}</td><td>${esc(b.n||b.int||"—")}${b.int&&b.n?"<br><span class='small muted'>"+esc(b.int)+"</span>":""}</td><td>${fx(b.t,0)} min</td><td>${b.d>=120?fmtMin(Math.round(b.d/60)):b.d+" s"}</td><td class="small">${b.tg?(b.tg.type==="p"?b.tg.lo+"-"+b.tg.hi+" W":b.d<120?"FC non jugée sur "+b.d+" s":b.int==="récup"?"récup libre":b.tg.lo+"-"+b.tg.hi+" bpm"):b.spr?"sprint max":"—"}</td><td>${b.val!=null?`<span class="chip ${b.res==="ok"?"good":b.res?"bad":""}">${b.val} ${b.tg.type==="p"?"W":"bpm"}${b.res==="bas"?" · trop bas":b.res==="haut"?" · trop haut":""}</span>`:b.p?b.p+" W":b.spr&&b.vmax?"pointe "+b.vmax+" km/h":"—"}</td><td class="num small">${b.hr||"—"} / ${b.hrMax||"—"}${b.hrSt&&b.hrEnd?"<br>"+b.hrSt+"→"+b.hrEnd:""}</td><td class="small">${b.gain!=null&&Math.abs(b.gain)>=5?(b.gain>0?"+":"")+b.gain+" m"+(b.grade!=null?" · "+fx(b.grade,1)+" %":""):"plat"}${b.est?"<br>≈ "+b.est+" W estimés":""}</td><td class="small">${b.d<=40&&b.vmax?`pointe ${b.vmax} km/h${b.v0!=null?"<br>départ "+b.v0+" km/h (+"+Math.max(0,b.vmax-b.v0)+")":""}`:`${b.kmh!=null?fx(b.kmh,1)+" km/h":"—"}${b.vmax&&b.d>40?" · max "+b.vmax:""}`}${b.cad?" · "+b.cad+" rpm":""}${b.acc&&b.d>40?"<br>"+b.acc+" accélération(s)":""}</td></tr>`).join("")}</tbody></table></div><p class="small muted">Avec une cible de FC, l’appli juge la 2e moitié du bloc (la FC met 1 à 3 min à monter) ; avec une cible de puissance, la moyenne du bloc.</p>`):""}
     ${sec("Répartition de l’intensité",(tgt?`<p class="small muted">Attendu pour cette séance : ${tgt}.</p>`:"")+(zp?`<p class="small" style="margin:0"><b>Puissance</b> (FTP ${ftp} W)</p>${zp}`:"")+(zh?`<p class="small" style="margin:0"><b>Fréquence cardiaque</b> (FC max ${fcRef()} bpm)</p>${zh}`:""))}
     ${sec("Montées",cl)}
     ${sec("Meilleurs efforts",(ef?`<div class="tablewrap"><table><thead><tr><th>Durée</th><th>Puissance</th><th>W/kg</th><th>Comparaison</th></tr></thead><tbody>${ef}</tbody></table></div>`:"")+(hrb?`<p class="small">${hrb}</p>`:""))}
@@ -4367,7 +4369,7 @@ function wkSteps(id,variant,dur){
   const L=variant==="longue", m=x=>Math.round(x*60), Z2=(min,n)=>({n:n||"Endurance Z2",d:m(min),lo:56,hi:75,int:"active"});
   const WU=min=>({n:"Échauffement",d:m(min),lo:50,hi:70,int:"warmup"}), CD=min=>({n:"Retour au calme",d:m(min),lo:45,hi:60,int:"cooldown"});
   const RC=(sec,n)=>({n:n||"Récup",d:sec,lo:45,hi:60,int:"rest"});
-  const ON=(sec,lo,hi,n)=>({n,d:sec,lo,hi,int:"active"}), SPR=sec=>({n:"Sprint max "+sec+" s",d:sec,lo:null,hi:null,int:"active"});
+  const ON=(sec,lo,hi,n)=>({n,d:sec,lo,hi,int:lo<=60?"rest":"active"}), SPR=sec=>({n:"Sprint max "+sec+" s",d:sec,lo:null,hi:null,int:"active"});
   const fill=(steps,total)=>{const used=sumSteps(steps);const left=Math.round(total*60-used);if(left>=300) steps.splice(steps.length-1,0,Z2(left/60,"Endurance Z2 (complément)"));return steps;};
   const D=dur||(LIB[id]?(L?LIB[id].dL:LIB[id].dS):60);
   switch(id){
@@ -4503,17 +4505,17 @@ function encodeWorkout(name,sport,steps,mode){
     if(s.d&&!s.open){u8(0);u32(s.d*1000);}else{u8(5);u32(INV32);}
     let tt=2,lo=INV32,hi=INV32;
     if(sport==="velo"&&s.lo!=null){
-      if(mode==="hr"){ const hr=pctToHr(s.lo,s.hi); if(hr){tt=1;lo=hr[0]+100;hi=hr[1]+100;} }
+      if(mode==="hr"){ const hr=s.d&&s.d<120?null:pctToHr(s.lo,s.hi); if(hr){tt=1;lo=hr[0]+100;hi=hr[1]+100;} }
       else {tt=4;lo=Math.round(ftp*s.lo/100)+1000;hi=Math.round(ftp*s.hi/100)+1000;}
     } else if(sport==="velo"&&s.lo==null&&s.int==="active"&&s.d){ // effort maximal : cible haute pour que le compteur et les graphiques montrent un effort, pas une zone 1
       const short=s.d<=60;
-      if(mode==="hr"){ const r=short?[85,100]:[90,100]; tt=1;lo=Math.round(fc*r[0]/100)+100;hi=Math.round(fc*r[1]/100)+100; }
+      if(mode==="hr"&&s.d<120){} else if(mode==="hr"){ const r=short?[85,100]:[90,100]; tt=1;lo=Math.round(fc*r[0]/100)+100;hi=Math.round(fc*r[1]/100)+100; }
       else { const r=short?[150,300]:[100,120]; tt=4;lo=Math.round(ftp*r[0]/100)+1000;hi=Math.round(ftp*r[1]/100)+1000; }
     } else if(sport==="course"){ const o=runProf();
       // qualité : cible d'allure (vitesse en m/s × 1000) ; endurance : cible FC de course (la chaleur et le dénivelé faussent l'allure)
       if(s.v&&s.int==="active"&&s.v[0]>=76&&o.vma){ let a,b; if(s.sp){const k=runRaceKmh(s.sp);a=k*.98;b=k*1.02;} else {a=o.vma*s.v[0]/100;b=o.vma*s.v[1]/100;} tt=0;lo=Math.round(a/3.6*1000);hi=Math.round(b/3.6*1000); }
-      else if(s.hr){tt=1;lo=Math.round(o.fcmax*s.hr[0]/100)+100;hi=Math.round(o.fcmax*s.hr[1]/100)+100;}
-    } else if(s.hr){tt=1;lo=Math.round(fc*s.hr[0]/100)+100;hi=Math.round(fc*s.hr[1]/100)+100;}
+      else if(s.hr&&!(s.d&&s.d<120)){tt=1;lo=Math.round(o.fcmax*s.hr[0]/100)+100;hi=Math.round(o.fcmax*s.hr[1]/100)+100;}
+    } else if(s.hr&&!(s.d&&s.d<120)){tt=1;lo=Math.round(fc*s.hr[0]/100)+100;hi=Math.round(fc*s.hr[1]/100)+100;}
     u8(tt);u32(tt===2?INV32:0);u32(lo);u32(hi);u8(intens[s.int]??0);
   });
   const data=new Uint8Array(bytes);
@@ -4715,8 +4717,8 @@ function garminSteps(id,variant,dur){
   const steps=lapOpen(planSteps(id,variant,dur)); if(!steps) return null; const st=S.settings, mode=st.wkTarget||"power", sport=LIB[id].sport;
   const im={warmup:"warmup",active:"active",rest:"recovery",cooldown:"cooldown"};
   const one=s=>{const o={intensity:im[s.int]||"active",notes:s.n.slice(0,500)}; if(s.d&&!s.open) o.seconds=s.d;
-    if(sport==="velo"&&s.lo!=null){ if(mode==="hr"){const h=pctToHr(s.lo,s.hi); if(h) o.target={type:"heart_rate",low:h[0],high:h[1]};} else o.target={type:"power",low:Math.round(st.ftp*s.lo/100),high:Math.round(st.ftp*s.hi/100)}; }
-    else if(s.hr) o.target={type:"heart_rate",low:Math.round(fcRef()*s.hr[0]/100),high:Math.round(fcRef()*s.hr[1]/100)};
+    if(sport==="velo"&&s.lo!=null){ if(mode==="hr"){const h=s.d&&s.d<120?null:pctToHr(s.lo,s.hi); if(h) o.target={type:"heart_rate",low:h[0],high:h[1]};} else o.target={type:"power",low:Math.round(st.ftp*s.lo/100),high:Math.round(st.ftp*s.hi/100)}; }
+    else if(s.hr&&!(s.d&&s.d<120)) o.target={type:"heart_rate",low:Math.round(fcRef()*s.hr[0]/100),high:Math.round(fcRef()*s.hr[1]/100)};
     return o;};
   return steps.map(s=>s.rep?{repeat:s.rep,steps:s.steps.map(one)}:one(s));
 }
