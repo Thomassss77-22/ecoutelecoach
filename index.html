@@ -1327,7 +1327,7 @@ function runLib(){
     {id:"C12",nom:"Fartlek",cat:"c_vma",sport:"course",key:false,phases:["base","construction","transition"],dS:40,dL:55,
       obj:"Varier les allures sans pression de chrono : une séance de qualité légère.",int:"Accélérations à l’allure 10 km ("+rp(10)+") · le reste en endurance",
       court:"15 min d’échauffement, 10 × (1 min vite / 1 min facile), 10 min de retour.",long:"15 min d’échauffement, 6 × (3 min vite / 2 min facile), 10 min de retour."},
-    {id:"C13",nom:"Test VMA (demi-Cooper)",cat:"c_test",sport:"course",key:true,phases:["base","construction","specifique"],dS:45,dL:45,
+    {id:"C13",nom:"Test VMA (demi-Cooper)",cat:"c_test",sport:"course",key:true,phases:["base","construction","specifique"],dS:40,dL:45,
       obj:"Mesurer ta VMA : la distance couverte en 6 min, divisée par 100, donne ta VMA en km/h (1 600 m → 16 km/h).",int:"6 min le plus loin possible, allure régulière · RPE 10",
       court:"20 min d’échauffement avec 3 accélérations, 6 min à fond sur piste ou terrain plat, 15 min de retour. Reporte la VMA dans Réglages.",long:"Même contenu."},
     {id:"C14",nom:"Test FC seuil course 30 min",cat:"c_test",sport:"course",key:true,phases:["base","construction","specifique"],dS:55,dL:55,
@@ -4440,7 +4440,7 @@ function runSteps(id,L,D){
     case "C10": return L?[WU(15),{rep:3,steps:[SP(m(15),21.0975,"15 min allure semi"),TR(120)]},CD(10)]:[WU(12),{rep:2,steps:[SP(m(15),21.0975,"15 min allure semi"),TR(120)]},CD(6)];
     case "C11": return L?[WU(20),{rep:10,steps:[MAX(90,"Côte 90 s"),TR(120,"Descente trot")]},CD(10)]:[WU(15),{rep:8,steps:[MAX(60,"Côte 60 s"),TR(90,"Descente trot")]},CD(5)];
     case "C12": return L?[WU(15),{rep:6,steps:[SP(m(3),10,"3 min vite"),E(2,"2 min facile","rest")]},CD(10)]:[WU(15),{rep:10,steps:[SP(60,10,"1 min vite"),E(1,"1 min facile","rest")]},CD(10)];
-    case "C13": return [WU(20),MAX(360,"6 min à fond"),CD(15)];
+    case "C13": return [WU(20),MAX(360,"6 min à fond"),CD(14)];
     case "C14": return [WU(15),MAX(600,"10 min à fond, puis Tour"),MAX(1200,"20 min à fond : FC seuil"),CD(10)];
   }
   return null;
