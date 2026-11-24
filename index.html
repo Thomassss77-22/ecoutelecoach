@@ -3477,9 +3477,9 @@ function analyzeSeries(rec,ser){
 
 /* ---------- blocs de la séance (tours / étapes de la séance guidée sur le compteur) ---------- */
 const INT_FR={0:"effort",1:"récup",2:"échauffement",3:"retour au calme",4:"récup",5:"effort"};
-function stepTarget(stp){ // cible d'une étape de séance FIT
+function stepTarget(stp,watts){ // cible d'une étape de séance FIT ; watts : la séance donne ses cibles en watts sans le décalage de 1000
   if(!stp) return null; const lo=stp.lo, hi=stp.hi;
-  if(stp.tgtType===4&&lo!=null&&hi!=null&&(lo||hi)) return lo>1000||hi>1000?{type:"p",lo:lo-1000,hi:hi-1000}:{type:"p",lo:Math.round(lo*S.settings.ftp/100),hi:Math.round(hi*S.settings.ftp/100)};
+  if(stp.tgtType===4&&lo!=null&&hi!=null&&(lo||hi)) return lo>1000||hi>1000?{type:"p",lo:lo-1000,hi:hi-1000}:watts?{type:"p",lo,hi}:{type:"p",lo:lo-1000,hi:hi-1000}:{type:"p",lo:Math.round(lo*S.settings.ftp/100),hi:Math.round(hi*S.settings.ftp/100)};
   if(stp.tgtType===1&&lo!=null&&hi!=null&&(lo||hi)) return lo>100||hi>100?{type:"hr",lo:lo-100,hi:hi-100}:{type:"hr",lo:Math.round(lo*fcRef()/100),hi:Math.round(hi*fcRef()/100)};
   return null; }
 function lapBlocks(rec,ser,p,hr,an){
@@ -3489,7 +3489,11 @@ function lapBlocks(rec,ser,p,hr,an){
   const n=p.length, t0=ser.start, alt=ser.alt||[], spd=ser.spd||[], cad=ser.cad||[], dist=ser.dist||[], A=smoothArr(alt,15), kg=+S.settings.kg||68;
   // cibles : étapes enregistrées par le compteur, sinon la séance de l'appli si le nombre de tours correspond
   let plan=null, src="", mapped=null;
-  if((ser.steps||[]).length){ const byIdx={}; ser.steps.forEach(x=>{byIdx[x.idx]=x;}); plan=laps.map(l=>{const x=byIdx[l.wkt]; return x?{n:x.name||null,int:INT_FR[x.intensity]||null,tg:stepTarget(x)}:null;}); src="compteur"; }
+  if((ser.steps||[]).length){ const byIdx={}; ser.steps.forEach(x=>{byIdx[x.idx]=x;});
+    // certaines séances (Garmin Connect, applis tierces) écrivent des watts sans le +1000 de la norme FIT : lus comme % de FTP, ils donnent 2 à 7 fois trop.
+    // Une cible au-delà de 250 % de FTP sur une étape n'existe pas en pratique : si une étape en a une, toute la séance est lue en watts.
+    const pw=ser.steps.filter(x=>x.tgtType===4&&x.lo!=null&&x.hi!=null&&x.lo<1000&&x.hi<1000&&(x.lo||x.hi)), watts=pw.some(x=>x.hi>250||x.lo>200);
+    plan=laps.map(l=>{const x=byIdx[l.wkt]; return x?{n:x.name||null,int:INT_FR[x.intensity]||null,tg:stepTarget(x,watts)}:null;}); src="compteur"; }
   else { const flatten=(id,v,lap)=>{let st;try{st=wkSteps(id,v); if(lap) st=lapOpen(st);}catch(e){return null;} const f=[],w=a=>a.forEach(x=>{if(x.rep){for(let i=0;i<x.rep;i++)w(x.steps);}else f.push(x);}); w(st); return f;};
     const ids=[...new Set([rec.planned,an.id,rec.id,...Object.keys(LIB)].filter(x=>x&&LIB[x]&&LIB[x].sport==="velo"&&!["E1","E2","E4"].includes(x)))];
     for(const id of ids){ for(const [v,lap] of [["courte",1],["longue",1],["courte",0],["longue",0]]){ if(lap&&S.settings.lapStart===0) continue; const f=flatten(id,v,lap); if(!f) continue;
