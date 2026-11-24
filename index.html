@@ -1182,11 +1182,11 @@ function buildLib(){
       court:"2 h 30 en Z2, 60-80 g de glucides par heure.",long:"4 h-5 h en Z2, 80-"+S.settings.cho+" g/h dès la 1re heure. Le samedi de préférence."},
     {id:"E5",nom:"Sortie longue avec blocs tempo",cat:"long",sport:"velo",key:false,phases:["base","construction","competition"],dS:150,dL:300,
       obj:"Accumuler du temps en zone modérée comme les pros (environ un quart de leur volume) sans le coût d’une séance clé.",int:"Z2 "+z(56,75)+" + blocs "+z(76,88)+" · FC "+hr(78,86)+" · RPE 4-5",
-      court:"2 h 30 en Z2 dont 3 × 15 min à "+W(76)+"-"+W(85)+" W dans la 2e heure, récup 5 min.",long:"4 h-5 h en Z2 dont 3 × 25 min à "+W(78)+"-"+W(88)+" W dans la 2e moitié, récup 10 min. 80-"+S.settings.cho+" g/h."},
+      court:"2 h 30 en Z2 dont 3 × 15 min à "+W(76)+"-"+W(85)+" W dans la 2e heure, récup 5 min.",long:"4 h-5 h en Z2 dont 3 × 25 min à "+W(76)+"-"+W(88)+" W au milieu de la sortie, récup 10 min. 80-"+S.settings.cho+" g/h."},
     {id:"D1",nom:"Durabilité : efforts en fin de sortie",cat:"durabilite",sport:"velo",key:true,phases:["construction","specifique"],dS:150,dL:240,
       obj:"Tenir les intensités de course après un travail préalable (~2 000 kJ). Pas de version courte : sans le travail préalable, ce n’est plus une séance de durabilité. Mange 80-100 g de glucides par heure dès le départ : sans ça, on entraîne la panne sèche, pas la durabilité. Progression : place les efforts après 15, puis 20, puis 25-30 kJ/kg.",int:"Z2 puis "+z(95,100)+" (FC "+hr(88,92)+", RPE 7) et efforts courts (RPE 9-10)",
-      court:"1 h 45 Z2, puis 3 × 8 min à "+W(95)+"-"+W(100)+" W récup 4 min, puis 3 × 15 s sprint maximal récup 3 min.",
-      long:"2 h 45 Z2 (≈ 30 kJ/kg, soit "+Math.round(30*(+S.settings.kg||68))+" kJ), puis 4 × 8 min à "+W(95)+"-"+W(100)+" W récup 4 min, 4 × 1 min à "+W(130)+" W récup 2 min, 3 sprints de 15 s. 80-"+S.settings.cho+" g/h."},
+      court:"1 h 35 Z2, puis 3 × 8 min à "+W(95)+"-"+W(100)+" W récup 4 min, puis 3 × 15 s sprint maximal récup 3 min.",
+      long:"2 h 40 Z2 (≈ 30 kJ/kg, soit "+Math.round(30*(+S.settings.kg||68))+" kJ), puis 4 × 8 min à "+W(95)+"-"+W(100)+" W récup 4 min, 4 × 1 min à "+W(130)+"-"+W(140)+" W récup 2 min, 3 sprints de 15 s. 80-"+S.settings.cho+" g/h."},
     {id:"T1",nom:"Tempo / sweet spot",cat:"tempo",sport:"velo",key:true,phases:["base","construction"],dS:60,dL:120,
       obj:"Repousser le seuil avec un coût de fatigue modéré.",int:z(88,93)+" · FC "+hr(84,90)+" · RPE 5-6",
       court:"Échauffement 15 min, 2 × 15 min à "+W(88)+"-"+W(93)+" W récup 5 min, retour au calme 10 min.",
@@ -1207,7 +1207,7 @@ function buildLib(){
       obj:"Temps maximal au-dessus de 90 % du VO2max ; tout le profil de puissance.",int:"30 s ≈ "+W(115)+"-"+W(125)+" W (≈ ta PMA de test rampe) / 15 s ≈ "+W(50)+" W · effort réglé au ressenti comme dans l’étude : la plus haute puissance que tu peux tenir de façon régulière sur toute la série, RPE 9 sur les dernières répétitions. Si la 1re série se termine en perdition, baisse de 5 %.",
       court:"Échauffement 15 min, 2 séries de 13 × (30 s / 15 s) récup 3 min entre séries, retour 10 min.",
       long:"Échauffement 20 min, 3 séries de 13 × (30 s / 15 s) récup 3 min, Z2 jusqu’à 1 h 30."},
-    {id:"V4",nom:"PMA avec relances (5 × 5 min)",cat:"vo2",sport:"velo",key:true,phases:["construction","specifique","competition"],dS:60,dL:95,
+    {id:"V4",nom:"PMA avec relances : répétitions de 5 min",cat:"vo2",sport:"velo",key:true,phases:["construction","specifique","competition"],dS:60,dL:95,
       obj:"Plus de temps près du VO2max qu’avec des intervalles réguliers, et proche des courses : relances dans l’effort (Bossi 2020 : 410 s contre 286 s au-dessus de 90 % du VO2max).",int:"Base "+W(100)+"-"+W(105)+" W avec 3 relances de 30 s à "+W(130)+"-"+W(140)+" W par répétition · RPE 9",
       court:"Échauffement 15 min, 4 × 5 min (relances de 30 s à 0 s, 1 min 30 et 3 min, le reste à "+W(100)+"-"+W(105)+" W) récup 2 min 30, retour 10 min.",
       long:"Échauffement 20 min, 6 × 5 min même contenu, récup 2 min 30, Z2 en fin."},
@@ -1215,8 +1215,8 @@ function buildLib(){
       obj:"Atteindre vite et garder le VO2max : efforts de plus en plus courts et intenses (Vaccari 2020 : 312 s au-dessus de 90 % du VO2max, contre environ 180 s).",int:"3 min "+W(105)+" W → 2 min "+W(110)+" W → 1 min "+W(120)+" W → 45 s "+W(125)+" W → 30 s "+W(135)+" W · RPE 9",
       court:"Échauffement 15 min, 2 séries de (3 min / 2 min / 1 min / 45 s / 30 s) récup égale à l’effort, 5 min entre séries, retour 10 min.",
       long:"Échauffement 20 min, 3 séries, 5 min entre séries, Z2 en fin."},
-    {id:"S3",nom:"Seuil haut 4 × 8 min (Seiler)",cat:"seuil",sport:"velo",key:true,phases:["base","construction"],dS:60,dL:85,
-      obj:"Bon compromis volume-intensité au seuil haut (Seiler) : 32 min de travail juste au-dessus du seuil.",int:z(100,105)+" · FC "+hr(90,94)+" · RPE 7-8 · la dernière répétition doit être aussi forte que la première",
+    {id:"S3",nom:"Seuil haut : répétitions de 8 min (Seiler)",cat:"seuil",sport:"velo",key:true,phases:["base","construction"],dS:60,dL:85,
+      obj:"Bon compromis volume-intensité au seuil haut (Seiler) : 24 à 32 min de travail juste au-dessus du seuil (4 × 8 min dans l’étude de Seiler).",int:z(100,105)+" · FC "+hr(90,94)+" · RPE 7-8 · la dernière répétition doit être aussi forte que la première",
       court:"Échauffement 15 min, 3 × 8 min à "+W(100)+"-"+W(105)+" W récup 2 min, retour 10 min.",
       long:"Échauffement 20 min, 4 × 8 min à "+W(100)+"-"+W(105)+" W récup 2 min, retour 15 min."},
     {id:"P4",nom:"Test de durabilité (FC et RPE)",cat:"test",sport:"velo",key:false,phases:["construction","specifique"],dS:180,dL:210,
@@ -1225,7 +1225,7 @@ function buildLib(){
       long:"Même contenu avec 2 h 45 entre les deux blocs."},
     {id:"V3",nom:"40/20",cat:"court",sport:"velo",key:true,phases:["base","construction","specifique","competition","affutage"],dS:50,dL:90,
       obj:"Variante des intervalles courts, plus anaérobie.",int:"40 s ≈ "+W(115)+"-"+W(125)+" W / 20 s ≈ "+W(50)+" W · RPE 9",
-      court:"Échauffement 15 min, 2 × 8 × (40 s / 20 s) récup 5 min.",long:"Échauffement 20 min, 3 × 10 × (40 s / 20 s) récup 5 min, Z2 en fin."},
+      court:"Échauffement 15 min, 2 × 8 × (40 s / 20 s) récup 5 min, retour 10 min.",long:"Échauffement 20 min, 3 × 10 × (40 s / 20 s) récup 5 min, Z2 en fin."},
     {id:"A1",nom:"Anaérobie : 1 min répétées",cat:"anaerobie",sport:"velo",key:true,phases:["specifique","competition"],dS:60,dL:100,
       obj:"Capacité anaérobie et répétition des efforts de 30 s à 2 min.",int:z(130,150)+" · RPE 9-10 · FC non pertinente · arrêt de la série si la puissance chute de plus de 10 % par rapport à la 1re répétition",
       court:"Échauffement 20 min dont 2 sprints, 6 × 1 min à "+W(130)+"-"+W(150)+" W récup 2 min 30 Z1, retour 10 min.",
@@ -1237,7 +1237,7 @@ function buildLib(){
     {id:"SP2",nom:"Sprint sous fatigue",cat:"sprint",sport:"velo",key:true,phases:["specifique","competition"],dS:60,dL:150,
       obj:"Sprint final après effort prolongé.",int:"Z2 + bloc "+z(90,95)+" (RPE 6-7) puis sprints maximaux de 12-15 s (RPE 10)",
       court:"40 min Z2 dont 2 × 8 min à "+W(90)+"-"+W(95)+" W récup 3 min, puis 4 × 15 s sprint maximal (départ lancé) récup 4 min.",
-      long:"2 h Z2 + 2 × 12 min à "+W(90)+"-"+W(95)+" W, puis 6 × 15 s sprint maximal récup 5 min + 2 × 30 s maximal."},
+      long:"2 h 30 au total : 50 min Z2, 2 × 12 min à "+W(90)+"-"+W(95)+" W récup 5 min, 15 min Z2, puis 6 × 15 s sprint maximal récup 5 min et 2 × 30 s maximal récup 5 min."},
     {id:"P1",nom:"Activation veille de course",cat:"course_prep",sport:"velo",key:false,phases:PHASES,dS:40,dL:60,
       obj:"Arriver vif sans fatigue.",int:"Z2 + 3 × 1 min à "+W(100)+"-"+W(105)+" W (RPE 7) + 3 × 10 s (RPE 9)",
       court:"40 min Z2 dont 3 × 1 min à "+W(100)+"-"+W(105)+" W récup 2 min et 3 sprints de 10 s.",long:"60 min, même contenu. Avant un objectif de plus de 90 min : 10-12 g de glucides par kg et par jour pendant les 36-48 h précédentes (Thomas 2016), testé auparavant."},
@@ -1258,7 +1258,7 @@ function buildLib(){
       court:"30 min dont 6 × 15 s rapides relâchés, récup 1 min marche.",long:"45-50 min, même contenu."},
     {id:"M1",nom:"Musculation : adaptation",cat:"muscu",sport:"muscu",key:false,phases:["base","transition"],dS:40,dL:60,
       obj:"Préparer tendons et technique avant la charge lourde (2-3 semaines).",int:"60-70 % du max sur une répétition · 2 répétitions en réserve",
-      court:"Goblet squat, fentes, hip thrust, soulevé de terre roumain : 2 × 12-15. Gainage 3 × 40 s.",long:"Même contenu en 3 séries + mollets et tirage dos."},
+      court:"Goblet squat, fentes, hip thrust, soulevé de terre roumain : 2 × 12-15. Gainage 3 × 40 s.",long:"Même contenu en 3 séries + mollets 3 × 15 et tirage dos 3 × 12."},
     {id:"M2",nom:"Musculation : force lourde",cat:"muscu",sport:"muscu",key:false,phases:["base","construction"],dS:45,dL:60,
       obj:"Force maximale : "+(S.settings.sportProfile==="course"?"économie de course, puissance de foulée":"efficacité de pédalage, puissance anaérobie")+", durabilité.",int:"80-90 % du max · 4-6 répétitions · 1-2 en réserve",
       court:"Échauffement 10 min, demi-squat ou presse 4 × 4-6, fente bulgare 3 × 6/jambe, soulevé de terre roumain 3 × 6, gainage.",
@@ -1309,8 +1309,8 @@ function runLib(){
     {id:"C6",nom:"Seuil fractionné",cat:"c_seuil",sport:"course",key:true,phases:["base","construction","specifique","affutage","competition"],dS:50,dL:75,
       obj:"Plus de temps au seuil qu’en continu pour la même fatigue, grâce aux récupérations courtes (logique du seuil norvégien, sans lactatomètre).",int:pv(SEUIL()[0]+1,SEUIL()[1]+1)+" · FC "+hrr(85,90)+" · RPE 6-7 · récupération courte",
       court:"12 min d’échauffement, 4 × 6 min récup 1 min trot, 8 min de retour.",long:"15 min d’échauffement, 4 × 10 min récup 1 min 30 trot, 10 min de retour."},
-    {id:"C7",nom:"VMA longue 4 × 4 min",cat:"c_vma",sport:"course",key:true,phases:["base","construction","specifique","affutage","competition"],dS:50,dL:60,
-      obj:"Développer la VO2max : le 4 × 4 min fait plus progresser la VO2max que l’endurance continue ou le seuil (Helgerud 2007).",int:pv(92,100)+(V?" · "+vmaSplit(1000,92,100):"")+" · FC "+hrr(90,95)+" en fin de répétition · RPE 8",
+    {id:"C7",nom:"VMA longue : répétitions de 4 min",cat:"c_vma",sport:"course",key:true,phases:["base","construction","specifique","affutage","competition"],dS:50,dL:60,
+      obj:"Développer la VO2max : les répétitions de 4 min (4 × 4 min dans l’étude) font plus progresser la VO2max que l’endurance continue ou le seuil (Helgerud 2007).",int:pv(92,100)+(V?" · "+vmaSplit(1000,92,100):"")+" · FC "+hrr(90,95)+" en fin de répétition · RPE 8",
       court:"15 min d’échauffement avec 3 accélérations, 4 × 4 min récup 3 min en trottinant, 5 min de retour.",long:"20 min d’échauffement, 5 × 4 min ou 6 × 1 000 m récup 3 min trot, 10 min de retour."},
     {id:"C8",nom:"VMA courte 30/30",cat:"c_vma",sport:"course",key:true,phases:["base","construction","specifique","affutage","competition"],dS:45,dL:55,
       obj:"Temps passé près de la VO2max avec peu de fatigue musculaire ; travaille aussi la vitesse de foulée.",int:pv(100,105)+(V?", soit "+vmaDist(30,100,105):"")+" / trot 30 s · RPE 8-9 · la FC n’est pas un repère sur 30 s",
@@ -1320,7 +1320,7 @@ function runLib(){
       court:"15 min d’échauffement, 5 × 1 000 m à l’allure 10 km récup 1 min 30 trot, 5 min de retour.",long:"20 min d’échauffement, 3 × 3 km à l’allure 10 km récup 2 min trot, 10 min de retour."},
     {id:"C10",nom:"Allure semi-marathon",cat:"c_spec",sport:"course",key:true,phases:["specifique","affutage","competition"],dS:60,dL:85,
       obj:"Tenir l’allure du semi le plus longtemps possible (approche « spécifique » à la Canova, pratique d’élite).",int:"Allure semi "+rp(21.0975)+" · RPE 6-7",
-      court:"12 min d’échauffement, 2 × 15 min à l’allure semi récup 2 min trot, 6 min de retour.",long:"15 min d’échauffement, 3 × 15 min (ou 3 × 5 km) à l’allure semi récup 2 min trot, 10 min de retour."},
+      court:"12 min d’échauffement, 2 × 15 min à l’allure semi récup 2 min trot, 6 min de retour.",long:"15 min d’échauffement, 3 × 15 min à l’allure semi récup 2 min trot, 10 min de retour."},
     {id:"C11",nom:"Côtes",cat:"c_cotes",sport:"course",key:true,phases:["base","construction","specifique","affutage","competition"],dS:45,dL:60,
       obj:"Force spécifique et puissance de foulée, avec moins d’impact qu’en vitesse sur le plat.",int:"Côte de 4 à 8 % · effort dur mais contrôlé (RPE 8) · descente en trottinant",
       court:"15 min d’échauffement, 8 × 60 s en côte, récup en descendant, 5 min de retour.",long:"20 min d’échauffement, 10 × 90 s en côte, récup en descendant, 10 min de retour."},
@@ -2631,7 +2631,7 @@ function renderLib(){
     <div class="lmeta small"><span><i>courte</i>${fmtMin(s.dS)}</span><span><i>longue</i>${fmtMin(s.dL)}</span><span><i>phases</i>${s.phases.map(p=>PHL[p]).join(", ")}</span></div>
     <details class="small"><summary>Détails de la séance</summary><dl class="kv small"><dt>Intensité</dt><dd>${esc(s.int)}</dd>
     <dt>Courte</dt><dd>${esc(s.court)}</dd><dt>Longue</dt><dd>${esc(s.long)}</dd>
-    <dt>Compteur</dt><dd class="muted">${esc(stepsText(lapOpen(wkSteps(s.id,"courte"))||[]))}</dd></dl></details>
+    <dt>Compteur</dt><dd class="muted">${esc(stepsText(lapOpen(wkSteps(s.id,"courte"))||[],s.sport))}</dd></dl></details>
     <div class="row lact"><button class="btn ghost small" type="button" data-wk="${s.id}" data-var="courte">.fit courte</button><button class="btn ghost small" type="button" data-wk="${s.id}" data-var="longue">.fit longue</button><span class="small muted" id="wkmsg_${s.id}"></span></div></div>`).join("");
   document.querySelectorAll("[data-wk]").forEach(b=>b.onclick=()=>offerZip([workoutFile(b.dataset.wk,b.dataset.var,null,"")],slug(LIB[b.dataset.wk].nom)+"_"+b.dataset.var+".zip","wkmsg_"+b.dataset.wk));
 }
@@ -4372,8 +4372,8 @@ function wkSteps(id,variant,dur){
     case "E3": { const n=L?8:6,s=L?10:8,r=L?5:4; return fill([WU(10),{rep:n,steps:[SPR(s),{n:"Récup Z1-Z2",d:m(r),lo:50,hi:65,int:"rest"}]},CD(10)],D); }
     case "E4": return [{n:"Z2 · manger dès la 1re h",d:m(D),lo:56,hi:75,int:"active"}];
     case "E5": { const k=L?3:3, bl=L?25:15, rr=L?10:5, pre=Math.max(20,Math.round(D/2-20)); const steps=[Z2(pre,"Z2 · manger dès la 1re h"),{rep:k,steps:[ON(m(bl),76,L?88:85,"Tempo "+bl+" min"),{n:"Z2",d:m(rr),lo:56,hi:70,int:"rest"}]}]; const left=D-pre-k*(bl+rr); if(left>=5) steps.push(Z2(left,"Z2 jusqu’à la fin")); return steps; }
-    case "D1": return L?[Z2(165,"Z2 · ~30 kJ/kg · 80-100 g/h"),{rep:4,steps:[ON(m(8),95,100,"Seuil 8 min"),RC(m(4))]},{rep:4,steps:[ON(60,130,140,"1 min fort"),RC(120)]},{rep:3,steps:[SPR(15),RC(180)]},CD(10)]
-                     :[Z2(105,"Z2 avant les efforts"),{rep:3,steps:[ON(m(8),95,100,"Seuil 8 min"),RC(m(4))]},{rep:3,steps:[SPR(15),RC(180)]},CD(10)];
+    case "D1": return L?[Z2(160,"Z2 · ~30 kJ/kg · 80-100 g/h"),{rep:4,steps:[ON(m(8),95,100,"Seuil 8 min"),RC(m(4))]},{rep:4,steps:[ON(60,130,140,"1 min fort"),RC(120)]},{rep:3,steps:[SPR(15),RC(180)]},CD(10)]
+                     :[Z2(95,"Z2 avant les efforts"),{rep:3,steps:[ON(m(8),95,100,"Seuil 8 min"),RC(m(4))]},{rep:3,steps:[SPR(15),RC(180)]},CD(10)];
     case "T1": return L?fill([WU(20),{rep:3,steps:[ON(m(20),88,93,"Sweet spot 20 min"),RC(m(5))]},CD(10)],D):[WU(15),{rep:2,steps:[ON(m(15),88,93,"Sweet spot 15 min"),RC(m(5))]},CD(10)];
     case "S1": return L?[WU(20),{rep:4,steps:[ON(m(10),95,100,"Seuil 10 min"),RC(m(5))]},CD(15)]
                        :[WU(9),{rep:3,steps:[ON(60,105,110,"Ouverture 1 min"),RC(60)]},{rep:3,steps:[ON(m(8),95,100,"Seuil 8 min"),RC(m(4))]},CD(10)];
@@ -4390,18 +4390,18 @@ function wkSteps(id,variant,dur){
       return fill([...wu,{rep:5,steps:[ON(60,130,150,"1 min fort"),RC(150,"Récup 2 min 30")]},RC(600,"Récup 10 min"),{rep:5,steps:[ON(60,130,150,"1 min fort"),RC(150,"Récup 2 min 30")]},CD(10)],D); }
     case "A2": { const blk=n=>({rep:n,steps:[ON(160,75,85,"Fond tempo"),ON(20,150,170,"Relance 20 s")]});
       return L?fill([WU(20),blk(7),RC(600,"Récup 10 min"),blk(7),{rep:3,steps:[SPR(12),RC(300)]},CD(10)],D):fill([WU(15),blk(8),CD(10)],D); }
-    case "SP2": return L?[Z2(60),{rep:2,steps:[ON(m(12),90,95,"Tempo haut 12 min"),RC(m(5))]},Z2(15),{rep:6,steps:[SPR(15),RC(300)]},{rep:2,steps:[{n:"30 s max",d:30,lo:null,hi:null,int:"active"},RC(300)]},CD(10)]
+    case "SP2": return L?[Z2(48),{rep:2,steps:[ON(m(12),90,95,"Tempo haut 12 min"),RC(m(5))]},Z2(15),{rep:6,steps:[SPR(15),RC(300)]},{rep:2,steps:[{n:"30 s max",d:30,lo:null,hi:null,int:"active"},RC(300)]},CD(10)]
                         :[Z2(12),{rep:2,steps:[ON(m(8),90,95,"Tempo haut 8 min"),RC(m(3))]},Z2(5),{rep:4,steps:[SPR(15),RC(240)]},CD(5)];
     case "P1": return [Z2(L?40:22),{rep:3,steps:[ON(60,100,105,"1 min seuil+"),RC(120)]},{rep:3,steps:[SPR(10),RC(110)]},CD(5)];
-    case "P3": return [WU(12),{rep:3,steps:[{n:"Accélération 30 s",d:30,lo:null,hi:null,int:"active"},RC(90)]},{n:"30 min à fond : 10 premières",d:600,lo:null,hi:null,int:"active"},{n:"20 min : FC moy = FC seuil",d:1200,lo:null,hi:null,int:"active"},CD(15)];
+    case "P3": return [WU(12),{rep:3,steps:[{n:"Accélération 30 s",d:30,lo:null,hi:null,int:"active"},RC(90)]},{n:"Test, 1re partie",d:600,lo:null,hi:null,int:"active"},{n:"Test, 2e partie = FC seuil",d:1200,lo:null,hi:null,int:"active"},CD(15)];
     case "P2": return L?[Z2(150,"Z2 · ~2000 kJ"),{n:"5 min À FOND",d:300,lo:null,hi:null,int:"active"},CD(15)]
                        :[WU(20),{rep:3,steps:[SPR(10),RC(110)]},{n:"5 min À FOND",d:300,lo:null,hi:null,int:"active"},RC(600,"Récup 10 min"),{n:"20 min À FOND",d:1200,lo:null,hi:null,int:"active"},CD(10)];
     case "C16": { const k=/^e(\d)$/.test(variant||"")?+variant.slice(1):Math.max(0,runProgStage(mondayOf(TODAY))), [r,w,n]=RP_ST[k], walk=x=>({n:"Marche",d:m(x),lo:30,hi:45,int:"rest"});
       return [{n:"Marche active",d:m(5),lo:30,hi:45,int:"warmup"},w?{rep:n,steps:[{n:"Course très facile "+r+" min",d:m(r),lo:55,hi:68,hr:[65,75],int:"active"},walk(w)]}:{n:"Course continue très facile",d:m(r),lo:55,hi:68,hr:[65,75],int:"active"},{n:"Marche",d:m(5),lo:30,hi:45,int:"cooldown"}]; }
     case "C1": return [{n:"Footing facile",d:m(D),lo:55,hi:70,hr:[65,78],int:"active"}];
     case "C2": return [{n:"Footing facile",d:m(Math.max(10,D-15)),lo:55,hi:70,hr:[65,78],int:"warmup"},{rep:6,steps:[{n:"15 s rapide relâché",d:15,lo:null,hi:null,int:"active"},{n:"Marche 1 min",d:60,lo:40,hi:45,int:"rest"}]},{n:"Footing facile",d:m(5),lo:55,hi:70,hr:[65,78],int:"cooldown"}];
-    default: if(/^C\d+$/.test(id)) return runSteps(id,L,D);
-    case "M1": return strength([["Goblet squat 12-15",L?3:2,90],["Fentes 12/jambe",L?3:2,90],["Hip thrust 12-15",L?3:2,90],["SDT roumain 12",L?3:2,90],["Gainage 40 s",3,30]]);
+    default: return /^C\d+$/.test(id)?runSteps(id,L,D):null;
+    case "M1": return strength([["Goblet squat 12-15",L?3:2,90],["Fentes 12/jambe",L?3:2,90],["Hip thrust 12-15",L?3:2,90],["SDT roumain 12",L?3:2,90],...(L?[["Mollets 15",3,60],["Tirage dos 12",3,90]]:[]),["Gainage 40 s",3,30]]);
     case "M2": return strength([["Demi-squat 4-6 lourd",4,180],["Fente bulgare 6/jambe",3,120],["SDT roumain 6",3,120],...(L?[["Squat jump x3",3,90],["Mollets 10",3,60]]:[]),["Gainage 45 s",3,30]]);
     case "H1": return strength([["Développé couché 6-10",4,150],["Tractions / tirage 6-10",4,150],["Développé militaire 8-12",3,120],["Rowing 8-12",3,120],...(L?[["Développé incliné 8-12",3,120],["Élévations latérales 12-20",3,60]]:[]),["Curl 10-15",2,60],["Extension triceps 10-15",2,60]]);
     case "M3": return strength([["Demi-squat 3-5",3,180],["Fente bulgare 5/jambe",2,120],["Squat jump x3",3,90],...(L?[["SDT roumain 5",2,120]]:[])]);
@@ -4454,7 +4454,7 @@ function lapOpen(steps){ if(!steps||S.settings.lapStart===0) return steps; const
   if(firstRep>0) tag(out[firstRep-1]);
   // entre deux blocs : l'étape de liaison attend l'appui ; deux blocs collés : on ajoute une récup libre
   for(let k=lastRep;k>firstRep;k--){ if(!out[k].rep) continue; const prev=out[k-1];
-    if(prev.rep) out.splice(k,0,tag({n:"Récup",d:0,lo:45,hi:60,int:"rest"})); else if(!prev.open) tag(prev); }
+    if(prev.rep){ const pr=prev.steps[prev.steps.length-1]||{}; out.splice(k,0,tag({n:"Récup",d:0,lo:pr.lo!=null?pr.lo:null,hi:pr.hi!=null?pr.hi:null,v:pr.v,hr:pr.hr,int:"rest"})); } else if(!prev.open) tag(prev); }
   return out; }
 // structure ajustée à la durée prévue : si le créneau est plus court que la version courte, échauffement, retour au calme et endurance sont ramenés à leur minimum, puis une répétition de moins à la fois
 function planSteps(id,v,dur){ const st=wkSteps(id,v,dur); if(!st||!dur) return st; const target=dur*60+60; if(sumSteps(st)<=target) return st;
@@ -4579,20 +4579,28 @@ function contentText(id,v,dur){ const L=LIB[id]; if(!L) return ""; const D=fmtMi
     C1:D+" de footing facile, terrain souple.",C3:D+" en endurance fondamentale, terrain varié."+(dur>=75?" Glucides 30 à 60 g/h au-delà de 1 h 15.":"")};
   if(C[id]&&dur) return C[id];
   if(id==="C16"){ const k=/^e(\d)$/.test(v||"")?+v.slice(1):Math.max(0,runProgStage(mondayOf(TODAY))), [r,w,n]=RP_ST[k]; return "5 min de marche, "+(w?n+" × ("+r+" min de course très facile + "+w+" min de marche)":r+" min de course continue très facile")+", 5 min de marche (étape "+(k+1)+" sur 8)."; }
-  if(L.sport==="muscu"||L.sport==="repos"||!dur) return v==="longue"?L.long:L.court;
+  if(L.sport==="muscu"||L.sport==="repos"||!dur||id==="P3") return v==="longue"?L.long:L.court;
   let st; try{ st=planSteps(id,v,dur); }catch(e){ st=null; } if(!st||!st.length) return v==="longue"?L.long:L.court;
-  const t=sec=>{ sec=Math.round(sec); if(sec<60) return sec+" s"; const m=Math.floor(sec/60), r=sec%60; return r>=10&&sec<600?m+" min "+String(r).padStart(2,"0"):fmtMin(sec>=1200?Math.round(sec/300)*5:Math.round(sec/60)); };
-  const low=x=>{ x=String(x||""); return /^[A-ZÉ][a-zéèêàç]/.test(x)?x.charAt(0).toLowerCase()+x.slice(1):x; };
-  const f=x=>{ if(x.rep) return x.rep+" × ("+x.steps.map(f).join(", ")+")"; if(x.d==null) return low(x.n);
+  const t=sec=>{ sec=Math.round(sec); if(sec<60) return sec+" s"; const m=Math.floor(sec/60), r=sec%60; return r>=10&&sec<600?m+" min "+String(r).padStart(2,"0"):fmtMin(sec>=3600?Math.round(sec/300)*5:Math.round(sec/60)); };
+  const low=x=>{ x=String(x||""); return /^[A-ZÉ][a-zéèêëàâçôîïûù]/.test(x)?x.charAt(0).toLowerCase()+x.slice(1):x; };
+  const f=x=>{ if(x.rep) return x.rep===1?x.steps.filter((s,i)=>!(i===x.steps.length-1&&s.int==="rest")).map(f).join(", "):x.rep+" × ("+x.steps.map(f).join(", ")+")"; if(x.d==null) return low(x.n);
     if(/^\d+ ?(min|s)$/.test(String(x.n||"").trim())) return t(x.d)+(x.lo!=null?(x.lo>=85?" à "+x.lo+"-"+x.hi+(L.sport==="course"?" % VMA":" % FTP"):" facile"):"");
-    const n=low(x.n).replace(/ \d+( min| s)$/,"").replace(/^(\d+) (min|s) /,"");
+    const n=low(low(x.n).replace(/^(\d+) (min|s) /,"").replace(/ \d+ min( \d+)?(?=$| )| \d+ s(?=$| )/g,"").replace(/ {2,}/g," ").trim());
     return /^\d/.test(n)&&/\d ?k?m\b/.test(n)?n+" ("+t(x.d)+")":t(x.d)+" "+n; };
   return st.map(f).join(", ")+"."; }
-function stepsText(steps){
+function stepsText(steps,sport){
+  const tm=sec=>{ sec=Math.round(sec); if(sec<60) return sec+" s"; if(sec>=600) return fmtMin(Math.round(sec/60)); const m=Math.floor(sec/60), r=sec%60; return r?m+" min "+String(r).padStart(2,"0"):fmtMin(m); };
+  const noP=S.settings.hasPower===0||S.settings.wkTarget==="hr"||(sport&&sport!=="velo"), V=runProf().vma;
   const f=s=>{ if(s.rep) return s.rep+" × ("+s.steps.map(f).join(" + ")+")";
-    const d=s.d==null?"jusqu’au bouton Lap":(s.d>=60?fmtMin(s.d/60):s.d+" s");
-    const t=s.lo!=null?(" à "+Math.round(S.settings.ftp*s.lo/100)+"-"+Math.round(S.settings.ftp*s.hi/100)+" W"):(s.hr?" FC < "+Math.round(fcRef()*s.hr[1]/100):"");
-    return s.n+" "+d+t; };
+    if(s.open&&!s.ideal) return s.n;
+    // le nom porte parfois déjà la durée (« Seuil 8 min ») : on ne la répète pas
+    const n=String(s.n||"").replace(/^(\d+) (min|s) /,"").replace(/ \d+ min( \d+)?(?=$| )| \d+ s(?=$| )/g,"").replace(/ {2,}/g," ").trim().replace(/^./,c=>c.toUpperCase())||"Effort";
+    const d=s.open?"":s.d==null?"jusqu’au bouton Lap":tm(s.d);
+    let t="";
+    if(s.v){ t=V?" à "+fmtPace(V*s.v[1]/100).replace(" /km","")+"-"+fmtPace(V*s.v[0]/100):" à "+Math.round(s.v[0])+"-"+Math.round(s.v[1])+" % VMA"; }
+    else if(s.hr) t=" FC < "+Math.round(fcRef()*s.hr[1]/100);
+    else if(s.lo!=null&&!noP) t=" à "+Math.round(S.settings.ftp*s.lo/100)+"-"+Math.round(S.settings.ftp*s.hi/100)+" W";
+    return (s.open?s.n:n+" "+d)+t; };
   return steps.map(f).join(" · ");
 }
 
@@ -4824,7 +4832,7 @@ function racePlan(r){
   const H=Math.ceil(hrs); const rows=[];
   for(let i=1;i<=H;i++){ const frac=i===H?(hrs-(H-1)):1; const g=Math.round(rate*frac);
     const flMid=(fl[0]+fl[1])/2*frac, bd=Math.max(.5,Math.round(flMid/500*2)/2), drinkCho=Math.min(g,45), gels=Math.max(0,Math.round((g-drinkCho)/25));
-    const how=frac<.4?`fin de course : bois selon la soif, ${g>=20?"1 gel si besoin":"rien d’obligatoire à manger"}`:`${String(bd).replace(".",",")} bidon${bd>1?"s":""} de 500 ml, dont 1 de boisson glucidique (≈ ${drinkCho} g)${gels?` + ${gels} gel${gels>1?"s":""} ou barre${gels>1?"s":""} de 25 g`:""}`;
+    const how=frac<.4?`fin de course : bois selon la soif, ${g>=20?"1 gel si besoin":"rien d’obligatoire à manger"}`:`${String(bd).replace(".",",")} bidon${bd>=2?"s":""} de 500 ml, dont 1 de boisson glucidique (≈ ${drinkCho} g)${gels?` + ${gels} gel${gels>1?"s":""} ou barre${gels>1?"s":""} de 25 g`:""}`;
     rows.push([(i===1?"1re":i+"e")+" heure",g,how,`${Math.round(fl[0]*frac)}-${Math.round(fl[1]*frac)} ml`,`${Math.round(na[0]*frac)}-${Math.round(na[1]*frac)} mg`]); }
   const load=hrs>=1.5&&r.prio!=="C";
   return {hrs,spd,html:`
@@ -6558,7 +6566,7 @@ function renderTodayV6(){
   // retour après une pause : la reprise est valorisée, pas la pause reprochée
   const last=(S.sessions||[]).filter(x=>x.date<=TODAY).map(x=>x.date).sort().pop(), todayDone=(S.sessions||[]).some(x=>x.date===TODAY);
   const plan=(()=>{ try{ const W=buildWeek(mon); return W.days.find(d=>d.date===TODAY); }catch(e){ return null; } })();
-  if(last&&!todayDone&&diff(last,TODAY)>=4&&plan&&plan.main&&plan.main.id!=="R0"&&!isRed(TODAY)){ const b=document.createElement("div"); b.className="v6back"; b.innerHTML=`<b>Content de te revoir.</b> Dernière séance le ${dfr(last)} : reprendre compte plus que n’avoir jamais coupé. La séance du jour te rapporte +${PTS.comeback} points de retour.`; const m=hero.querySelector(".meta"); (m&&m.nextSibling)?hero.insertBefore(b,m.nextSibling):hero.appendChild(b); }
+  if(last&&!todayDone&&diff(last,TODAY)>=4&&plan&&plan.main&&plan.main.id!=="R0"&&!isRed(TODAY)){ const b=document.createElement("div"); b.className="v6back"; b.innerHTML=`<b>Content de te revoir.</b> Dernière séance le ${dfr(last)} : reprendre compte plus que de n’avoir jamais coupé. La séance du jour te rapporte +${PTS.comeback} points de retour.`; const m=hero.querySelector(".meta"); (m&&m.nextSibling)?hero.insertBefore(b,m.nextSibling):hero.appendChild(b); }
 }
 
 /* ---------- branchements ---------- */
