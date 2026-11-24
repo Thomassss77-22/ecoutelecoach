@@ -1748,12 +1748,8 @@ function buildWeek(mon,availOverride,opt={}){
       else if(!["base","transition"].includes(phase)){d.main.cap=40;d.notes.push("footing limité à 40 min : en période de qualité, l’impact de la course ne doit pas entamer les séances vélo");}}
     else if(mixte&&phase!=="affutage") warns.push("Footing n°"+(r+1)+" non placé : aucun jour libre d’au moins 25 min qui ne suive pas la musculation ou une autre course.");
   }
-  // test VMA (course en complément) : il remplace un footing loin des séances clés, sinon il prend un jour libre
+  // test VMA : seulement pour ceux dont la course est le sport principal (séances clés en course) ; en course de complément, les footings se règlent à la FC, pas besoin de VMA
   if(RW&&vmaDue) days.filter(d=>d.main&&d.main.id==="C13").forEach(d=>d.notes.push(vmaWhy()));
-  if(!RW&&vmaDue){ const ok=d=>!d.pinned&&!d.past&&d.avail>=45&&nbOk(d.i)&&!nextKey(d.i);
-    const runs=days.filter(d=>d.main&&["C1","C2"].includes(d.main.id)&&!d.past), d=runs.find(ok);
-    if(!runs.length){} else if(d){ d.main={id:"C13"}; d.notes.push(vmaWhy()); }
-    else warns.push("Test VMA à prévoir : aucun jour d’au moins 45 min loin des séances clés cette semaine. Fais un demi-Cooper quand tu peux"+(+S.settings.vma>0?".":", ou renseigne ta VMA dans Réglages.")); }
   // programme course-marche : toutes les sorties de course deviennent de la course-marche, 3 au plus, jamais deux jours de suite
   if(rpk>=0){ const rpNote="course-marche, étape "+(rpk+1)+" sur 8 : douleur 3/10 au plus, pendant et le lendemain matin ; sinon refais l’étape"+(S.settings.runProg==="reprise"?" ; reprise validée par ton médecin ou kiné":"");
     // on choisit les jours de course-marche d'un coup : 3 visés pour un coureur (2 au moins), jamais deux jours de suite, sur des jours de course déjà prévus ou libres
@@ -2927,7 +2923,7 @@ function renderRunSettings(){
     el.onchange=()=>{let v=el.value;if(el.type==="number")v=v===""?"":+v;if(k==="runRecTime"&&v&&!parseDur(v)){alert("Temps non reconnu : écris par exemple 44:30 ou 1:43:00.");el.value=S.settings[k]||"";return;}
       S.settings[k]=v;if(k==="vma") S.settings.vmaDate=v?TODAY:"";if(k==="sportProfile"&&v!=="velo"){S.settings.runOn=1;S.settings.runMax=Math.max(+S.settings.runMax||0,v==="course"?4:3);}save();renderAll();};});
   const o=runProf(),st=document.getElementById("rnState");
-  if(st) st.innerHTML=`FC max course <b>${o.fcmax}</b> · FC seuil course <b>${o.lthr}</b>`+(o.vma?` · VMA <b>${String(o.vma).replace(".",",")} km/h</b>${o.vmaSrc==="record"?" (estimée)":vmaLastDate()?" (test du "+fmtD(vmaLastDate())+(vmaStale()?", à refaire : un test est prévu dans le plan":"")+")":" (date du test inconnue : un test est prévu dans le plan)"}`:"")+(o.est.length?`<br><span class="muted">Estimé : ${o.est.map(esc).join(" ; ")}.</span>`:"");
+  if(st) st.innerHTML=`FC max course <b>${o.fcmax}</b> · FC seuil course <b>${o.lthr}</b>`+(o.vma?` · VMA <b>${String(o.vma).replace(".",",")} km/h</b>${o.vmaSrc==="record"?" (estimée)":vmaLastDate()?" (test du "+fmtD(vmaLastDate())+(vmaStale()&&vmaTestWeek()?", à refaire : un test est prévu dans le plan":"")+")":(vmaTestWeek()?" (date du test inconnue : un test est prévu dans le plan)":"")}`:"")+(o.est.length?`<br><span class="muted">Estimé : ${o.est.map(esc).join(" ; ")}.</span>`:"");
   const ro=document.getElementById("st_runOn"); if(ro) ro.disabled=sportProfile()!=="velo";
 }
 
@@ -4794,7 +4790,7 @@ function vmaWhy(){ if(!(+S.settings.vma>0)) return "ta VMA n’est pas renseign�
 function vmaTestWeek(){
   if(!runActive()||(+S.settings.vma>0&&!vmaStale())) return null;
   if(S.sessions.some(x=>x.id==="C13"&&diff(x.date,TODAY)<=56)) return null; // test fait récemment : il reste à reporter la VMA dans Réglages
-  for(let w=mondayOf(addDays(TODAY,3)),i=0;i<12;i++,w=addDays(w,7)){ const ph=autoPhase(addDays(w,3)); if(!["base","construction","specifique"].includes(ph)||tagOf(w)) continue;
+  for(let w=mondayOf(addDays(TODAY,3)),i=0;i<12;i++,w=addDays(w,7)){ const ph=autoPhase(addDays(w,3)); if(!["base","construction","specifique"].includes(ph)||tagOf(w)||prioSportFor(w)!=="course") continue;
     if((runProgRaw(w)>=0&&runProgRaw(w)<=9)||(["debute","blessure","pause"].includes(S.settings.startStatus)&&S.settings.startDate&&diff(S.settings.startDate,w)<(S.settings.startStatus==="pause"?14:21))) continue;
     if((S.settings.races||[]).some(r=>r.prio!=="C"&&r.date>=w&&diff(addDays(w,6),r.date)<=10)) continue; return w; }
   return null;
