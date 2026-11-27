@@ -3214,7 +3214,7 @@ async function dataImport(f){ const m=document.getElementById("dataMsg");
   }catch(e){ m.textContent="Ce fichier n’est pas une copie de données Écoute le Coach."; } }
 setTimeout(()=>{ if(!(window.claude&&typeof window.claude.use==="function")) document.documentElement.classList.add("standalone"); },1500);
 // nouvelle version publiée : le navigateur garde la page en cache ~10 min ; on vérifie et on propose de recharger
-const BUILD="20261121134213";
+const BUILD="20261127182214";
 async function checkUpdate(){ if(window.claude&&typeof window.claude.use==="function") return; if(!/^https?:/.test(location.protocol)) return;
   try{ const t=await (await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"})).text(); const m=t.match(/const BUILD="([^"]+)"/);
     if(m&&m[1]!==BUILD&&!document.getElementById("updBar")){ const d=document.createElement("div"); d.id="updBar"; d.className="updbar";
@@ -4498,15 +4498,16 @@ function encodeWorkout(name,sport,steps,mode){
   flat.forEach((s,i)=>{
     u8(0x02);u16(i);
     if(s.repeat){str("",32);u8(6);u32(s.from);u8(0xFF);u32(s.n);u32(INV32);u32(INV32);u8(0xFF);return;}
-    str(s.n,32);
+    const hrT=sport==="velo"&&s.lo!=null&&mode==="hr"&&!(s.d&&s.d<120)?pctToHr(s.lo,s.hi):null;
+    str(hrName(s.n,hrT),32);
     if(s.d&&!s.open){u8(0);u32(s.d*1000);}else{u8(5);u32(INV32);}
     let tt=2,lo=INV32,hi=INV32;
     if(sport==="velo"&&s.lo!=null){
-      if(mode==="hr"){ const hr=s.d&&s.d<120?null:pctToHr(s.lo,s.hi); if(hr){tt=1;lo=hr[0]+100;hi=hr[1]+100;} }
+      if(mode==="hr"){ const hr=hrT; if(hr){tt=1;lo=hr[0]+100;hi=hr[1]+100;} }
       else {tt=4;lo=Math.round(ftp*s.lo/100)+1000;hi=Math.round(ftp*s.hi/100)+1000;}
     } else if(sport==="velo"&&s.lo==null&&s.int==="active"&&s.d){ // effort maximal : cible haute pour que le compteur et les graphiques montrent un effort, pas une zone 1
       const short=s.d<=60;
-      if(mode==="hr"&&s.d<120){} else if(mode==="hr"){ const r=short?[85,100]:[90,100]; tt=1;lo=Math.round(fc*r[0]/100)+100;hi=Math.round(fc*r[1]/100)+100; }
+      if(mode==="hr"&&s.d<120){} else if(mode==="hr"){ const r=short?[85,100]:[90,100]; const mx=+st.fcmax||fc; tt=1;lo=Math.min(Math.round(fc*r[0]/100),mx-3)+100;hi=Math.min(Math.round(fc*r[1]/100),mx)+100; }
       else { const r=short?[150,300]:[100,120]; tt=4;lo=Math.round(ftp*r[0]/100)+1000;hi=Math.round(ftp*r[1]/100)+1000; }
     } else if(sport==="course"){ const o=runProf();
       // qualité : cible d'allure (vitesse en m/s × 1000) ; endurance : cible FC de course (la chaleur et le dénivelé faussent l'allure)
@@ -4523,10 +4524,15 @@ function encodeWorkout(name,sport,steps,mode){
   const crc=fitCrc(out.slice(0,14+data.length)); out[14+data.length]=crc&255; out[15+data.length]=crc>>8;
   return out;
 }
-// Équivalence % FTP → % FC max quand on roule sans capteur (au-delà du seuil, la FC n'est plus un bon repère : cible libre au RPE)
-function pctToHr(lo,hi){const fc=fcRef(), mid=(lo+hi)/2; let r;
-  if(mid<56) r=[55,68]; else if(mid<76) r=[68,80]; else if(mid<91) r=[80,88]; else if(mid<=102) r=[88,92]; else return null;
-  return [Math.round(fc*r[0]/100),Math.round(fc*r[1]/100)];}
+// Équivalence % FTP → FC quand on roule sans capteur (référence fcRef = FC seuil / 0,9). Au-dessus du seuil, une cible haute
+// (seuil haut : la plage annoncée dans la fiche ; PMA : du seuil à la FC max) plutôt qu'aucune cible : sans cible, intervals.icu
+// et le compteur affichent une zone basse à la place de l'effort. Les efforts de moins de 2 min restent sans cible (géré à l'appel).
+function pctToHr(lo,hi){const fc=fcRef(), mx=+S.settings.fcmax||fc, mid=(lo+hi)/2; let r;
+  if(mid<56) r=[55,68]; else if(mid<76) r=[68,80]; else if(mid<91) r=[80,88]; else if(mid<=102) r=[88,92]; else if(mid<=110) r=[90,94]; else r=[90,100];
+  const a=Math.round(fc*r[0]/100), b=Math.min(Math.round(fc*r[1]/100),mx);
+  return [Math.min(a,b-3),b];}
+// nom d'étape avec la plage de FC, pour que le compteur affiche les bons chiffres même si un service intermédiaire réinterprète la cible
+function hrName(n,h){ if(!h) return n; const t=n+" · "+h[0]+"-"+h[1]; return new TextEncoder().encode(t).length<=31?t:n; }
 
 /* ZIP sans compression */
 const CRC32_T=(()=>{const t=[];for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0;}return t;})();
@@ -4603,6 +4609,7 @@ function stepsText(steps,sport){
     if(s.v){ t=V?" à "+fmtPace(V*s.v[1]/100).replace(" /km","")+"-"+fmtPace(V*s.v[0]/100):" à "+Math.round(s.v[0])+"-"+Math.round(s.v[1])+" % VMA"; }
     else if(s.hr) t=" FC < "+Math.round(fcRef()*s.hr[1]/100);
     else if(s.lo!=null&&!noP) t=" à "+Math.round(S.settings.ftp*s.lo/100)+"-"+Math.round(S.settings.ftp*s.hi/100)+" W";
+    else if(s.lo!=null&&(!sport||sport==="velo")&&!(s.d&&s.d<120)){ const h=pctToHr(s.lo,s.hi); if(h) t=" FC "+h[0]+"-"+h[1]; }
     return (s.open?s.n:n+" "+d)+t; };
   return steps.map(f).join(" · ");
 }
