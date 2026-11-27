@@ -3481,7 +3481,8 @@ function analyzeSeries(rec,ser){
   let id=rec.planned||rec.id, best=null;
   const isRunRec=(LIB[rec.id]||{}).sport==="course"; ANA_FC=isRunRec?runProf().fcmax:null; an.run=isRunRec||undefined;
   if(hasP&&rec.id!=="RACE"&&!isRunRec){ const cands=Object.values(LIB).filter(x=>x.sport==="velo"&&(x.key||["E3","E5"].includes(x.id))&&(!["P1","P2","P3"].includes(x.id)||x.id===id)).map(x=>x.id);
-    for(const c of cands){ const t=trySet(c); if(!t) continue; t.score=t.fit+(c===id?.15:0)+(t.set.d*t.set.plan>=600?.05:0); if(!best||t.score>best.score) best=t; }
+    // une séance de sprints n'est reconnue que si elle était prévue : sur une sortie d'endurance, relances et bosses franchies un peu fort ressemblent vite à des sprints
+    for(const c of cands){ const t=trySet(c); if(!t) continue; if(t.set.spr&&c!==id) continue; t.score=t.fit+(c===id?.15:0)+(t.set.d*t.set.plan>=600?.05:0); if(!best||t.score>best.score) best=t; }
     const enduPlan=["E1","E2","E3","E4","E5"].includes(id), need=enduPlan&&LIB[best&&best.id]&&LIB[best.id].key?.8:.55;
     if(best&&best.fit>=need){ if(best.id!==id) an.other=id; id=best.id; an.set=best.set; }
     else if(LIB[id]&&LIB[id].key){ if(rec.planned===id) an.notKey=id; id=rec.dur>=150?"E4":"E2"; } }
@@ -4891,7 +4892,11 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape"){document.getElement
 window.addEventListener("hashchange",()=>{const [v,sub]=location.hash.slice(1).split("/"); show(v); if(sub) setSub(v,sub);});
 
 function labelTables(){ document.querySelectorAll(".stackable table").forEach(t=>{ const h=[...t.querySelectorAll("thead th")].map(x=>x.textContent.trim()); t.querySelectorAll("tbody tr").forEach(r=>[...r.children].forEach((c,i)=>{ if(h[i]) c.setAttribute("data-label",h[i]); })); }); }
-function renderAllNow(){try{applySportClass();}catch(e){}try{migrateWeekEdits();}catch(e){}(S.sessions||[]).forEach(x=>{try{applyTE(x);}catch(e){}});renderToday();renderWeek();renderMonth();renderSeason();renderLib();renderSuivi();renderHistory();renderBilan();renderSettings();try{renderRunSettings();renderRunZones();}catch(e){console.error(e);}renderEvidence();labelTables();}
+// sorties d'endurance prises à tort pour une séance de sprints par une ancienne version de l'analyse : on rend la séance prévue
+function fixSprintGuess(){ let ch=0; (S.sessions||[]).forEach(x=>{ const an=x.an; if(!an||!an.set||!an.set.spr) return; const pl=an.other||x.planned;
+    if(!pl||pl===an.id||!LIB[pl]||(an.blocks&&an.blocks.mapped===an.id)) return;
+    an.id=pl; delete an.set; delete an.other; if(x.id!=="RACE") x.id=pl; ch++; }); if(ch) save(); return ch; }
+function renderAllNow(){try{applySportClass();}catch(e){}try{fixSprintGuess();}catch(e){}try{migrateWeekEdits();}catch(e){}(S.sessions||[]).forEach(x=>{try{applyTE(x);}catch(e){}});renderToday();renderWeek();renderMonth();renderSeason();renderLib();renderSuivi();renderHistory();renderBilan();renderSettings();try{renderRunSettings();renderRunZones();}catch(e){console.error(e);}renderEvidence();labelTables();}
 // Rendu différé et regroupé : évite de reconstruire un tableau pendant qu'un de ses champs perd le focus
 let renderTimer=null;
 function renderAll(){ if(renderTimer) return; renderTimer=setTimeout(()=>{renderTimer=null; renderAllNow();},0); }
