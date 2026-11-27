@@ -11,6 +11,11 @@ Application d'entraînement pour le cyclisme sur route (courses de 90 à 130 km)
 - Import des sorties (.fit, .tcx, .gpx, export complet Garmin en .zip) et analyse détaillée de chaque séance.
 - Séances à télécharger en .fit pour une montre ou un compteur Garmin.
 
+## Communauté et partage
+
+Profil, fil d'actualité, classement et bravos (tables créées par `supabase/social.sql`).
+Si tu l'acceptes (Mon profil), les personnes qui te suivent voient aussi ton plan de la semaine sur ton profil et peuvent ouvrir l'analyse détaillée de tes sorties depuis le fil ou ton profil. Ce partage utilise les tables de `supabase/partage.sql`, à exécuter une fois dans l'éditeur SQL de Supabase ; décocher l'option efface ce détail du serveur.
+
 ## Tes données
 
 Ton profil et tes sorties restent dans ton navigateur, sur ton appareil : rien n'est envoyé à un serveur.

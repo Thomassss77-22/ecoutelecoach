@@ -6618,6 +6618,11 @@ try{ renderTodayV6(); renderProgres(); if(location.hash==="#progres") show("prog
 .act .nums span{font-size:12.5px;color:var(--muted);font-weight:600}
 .act .nums b{font-stretch:72%;font-weight:800;font-size:24px;font-variant-numeric:tabular-nums}
 .act .ft{display:flex;align-items:center;gap:10px;margin-top:12px;padding-top:10px;border-top:1px solid var(--line);font-size:13.5px;color:var(--muted)}
+.act .ft .anabtn{margin-left:auto}
+.act .anabox{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+.plantab td{vertical-align:top} .plantab tr.pltoday td{background:var(--accent-soft)} .plantab .done{color:var(--good);font-weight:600}
+.plantab .it+.it{margin-top:8px} .plantab .miss{color:var(--muted)}
+.tdf .row{align-items:flex-start} .tdf .s b{color:var(--ink);font-weight:600}
 .kudo{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line2);background:var(--surface);border-radius:999px;padding:5px 12px;font:650 13.5px var(--f);color:var(--ink);cursor:pointer}
 .kudo svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2}
 .kudo[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
@@ -6748,12 +6753,12 @@ function profileStats(){
     year:{h:Math.round(sum(yr,s=>+s.dur||0)),km:Math.round(sum(yr,km)),gain:Math.round(sum(yr,gn)),n:yr.length},cal,pts_week,pts_total,streak,badges,records};
 }
 function actPts(s){ let p=Math.round((+s.dur||0)/60*10); try{ if(isKeyLog(s)) p+=25; }catch(e){} if(sessSport(s)==="muscu") p+=15; return p; }
+const actId=(uid,s)=>uid.slice(0,8)+":"+String(s.ext||[s.date,s.start||"",s.id,s.dur].join("-")).replace(/[^A-Za-z0-9:_-]/g,"").slice(0,80);
 function actRows(uid){
   const lim=addDays(TODAY,-90);
   return (S.sessions||[]).filter(s=>s.date>=lim&&s.date<=TODAY&&s.id!=="R0"&&(+s.dur||0)>0).map(s=>{
     const L=LIB[s.id]||{}, race=s.id==="RACE"?(S.settings.races||[]).find(r=>r.date===s.date):null;
-    const key=String(s.ext||[s.date,s.start||"",s.id,s.dur].join("-")).replace(/[^A-Za-z0-9:_-]/g,"").slice(0,80);
-    return {id:uid.slice(0,8)+":"+key,user_id:uid,date:s.date,sport:sessSport(s),title:race?("Course : "+(race.name||"")):(L.nom||"Séance"),
+    return {id:actId(uid,s),user_id:uid,date:s.date,sport:sessSport(s),title:race?("Course : "+(race.name||"")):(L.nom||"Séance"),
       dur:Math.round(+s.dur||0),km:+(s.km||(s.an&&s.an.sum&&s.an.sum.km)||0)||null,gain:Math.round(+(s.gainSum||(s.an&&s.an.sum&&s.an.sum.gain)||0))||null,
       kind:sessSport(s)==="muscu"?"muscu":(()=>{try{return isKeyLog(s)?"cle":"facile";}catch(e){return "facile";}})(),pts:actPts(s)};
   });
@@ -6793,10 +6798,13 @@ function bind(){ document.querySelectorAll("[data-cm]").forEach(b=>b.onclick=()=
   document.querySelectorAll("[data-ath]").forEach(a=>a.onclick=e=>{ e.preventDefault(); openProfile(a.dataset.ath); });
   document.querySelectorAll("[data-follow]").forEach(b=>b.onclick=()=>follow(b.dataset.follow,b.dataset.on!=="1"));
   document.querySelectorAll("[data-kudo]").forEach(b=>b.onclick=()=>kudo(b));
+  document.querySelectorAll("[data-ana]").forEach(b=>b.onclick=()=>openAna(b));
+  document.querySelectorAll("[data-pw]").forEach(b=>b.onclick=()=>{ PW=+b.dataset.pw; paintPlan(); });
+  document.querySelectorAll("[data-share]").forEach(b=>b.onclick=()=>answerShare(+b.dataset.share));
 }
 function setupCard(){
   const P=soc(); const name=P.name||"", handle=P.handle||"";
-  return `<div class="card"><h2>Ton profil</h2><p class="small muted">Comme sur Strava : un profil avec tes séances, tes stats, tes records et tes badges, que d’autres peuvent suivre et encourager. Tes données de santé (VFC, FC, sommeil, check-in, douleur, maladie, poids) ne sont jamais publiées.</p>
+  return `<div class="card"><h2>Ton profil</h2><p class="small muted">Comme sur Strava : un profil avec tes séances, tes stats, tes records et tes badges, que d’autres peuvent suivre et encourager. Ton profil ne montre jamais tes données de santé (VFC, sommeil, check-in, douleur, maladie). Si tu l’acceptes, les personnes qui te suivent voient aussi ton plan de la semaine et le détail de tes sorties (puissance, FC, zones).</p>
     <div class="cmform"><label>Nom affiché<input id="cmName" maxlength="40" value="${esc(name)}" placeholder="ex. Roi Touchard"></label><label>Pseudo (adresse du profil)<input id="cmHandle" maxlength="24" value="${esc(handle)}" placeholder="ex. roi31"></label></div>
     <p style="margin:14px 0 2px"><b>Qui voit ton profil et tes séances ?</b></p>
     <div class="vis" role="group" aria-label="Visibilité du profil">
@@ -6825,19 +6833,19 @@ function actCard(a,p,K){
   return `<article class="act"><div class="hd">${avatar(p)}<div><a href="#communaute/@${esc(p&&p.handle||"")}" data-ath="${esc(p&&p.handle||"")}">${esc(p&&p.name||"Athlète")}</a><div class="sub">${dfr(a.date)} · ${SPN[a.sport]||a.sport}${p&&p.city?" · "+esc(p.city):""}</div></div></div>
     <h3><i class="spm" style="background:${col}"></i>${esc(a.title)}</h3>
     <div class="nums"><div><span>Durée</span><b>${fmtMin(a.dur)}</b></div>${a.km?`<div><span>Distance</span><b>${kmS(a.km)} km</b></div>`:""}${a.gain?`<div><span>Dénivelé</span><b>${fr(a.gain)} m</b></div>`:""}<div><span>Points</span><b>+${a.pts}</b></div></div>
-    <div class="ft"><button type="button" class="kudo" data-kudo="${esc(a.id)}" aria-pressed="${mine}" ${me()&&a.user_id===me().id?"disabled":""}>${HEART}<span>${n}</span></button><span>${n?n+" bravo"+(n>1?"s":""):(me()&&a.user_id===me().id?"":"Dis bravo")}</span></div></article>`;
+    <div class="ft"><button type="button" class="kudo" data-kudo="${esc(a.id)}" aria-pressed="${mine}" ${me()&&a.user_id===me().id?"disabled":""}>${HEART}<span>${n}</span></button><span>${n?n+" bravo"+(n>1?"s":""):(me()&&a.user_id===me().id?"":"Dis bravo")}</span>${DET.has(a.id)?`<button type="button" class="btn ghost small anabtn" data-ana="${esc(a.id)}" data-uid="${esc(a.user_id)}" data-name="${esc(p&&p.name||"")}" aria-expanded="false">Voir l’analyse</button>`:""}</div></article>`;
 }
 async function renderFil(){
   const u=me(); const ids=await myFollowing(); const all=[...ids,u.id];
   const acts=await q(c=>c.from("activities").select("*").in("user_id",all).order("date",{ascending:false}).order("created_at",{ascending:false}).limit(FEEDN))||[];
-  const P=await profilesBy([...new Set(acts.map(a=>a.user_id))]), K=await kudosFor(acts.map(a=>a.id));
-  let h=statusCard();
+  const P=await profilesBy([...new Set([...acts.map(a=>a.user_id),...ids])]), K=await kudosFor(acts.map(a=>a.id)); await loadDet(acts.map(a=>a.id));
+  let h=statusCard()+shareAsk();
   if(!ids.length) h+=`<div class="card"><h2>Suis d’autres athlètes</h2><p class="small muted">Ton fil montre tes séances et celles des personnes que tu suis. Commence par les athlètes de ton club.</p><div id="cmSuggest">${await suggestHTML()}</div></div>`;
   const feed=acts.length?`<div class="cmfeed">${acts.map(a=>actCard(a,P[a.user_id],K)).join("")}</div>${acts.length>=FEEDN?`<p><button type="button" class="btn ghost small" data-more>Afficher plus</button></p>`:""}`:`<p class="small muted">Aucune séance publiée pour l’instant : importe ou saisis une sortie, elle apparaîtra ici.</p>`;
   const st=profileStats(), mp=P[u.id]||{name:soc().name,color:soc().color,handle:soc().handle};
   const side=`<div class="card"><div style="display:flex;gap:12px;align-items:center">${avatar(mp)}<div><a href="#communaute/@${esc(mp.handle||"")}" data-ath="${esc(mp.handle||"")}" style="color:var(--ink);font-weight:700;text-decoration:none">${esc(mp.name||"")}</a><div class="small muted">${ids.length} abonnement${ids.length>1?"s":""}</div></div></div>
     <div class="pstats" style="grid-template-columns:1fr 1fr;margin-top:14px"><div><span>Cette semaine</span><b>${fmtMin(st.week.h)||"0 min"}</b></div><div><span>Points</span><b>${fr(st.pts_week)}</b></div><div><span>Série</span><b>${st.streak} sem.</b></div><div><span>Badges</span><b>${st.badges.length}</b></div></div></div>`;
-  return h+`<div class="cmlay"><div>${feed}</div><aside>${side}</aside></div>`;
+  return h+`<div class="cmlay"><div>${feed}</div><aside>${side}${await todayFriends(ids,P)}</aside></div>`;
 }
 async function suggestHTML(){
   const u=me(), P=soc(), ids=new Set(await myFollowing());
@@ -6870,11 +6878,13 @@ async function profileHTML(p,editable){
   const [fol,fing,ids]=await Promise.all([q(c=>c.from("follows").select("follower",{count:"exact"}).eq("followee",p.user_id)),q(c=>c.from("follows").select("followee").eq("follower",p.user_id)),myFollowing()]);
   const following=ids.includes(p.user_id);
   const acts=await q(c=>c.from("activities").select("*").eq("user_id",p.user_id).order("date",{ascending:false}).limit(8))||[]; const K=await kudosFor(acts.map(a=>a.id));
+  const sh=(editable||following)?await shareOf(p.user_id,true):null; await loadDet(acts.map(a=>a.id)); PLAN={p,sh,following,mine:editable}; PW=0;
   const cal=(st.cal||[]).map((m,i)=>`<i class="${m>=150?"l3":m>=75?"l2":m>0?"l1":""} ${i===27?"today":""}" title="${dfr(addDays(TODAY,i-27))} : ${m?fmtMin(m):"repos"}"></i>`).join("");
   const btn=editable?"":`<button type="button" class="btn act-btn ${following?"ghost":""}" data-follow="${p.user_id}" data-on="${following?1:0}">${following?"Suivi":"Suivre"}</button>`;
   return `<div class="card"><div class="prof">${avatar(p,"lg")}<div><h2>${esc(p.name)}</h2><div class="h">@${esc(p.handle)}${p.city?" · "+esc(p.city):""}${p.club?" · club "+esc(p.club):""}${editable?" · "+({public:"profil public",following:"visible par les personnes que tu suis",private:"profil privé"})[p.visibility]:""}</div>${p.bio?`<p class="bio">${esc(p.bio)}</p>`:""}
     <div class="cnt"><div><b>${fr((fol&&fol.length)||0)}</b><span>abonnés</span></div><div><b>${fr((fing&&fing.length)||0)}</b><span>abonnements</span></div><div><b>${st.streak||0}</b><span>sem. de série</span></div><div><b>${fr(st.pts_total)}</b><span>points</span></div></div></div>${btn}</div>
     <div class="pstats"><div><span>Cette semaine</span><b>${fmtMin(wk.h||0)||"0 min"}</b></div><div><span>Distance (semaine)</span><b>${fr(wk.km)} km</b></div><div><span>Dénivelé (semaine)</span><b>${fr(wk.gain)} m</b></div><div><span>Cette année</span><b>${fr(Math.round((st.year&&st.year.h||0)/60))} h</b></div></div></div>
+    ${planCardHTML()}
     <div class="pggrid"><div class="card"><h2>4 dernières semaines</h2><div class="pcal" aria-label="Calendrier des 28 derniers jours">${cal}</div><p class="small muted" style="margin-top:8px">Plus la case est foncée, plus la journée a été longue.</p></div>
     <div class="card"><h2>Trophées</h2>${(st.badges||[]).length?`<div class="ptrophy">${st.badges.map(b=>`<span title="obtenu le ${dfr(b.date)}"><i>${ICOB(b.ic)}</i>${esc(b.nom)}</span>`).join("")}</div>`:`<p class="small muted">Pas encore de badge.</p>`}
     ${(st.records||[]).length?`<h3 style="margin-top:16px">Records</h3><div class="plist">${st.records.map(r=>`<div class="row"><div class="t">${esc(r.lab)}<div class="s">${dfr(r.date)}</div></div><b>${esc(r.val)}</b></div>`).join("")}</div>`:""}</div></div>
@@ -6890,15 +6900,16 @@ async function renderMoi(){
     <label class="full">Bio<textarea id="cmBio" maxlength="200" rows="2" placeholder="ex. Coureur sur route, objectif : les cols pyrénéens">${esc(P.bio||"")}</textarea></label></div>
     <p style="margin:14px 0 2px"><b>Qui voit ton profil et tes séances ?</b></p>
     <div class="vis" role="group" aria-label="Visibilité du profil"><button type="button" data-v2="public" aria-pressed="${P.visibility==="public"}"><b>Tout le monde</b><span>Tout compte de l’appli.</span></button><button type="button" data-v2="following" aria-pressed="${P.visibility==="following"}"><b>Les personnes que je suis</b><span>Seuls ceux que tu suis.</span></button><button type="button" data-v2="private" aria-pressed="${P.visibility==="private"}"><b>Moi seul</b><span>Rien n’est visible par les autres.</span></button></div>
-    <div class="row"><button type="button" class="btn" id="cmSave">Enregistrer</button><span class="cmnote">Données de santé jamais publiées. Tu peux tout retirer avec « Moi seul ».</span></div></div>`;
+    <label class="small" style="display:flex;flex-direction:row;align-items:flex-start;gap:8px;margin:14px 0 4px;font-weight:500"><input type="checkbox" id="cmShare" style="width:auto;margin-top:3px" ${P.share===1?"checked":""}><span><b>Partager avec les personnes qui me suivent</b> mon plan de la semaine et le détail de mes sorties (puissance, FC, zones, montées ; poids pour les W/kg). Si tu décoches, tout ce détail est effacé du serveur.</span></label>
+    <div class="row"><button type="button" class="btn" id="cmSave">Enregistrer</button><span class="cmnote">VFC, sommeil, check-in, douleur et maladie ne sont jamais publiés. Tu peux tout retirer avec « Moi seul ».</span></div></div>`;
 }
 function bindMoi(){
   const P=soc(); const g=id=>$("#"+id);
   document.querySelectorAll("[data-v2]").forEach(b=>b.onclick=()=>{ document.querySelectorAll("[data-v2]").forEach(x=>x.setAttribute("aria-pressed",String(x===b))); });
   const sv=g("cmSave"); if(sv) sv.onclick=async()=>{ const sel=document.querySelector("[data-v2][aria-pressed=true]"); const h=slug(g("cmHandle").value), n=g("cmName").value.trim();
     if(n.length<2||h.length<3){ toast("Nom d’au moins 2 caractères et pseudo d’au moins 3."); return; }
-    const old=P.handle; Object.assign(P,{name:n,handle:h,city:g("cmCity").value.trim(),club:g("cmClub").value.trim(),bio:g("cmBio").value.trim(),visibility:sel?sel.dataset.v2:P.visibility}); save();
-    await publish(true); if(ERR&&ERR.code==="23505"){ P.handle=old; save(); } else toast("Profil enregistré."); renderCm(); };
+    const old=P.handle, shc=g("cmShare"); Object.assign(P,{name:n,handle:h,city:g("cmCity").value.trim(),club:g("cmClub").value.trim(),bio:g("cmBio").value.trim(),visibility:sel?sel.dataset.v2:P.visibility}); if(shc) P.share=shc.checked?1:0; save();
+    await publish(true); await publishShare(true); if(ERR&&ERR.code==="23505"){ P.handle=old; save(); } else toast("Profil enregistré."); renderCm(); };
 }
 async function openProfile(handle){
   VIEWED=handle; location.hash="communaute/@"+handle; const body=$("#v-communaute .cmwrap"); if(!body) return;
@@ -6939,6 +6950,147 @@ function renderJoin(){
   $("#v7later").onclick=()=>{ P.joinLater=TODAY; save(); j.remove(); };
 }
 
+/* ---------- 6. partage avec les abonnés : plan de la semaine et détail des sorties ----------
+   Chaque compte publie un instantané de son plan (semaine en cours et suivante) et le détail de ses sorties des 60 derniers jours,
+   seulement s'il l'a accepté (Mon profil). Lecture réservée à ses abonnés (supabase/partage.sql). */
+const shareOn=()=>soc().share===1;
+const SH_SET=["ftp","kg","fcmax","lthr","fcmaxRun","lthrRun","age","hasPower","wkTarget","sportProfile"];
+const DET_F=["date","id","planned","dur","km","gainSum","hr","hrMax","hrPk","hr20","avgW","np","ifv","tss","kj","kcal","rpe","rpeEst","teA","teAn","teEst","teInfo","hz","zmin","src","srcs","an"];
+const hsh=t=>{ let h=0; for(let i=0;i<t.length;i++) h=(h*31+t.charCodeAt(i))|0; return h.toString(36)+":"+t.length; };
+// texte venant d'un autre compte : on retire tout ce qui pourrait former du HTML
+const clean=v=>typeof v==="string"?v.replace(/[<>&"'`]/g,""):Array.isArray(v)?v.map(clean):v&&typeof v==="object"?Object.fromEntries(Object.entries(v).map(([k,x])=>[k,clean(x)])):v;
+let SHERR=null;
+async function qs(fn){ try{ const c=await cloudClient(); const r=await fn(c); if(r.error) throw r.error; SHERR=null; return r.data; }catch(e){ SHERR=e; return null; } }
+
+function planSnap(){
+  const weeks=[];
+  [0,1].forEach(k=>{ const mon=addDays(mondayOf(TODAY),7*k); let W; try{ W=buildWeek(mon); }catch(e){ return; }
+    weeks.push({mon,phase:W.phase,deload:!!W.deload,total:Math.round((+W.total||0)+(+W.upTot||0)),days:W.days.map(d=>{
+      const done=(S.sessions||[]).filter(s=>s.date===d.date&&s.id!=="R0"&&(+s.dur||0)>0).map(s=>({nom:s.id==="RACE"?"Course":(LIB[s.id]||{}).nom||"Séance",sport:sessSport(s),dur:Math.round(+s.dur||0)}));
+      let items=[];
+      if(!d.past&&d.main){
+        if(d.main.id==="RACE") items=[{id:"RACE",nom:"Course : "+((d.main.race||{}).name||""),sport:raceSport(d.main.race)||"velo",dur:Math.round(+d.dur||0),key:true}];
+        else items=daySessions(d).filter(x=>x.id&&x.id!=="R0"&&LIB[x.id]).map(x=>{ const L=LIB[x.id]; let txt=""; try{ txt=contentText(x.id,x.v,x.dur)||""; }catch(e){}
+          return {id:x.id,v:x.v,nom:dispName(x.id),sport:L.sport||"",dur:Math.round(+x.dur||0),int:L.int||"",txt,key:!!L.key}; }); }
+      return {date:d.date,past:!!d.past,items,done}; })}); });
+  return {at:TODAY,weeks};
+}
+function detRows(uid){ const lim=addDays(TODAY,-60);
+  return (S.sessions||[]).filter(s=>s.date>=lim&&s.date<=TODAY&&s.id!=="R0"&&(+s.dur||0)>0).map(s=>{ const o={}; DET_F.forEach(k=>{ if(s[k]!==undefined) o[k]=s[k]; }); return {id:actId(uid,s),user_id:uid,data:o}; })
+    .filter(r=>JSON.stringify(r.data).length<240000);
+}
+let shFp="", shAt=0, shBusy=false;
+async function publishShare(force){
+  const u=me(), P=soc(); if(!u||!P.visibility||!P.handle||shBusy) return;
+  if(!force&&Date.now()-shAt<30000) return;
+  shBusy=true; const fpKey="coach-detfp-"+u.id;
+  try{ const c=await cloudClient();
+    if(!shareOn()||P.visibility==="private"){
+      if(P.shareWas){ await c.from("activity_details").delete().eq("user_id",u.id); await c.from("shares").delete().eq("user_id",u.id); P.shareWas=0; save(); try{ localStorage.removeItem(fpKey); }catch(e){} }
+    } else {
+      const D=defaultState().settings, sets={}; SH_SET.forEach(k=>{ const v=S.settings[k]; if(v!==undefined&&v!==""&&v!==null) sets[k]=v; else if(D[k]!==undefined) sets[k]=D[k]; });
+      sets.sportProfile=typeof sportProfile==="function"?sportProfile():"velo";
+      const row={user_id:u.id,plan:planSnap(),settings:sets,updated_at:new Date().toISOString()}, fp=hsh(JSON.stringify([row.plan,row.settings]));
+      if(force||fp!==shFp){ const r=await c.from("shares").upsert(row); if(r.error) throw r.error; shFp=fp; }
+      // détail des sorties : on n'envoie que ce qui a changé depuis le dernier envoi
+      const rows=detRows(u.id); let old={}; try{ old=JSON.parse(localStorage.getItem(fpKey)||"{}")||{}; }catch(e){}
+      const nw={}, todo=[]; rows.forEach(r=>{ const h=hsh(JSON.stringify(r.data)); nw[r.id]=h; if(force||old[r.id]!==h) todo.push(r); });
+      for(let i=0;i<todo.length;i+=6){ const part=todo.slice(i,i+6), now=new Date().toISOString();
+        const r=await c.from("activity_details").upsert(part.map(x=>Object.assign({},x,{updated_at:now}))); if(r.error) throw r.error;
+        part.forEach(x=>old[x.id]=nw[x.id]); try{ localStorage.setItem(fpKey,JSON.stringify(old)); }catch(e){} }
+      try{ localStorage.setItem(fpKey,JSON.stringify(nw)); }catch(e){}
+      if(!P.shareWas){ P.shareWas=1; save(); }
+    }
+    SHERR=null;
+  }catch(e){ SHERR=e; console.warn("partage",e); }
+  shAt=Date.now(); shBusy=false;
+}
+
+// lectures, gardées en mémoire une minute
+const SHC={}, DETC={}; let DET=new Set();
+async function shareOf(uid,fresh){ const c=SHC[uid]; if(c&&!fresh&&Date.now()-c.t<60000) return c.v;
+  const d=await qs(x=>x.from("shares").select("plan,settings,updated_at").eq("user_id",uid).maybeSingle()); const v=d?clean(d):null; SHC[uid]={t:Date.now(),v}; return v; }
+async function loadDet(ids){ ids=ids.filter(Boolean); if(!ids.length) return; const d=await qs(c=>c.from("activity_details").select("id").in("id",ids)); (d||[]).forEach(r=>DET.add(r.id)); }
+async function detailsOf(uid){ const c=DETC[uid]; if(c&&Date.now()-c.t<60000) return c.v;
+  const d=await qs(x=>x.from("activity_details").select("id,data").eq("user_id",uid).order("updated_at",{ascending:false}).limit(40)); const v=(d||[]).map(r=>({id:r.id,data:clean(r.data)})); DETC[uid]={t:Date.now(),v}; return v; }
+
+// l'analyse d'un autre compte est calculée avec SES réglages et SON historique, sans jamais toucher aux données enregistrées
+function inAthlete(sets,sessions,fn){
+  const s0=S.settings, ss=S.sessions, t0=S.tests, sv=window.save, D=defaultState().settings, st=Object.assign({},s0);
+  SH_SET.forEach(k=>{ st[k]=sets[k]!==undefined?sets[k]:D[k]; });
+  S.settings=st; S.sessions=sessions; S.tests=[]; window.save=function(){};
+  try{ return fn(); } finally{ S.settings=s0; S.sessions=ss; S.tests=t0; window.save=sv; }
+}
+async function openAna(btn){
+  const art=btn.closest("article"); if(!art) return; const id=btn.dataset.ana, uid=btn.dataset.uid, name=btn.dataset.name||"";
+  let box=art.querySelector(".anabox"); if(box){ box.remove(); btn.setAttribute("aria-expanded","false"); btn.textContent="Voir l’analyse"; return; }
+  box=document.createElement("div"); box.className="anabox"; box.innerHTML=`<p class="small muted">Chargement de l’analyse…</p>`; art.appendChild(box);
+  btn.setAttribute("aria-expanded","true"); btn.textContent="Masquer l’analyse";
+  const u=me(), mine=u&&uid===u.id; let html="";
+  try{
+    if(mine){ const s=(S.sessions||[]).find(x=>actId(u.id,x)===id); html=s?reviewHTML(s):""; }
+    if(!html){ const [sh,list]=await Promise.all([shareOf(uid),detailsOf(uid)]); const ses=list.map(r=>r.data); let sx=(list.find(r=>r.id===id)||{}).data;
+      if(!sx){ const d=await qs(c=>c.from("activity_details").select("id,data").eq("id",id).maybeSingle()); if(d){ sx=clean(d.data); ses.push(sx); } }
+      if(!sx){ box.innerHTML=`<p class="small muted">Analyse indisponible : ${esc(name||"cet athlète")} ne partage pas le détail de cette sortie.</p>`; return; }
+      const set=(sh&&sh.settings)||{};
+      const who=mine?"":`<p class="small muted" style="margin:0 0 8px">Analyse calculée avec les réglages de ${esc(name||"l’athlète")}${set.ftp?" : FTP "+esc(set.ftp)+" W":""}${set.fcmax?", FC max "+esc(set.fcmax)+" bpm":""}${set.lthr?", FC seuil "+esc(set.lthr)+" bpm":""}. Les conseils s’adressent à ${esc(name||"lui")}.</p>`;
+      html=who+inAthlete(set,ses,()=>reviewHTML(sx)); }
+  }catch(e){ console.warn("analyse",e); html=`<p class="small muted">Analyse impossible à afficher pour cette sortie.</p>`; }
+  box.innerHTML=html||`<p class="small muted">Analyse indisponible.</p>`;
+}
+
+// carte « Plan de la semaine » du profil
+let PLAN=null, PW=0;
+const SPC=sp=>sp==="velo"?"var(--v4-1)":sp==="course"?"var(--v4-2)":"var(--v4-3)";
+function planCardHTML(){ return `<div class="card" id="cmPlan">${planInner()}</div>`; }
+function paintPlan(){ const el=$("#cmPlan"); if(el){ el.innerHTML=planInner(); bind(); } }
+function planInner(){
+  if(!PLAN) return ""; const {p,sh,following,mine}=PLAN, nm=esc(p.name||"cet athlète");
+  if(SHERR&&missingTable(SHERR)) return `<h2>Plan de la semaine</h2><div class="alert warn">Le partage du plan et des analyses n’est pas encore activé sur le serveur : exécute une fois le fichier <b>supabase/partage.sql</b> du dépôt dans l’éditeur SQL de Supabase.</div>`;
+  if(!mine&&!following) return `<h2>Plan de la semaine</h2><p class="small muted">Suis ${nm} pour voir son plan de la semaine et l’analyse de ses sorties.</p>`;
+  const wk=sh&&sh.plan&&Array.isArray(sh.plan.weeks)?sh.plan.weeks:[];
+  if(!wk.length) return `<h2>Plan de la semaine</h2><p class="small muted">${mine?(shareOn()?"Ton plan sera publié pour tes abonnés à ta prochaine visite de l’appli.":"Tu ne partages pas ton plan : coche « Partager avec les personnes qui me suivent » dans Mon profil."):nm+" ne partage pas son plan pour l’instant."}</p>`;
+  const mon=addDays(mondayOf(TODAY),7*PW), W=wk.find(w=>w.mon===mon);
+  const seg=`<div class="pgsegb" role="group" aria-label="Semaine"><button type="button" data-pw="0" aria-pressed="${PW===0}">Cette semaine</button><button type="button" data-pw="1" aria-pressed="${PW===1}">Semaine prochaine</button></div>`;
+  const head=`<div class="row" style="justify-content:space-between;align-items:center;gap:10px"><h2 style="margin:0">Plan de la semaine</h2>${seg}</div>`;
+  if(!W) return head+`<p class="small muted" style="margin-top:12px">Plan pas encore mis à jour pour cette semaine (dernière mise à jour le ${esc(dfr(sh.plan.at||TODAY))}) : il le sera à la prochaine ouverture de l’appli par ${mine?"toi":nm}.</p>`;
+  const done=W.days.reduce((a,d)=>a+d.done.reduce((x,s)=>x+(+s.dur||0),0),0), keys=W.days.reduce((a,d)=>a+d.items.filter(i=>i.key).length,0);
+  const chips=`<div class="row" style="gap:6px;margin:12px 0 4px">${W.phase&&PHL[W.phase]?`<span class="chip"><span class="dot" style="background:${phColor(W.phase)}"></span>${esc(PHL[W.phase])}</span>`:""}${W.deload?`<span class="chip warn">Semaine allégée</span>`:""}<span class="chip">Prévu ${fmtMin(W.total||0)}</span>${PW===0?`<span class="chip">Fait ${fmtMin(done)}</span>`:""}<span class="chip">${keys} séance${keys>1?"s":""} clé${keys>1?"s":""}</span></div>`;
+  const rows=W.days.map((d,i)=>{
+    const dn=d.done.map(s=>`<div class="done">✓ ${esc(s.nom)} · ${fmtMin(s.dur)}</div>`).join("");
+    const it=d.items.map(x=>{ let mini=""; try{ if(LIB[x.id]&&["velo","course"].includes(x.sport)) mini=svgMini(x.id,x.v,x.dur); }catch(e){}
+      return `<div class="it"><b><i class="spm" style="background:${SPC(x.sport)}"></i>${esc(x.nom)}</b>${x.key?' <span class="tag key">clé</span>':""}${mini}${x.txt?`<div class="small muted">${esc(x.txt)}</div>`:""}</div>`; }).join("");
+    const body=d.past?(dn||`<span class="miss small">Rien d’enregistré</span>`):(it||(dn?"":`<span class="miss small">Repos</span>`))+(d.past?"":dn);
+    const dur=d.past?d.done.reduce((a,s)=>a+(+s.dur||0),0):d.items.reduce((a,x)=>a+(+x.dur||0),0);
+    const intens=d.past?"":esc(d.items.map(x=>x.int).filter(Boolean).join(" · "));
+    return `<tr class="${d.date===TODAY?"pltoday":""}"><td><b>${DAYS[i]}</b><br><span class="muted small">${esc(fmtD(d.date))}</span></td><td>${body}</td><td class="num">${dur?fmtMin(dur):"—"}</td><td class="small">${intens}</td></tr>`; }).join("");
+  return head+chips+`<div class="tablewrap plantab"><table><thead><tr><th>Jour</th><th>Séance</th><th>Durée</th><th>Intensité</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+// fil : ce que tes abonnements ont au programme aujourd'hui
+async function todayFriends(ids,P){
+  if(!ids.length) return "";
+  const rows=await qs(c=>c.from("shares").select("user_id,plan").in("user_id",ids));
+  if(!rows||!rows.length) return "";
+  const items=rows.map(r=>{ const pl=clean(r.plan)||{}, w=(pl.weeks||[]).find(x=>x.mon===mondayOf(TODAY)), d=w&&w.days.find(x=>x.date===TODAY), p=P[r.user_id]; if(!p||!d) return null;
+    const what=d.done.length?`<span class="done" style="color:var(--good)">✓ ${esc(d.done.map(s=>s.nom).join(", "))}</span>`:d.items.length?d.items.map(x=>`<b>${esc(x.nom)}</b> · ${fmtMin(x.dur)}`).join("<br>"):"Repos";
+    return `<div class="row">${avatar(p,"sm")}<div class="t"><a href="#communaute/@${esc(p.handle)}" data-ath="${esc(p.handle)}">${esc(p.name)}</a><div class="s">${what}</div></div></div>`; }).filter(Boolean);
+  return items.length?`<div class="card tdf"><h2>Aujourd’hui chez tes abonnements</h2><div class="plist">${items.join("")}</div><p class="small muted" style="margin-top:8px">Touche un nom pour voir son plan de la semaine.</p></div>`:"";
+}
+
+// avis : une seule fois, chacun choisit de partager ou non (Fil d'actualité et Aujourd'hui)
+const askShare=()=>{ const P=soc(); return !!(P.visibility&&P.visibility!=="private"&&P.share===undefined); };
+function shareAskInner(){ return `<div class="t"><b>Nouveau : partage avec tes abonnés</b><div class="muted" style="font-size:13px;margin-top:2px">Les personnes qui te suivent pourront voir ton plan de la semaine et l’analyse détaillée de tes sorties (puissance, FC, zones, montées). Tu peux changer d’avis à tout moment dans Mon profil.</div></div><div class="row" style="gap:6px"><button type="button" class="btn small" data-share="1">Partager</button><button type="button" class="btn ghost small" data-share="0">Ne pas partager</button></div>`; }
+function shareAsk(){ return askShare()?`<div class="v7join" style="margin:0 0 16px">${shareAskInner()}</div>`:""; }
+function renderShareAsk(){ const out=$("#todayOut"); if(!out) return; let j=$("#v7share");
+  if(!askShare()){ if(j) j.remove(); return; }
+  if(!j){ j=document.createElement("div"); j.id="v7share"; j.className="v7join"; }
+  const hero=out.querySelector(".hero"); if(hero&&j.parentNode!==hero) hero.appendChild(j);
+  j.innerHTML=shareAskInner(); j.querySelectorAll("[data-share]").forEach(b=>b.onclick=()=>answerShare(+b.dataset.share)); }
+async function answerShare(v){ const P=soc(); P.share=v?1:0; save(); renderShareAsk();
+  toast(v?"C’est noté : tes abonnés verront ton plan et l’analyse de tes sorties.":"C’est noté : rien de plus n’est partagé.");
+  if($("#v-communaute.on")) renderCm(); await publishShare(true); }
+
 /* ---------- branchements ---------- */
 if(typeof VIEWS!=="undefined"&&!VIEWS.includes("communaute")) VIEWS.push("communaute");
 const nav=$("#tabs"), after=nav&&(nav.querySelector('button[data-v="progres"]')||nav.querySelector('button[data-v="suivi"]'));
@@ -6952,12 +7104,12 @@ if(!$("#v-communaute")){ const s=document.createElement("section"); s.className=
 const oldShow=window.show; if(typeof oldShow==="function"&&!oldShow.v7){ const w=function(v){ const r=oldShow.apply(this,arguments); if(v==="communaute") renderCm(); return r; }; w.v7=true; window.show=w; }
 addEventListener("hashchange",()=>{ const h=location.hash.slice(1); const m=h.match(/^communaute\/@([a-z0-9_.-]+)$/); if(m){ if(VIEWED!==m[1]) openProfile(m[1]); } else if(h==="communaute"&&VIEWED){ VIEWED=null; renderCm(); } });
 const wrapR=(n,fn)=>{ const f=window[n]; if(typeof f!=="function"||f.v7) return; const w=function(){ const r=f.apply(this,arguments); try{ fn(); }catch(e){ console.warn("v7 "+n,e); } return r; }; w.v7=true; window[n]=w; };
-wrapR("renderToday",renderJoin); wrapR("renderAllNow",()=>{ renderJoin(); publish(false); });
+wrapR("renderToday",()=>{ renderJoin(); renderShareAsk(); }); wrapR("renderAllNow",()=>{ renderJoin(); renderShareAsk(); publish(false).then(()=>publishShare(false)); });
 // Progrès : le classement vit maintenant dans Communauté
 const pb=$("#pgBoard"); const fixPg=()=>{ const el=$("#pgBoard"); if(el) el.innerHTML=`<h2>Classement</h2><p class="small muted">Le classement de la semaine, ton profil et les séances de tes amis sont dans Communauté.</p><button class="btn small" type="button" id="pgToCm">Ouvrir la Communauté</button>`; const b=$("#pgToCm"); if(b) b.onclick=()=>{ TAB="classement"; location.hash="communaute"; show("communaute"); }; };
 const oldPg=window.show; void oldPg; const mo=new MutationObserver(()=>{ const el=$("#pgBoard"); if(el&&!el.querySelector("#pgToCm")) fixPg(); }); if(pb) mo.observe(pb,{childList:true}); fixPg();
 window.v7={publish,profileStats,renderCm,setTab:t=>{TAB=t;VIEWED=null;},tab:()=>TAB,viewed:()=>VIEWED};
-try{ renderJoin(); const m=location.hash.match(/^#communaute(?:\/@([a-z0-9_.-]+))?$/); if(m){ if(m[1]) VIEWED=m[1]; show("communaute"); } }catch(e){ console.warn("v7 init",e); }
+try{ renderJoin(); renderShareAsk(); setTimeout(()=>publishShare(false),4000); const m=location.hash.match(/^#communaute(?:\/@([a-z0-9_.-]+))?$/); if(m){ if(m[1]) VIEWED=m[1]; show("communaute"); } }catch(e){ console.warn("v7 init",e); }
 }catch(err){console.warn("v7",err)}})();
 </script>
 
