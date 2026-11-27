@@ -14,7 +14,7 @@ Application d'entraînement pour le cyclisme sur route (courses de 90 à 130 km)
 ## Communauté et partage
 
 Profil, fil d'actualité, classement et bravos (tables créées par `supabase/social.sql`).
-Si tu l'acceptes (Mon profil), les personnes qui te suivent voient aussi ton plan de la semaine sur ton profil et peuvent ouvrir l'analyse détaillée de tes sorties depuis le fil ou ton profil. Ce partage utilise les tables de `supabase/partage.sql`, à exécuter une fois dans l'éditeur SQL de Supabase ; décocher l'option efface ce détail du serveur.
+Tous les profils sont publics : chaque compte voit le plan de la semaine de tous les autres sur leur profil, et l'analyse détaillée de toutes les sorties depuis le fil ou les profils. Ce partage utilise les tables de `supabase/partage.sql`, à exécuter une fois dans l'éditeur SQL de Supabase.
 
 ## Tes données
 
